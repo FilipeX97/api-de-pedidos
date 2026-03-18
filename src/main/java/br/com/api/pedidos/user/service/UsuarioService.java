@@ -2,7 +2,6 @@ package br.com.api.pedidos.user.service;
 
 import br.com.api.pedidos.user.dto.UsuarioRequestDTO;
 import br.com.api.pedidos.user.dto.UsuarioResponseDTO;
-import br.com.api.pedidos.user.dto.UsuarioUpdateDTO;
 import br.com.api.pedidos.user.entity.Perfil;
 import br.com.api.pedidos.user.entity.Usuario;
 import br.com.api.pedidos.user.repository.UsuarioRepository;
@@ -49,28 +48,28 @@ public class UsuarioService {
                 .toList();
     }
 
-    public UsuarioResponseDTO atualizarUsuario(Long id, UsuarioUpdateDTO usuarioUpdateDTO) {
+    public UsuarioResponseDTO atualizarUsuario(Long id, UsuarioRequestDTO usuarioRequestDTO) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
-        if(usuarioUpdateDTO.nome() != null) {
-            usuario.alterarNome(usuarioUpdateDTO.nome());
+        if(usuarioRequestDTO.nome() != null) {
+            usuario.alterarNome(usuarioRequestDTO.nome());
         }
 
-        if(usuarioUpdateDTO.email() != null &&
-                !usuarioUpdateDTO.email().equalsIgnoreCase(usuario.getEmail())) {
+        if(usuarioRequestDTO.email() != null &&
+                !usuarioRequestDTO.email().equalsIgnoreCase(usuario.getEmail())) {
 
-            var existente = usuarioRepository.findByEmail(usuarioUpdateDTO.email());
+            var existente = usuarioRepository.findByEmail(usuarioRequestDTO.email());
 
             if (existente.isPresent() && !existente.get().getId().equals(usuario.getId())) {
                 throw new IllegalArgumentException("E-mail já cadastrado");
             }
 
-            usuario.alterarEmail(usuarioUpdateDTO.email());
+            usuario.alterarEmail(usuarioRequestDTO.email());
         }
 
-        if(usuarioUpdateDTO.senha() != null) {
-            usuario.alterarSenha(usuarioUpdateDTO.senha());
+        if(usuarioRequestDTO.senha() != null) {
+            usuario.alterarSenha(usuarioRequestDTO.senha());
         }
 
         usuarioRepository.save(usuario);

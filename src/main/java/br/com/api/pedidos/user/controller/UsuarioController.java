@@ -2,7 +2,6 @@ package br.com.api.pedidos.user.controller;
 
 import br.com.api.pedidos.user.dto.UsuarioRequestDTO;
 import br.com.api.pedidos.user.dto.UsuarioResponseDTO;
-import br.com.api.pedidos.user.dto.UsuarioUpdateDTO;
 import br.com.api.pedidos.user.service.UsuarioService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -41,8 +40,8 @@ public class UsuarioController {
     }
 
     @PatchMapping("/{id}")
-    public UsuarioResponseDTO atualizarUsuario(@PathVariable Long id, @RequestBody UsuarioUpdateDTO usuarioUpdateDTO) {
-        return usuarioService.atualizarUsuario(id, usuarioUpdateDTO);
+    public UsuarioResponseDTO atualizarUsuario(@PathVariable Long id, @RequestBody UsuarioRequestDTO usuarioRequestDTO) {
+        return usuarioService.atualizarUsuario(id, usuarioRequestDTO);
     }
 
     @DeleteMapping("/{id}")
