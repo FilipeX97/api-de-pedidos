@@ -22,11 +22,36 @@ public class Usuario {
     protected Usuario(){}
 
     public Usuario(String nome, String email, String senha, Perfil perfil) {
+        validarNome(nome);
+        validarEmail(email);
+        validarSenha(senha);
+
         this.nome = nome;
         this.email = email;
         this.senha = senha;
         this.perfil = perfil;
         this.dataCriacao = LocalDate.now();
+    }
+
+    private void validarNome(String nome) {
+        if(nome == null || nome.isBlank()) {
+            throw new IllegalArgumentException("Nome é obrigatório");
+        }
+    }
+
+    private void validarEmail(String email) {
+        if(email == null || email.isBlank()) {
+            throw new IllegalArgumentException("E-mail é obrigatório");
+        }
+        if(!email.contains("@")) {
+            throw new IllegalArgumentException("E-mail inválido");
+        }
+    }
+
+    private void validarSenha(String senha) {
+        if(senha == null || senha.isBlank()) {
+            throw new IllegalArgumentException("Senha é obrigatório");
+        }
     }
 
     public boolean isAdmin() {
@@ -41,7 +66,8 @@ public class Usuario {
         return nome;
     }
 
-    public void setNome(String nome) {
+    public void alterarNome(String nome) {
+        validarNome(nome);
         this.nome = nome;
     }
 
@@ -49,7 +75,8 @@ public class Usuario {
         return email;
     }
 
-    public void setEmail(String email) {
+    public void alterarEmail(String email) {
+        validarEmail(email);
         this.email = email;
     }
 
@@ -57,7 +84,8 @@ public class Usuario {
         return senha;
     }
 
-    public void setSenha(String senha) {
+    public void alterarSenha(String senha) {
+        validarSenha(senha);
         this.senha = senha;
     }
 
@@ -65,23 +93,18 @@ public class Usuario {
         return dataCriacao;
     }
 
-    public void setDataCriacao(LocalDate dataCriacao) {
-        this.dataCriacao = dataCriacao;
-    }
-
     public Perfil getPerfil() {
         return perfil;
     }
 
-    public void setPerfil(Perfil perfil) {
-        this.perfil = perfil;
+    public void promoverParaAdmin() {
+        this.perfil = Perfil.ADMIN;
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
         if (!(o instanceof Usuario usuario)) return false;
-        return id != null && id.equals(usuario.id);
+        return Objects.equals(id, usuario.id);
     }
 
     @Override

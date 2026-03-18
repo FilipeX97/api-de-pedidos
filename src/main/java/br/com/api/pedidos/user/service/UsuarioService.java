@@ -20,7 +20,12 @@ public class UsuarioService {
     }
 
     public UsuarioResponseDTO cadastrarUsuario(UsuarioRequestDTO usuarioRequestDTO) {
+        if(usuarioRepository.findByEmail(usuarioRequestDTO.email()).isPresent()) {
+            throw new IllegalArgumentException("E-mail já cadastrado");
+        }
+
         var usuario = new Usuario(usuarioRequestDTO.nome(), usuarioRequestDTO.email(), usuarioRequestDTO.senha(), Perfil.USER);
+
         usuarioRepository.save(usuario);
         return UsuarioResponseDTO.from(usuario);
     }
@@ -49,15 +54,23 @@ public class UsuarioService {
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
         if(usuarioUpdateDTO.nome() != null) {
-            usuario.setNome(usuarioUpdateDTO.nome());
+            usuario.alterarNome(usuarioUpdateDTO.nome());
         }
 
-        if(usuarioUpdateDTO.email() != null) {
-            usuario.setEmail(usuarioUpdateDTO.email());
+        if(usuarioUpdateDTO.email() != null &&
+                !usuarioUpdateDTO.email().equalsIgnoreCase(usuario.getEmail())) {
+
+            var existente = usuarioRepository.findByEmail(usuarioUpdateDTO.email());
+
+            if (existente.isPresent() && !existente.get().getId().equals(usuario.getId())) {
+                throw new IllegalArgumentException("E-mail já cadastrado");
+            }
+
+            usuario.alterarEmail(usuarioUpdateDTO.email());
         }
 
         if(usuarioUpdateDTO.senha() != null) {
-            usuario.setSenha(usuarioUpdateDTO.senha());
+            usuario.alterarSenha(usuarioUpdateDTO.senha());
         }
 
         usuarioRepository.save(usuario);
