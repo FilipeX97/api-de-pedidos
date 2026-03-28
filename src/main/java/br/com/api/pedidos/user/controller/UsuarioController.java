@@ -1,5 +1,6 @@
 package br.com.api.pedidos.user.controller;
 
+import br.com.api.pedidos.shared.response.RespostaApi;
 import br.com.api.pedidos.user.dto.UsuarioRequestDTO;
 import br.com.api.pedidos.user.dto.UsuarioResponseDTO;
 import br.com.api.pedidos.user.service.UsuarioService;
@@ -22,36 +23,42 @@ public class UsuarioController {
     @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping
-    public UsuarioResponseDTO cadastrarUsuario(@RequestBody UsuarioRequestDTO usuarioRequestDTO) {
-        return  usuarioService.cadastrarUsuario(usuarioRequestDTO);
+    public RespostaApi<UsuarioResponseDTO> cadastrarUsuario(@RequestBody UsuarioRequestDTO usuarioRequestDTO) {
+        return RespostaApi.sucesso(usuarioService.cadastrarUsuario(usuarioRequestDTO),
+                "Usuario cadastrado com sucesso");
     }
 
     @GetMapping("/{id}")
-    public UsuarioResponseDTO buscarUsuarioPorId(@PathVariable Long id){
-        return usuarioService.buscarUsuarioPorId(id);
+    public RespostaApi<UsuarioResponseDTO> buscarUsuarioPorId(@PathVariable Long id){
+        return RespostaApi.sucesso(usuarioService.buscarUsuarioPorId(id),
+                "Usuário encontrado");
     }
 
     @GetMapping("/email")
-    public UsuarioResponseDTO buscarUsuarioPorEmail(@RequestParam String email) {
-        return usuarioService.buscarUsuarioPorEmail(email);
+    public RespostaApi<UsuarioResponseDTO> buscarUsuarioPorEmail(@RequestParam String email) {
+        return RespostaApi.sucesso(usuarioService.buscarUsuarioPorEmail(email),
+                "Usuario encontrado");
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
-    public List<UsuarioResponseDTO> listarUsuarios() {
-        return usuarioService.listarUsuarios();
+    public RespostaApi<List<UsuarioResponseDTO>> listarUsuarios() {
+        return RespostaApi.sucesso(usuarioService.listarUsuarios(),
+                "Lista de usuários");
     }
 
     @PatchMapping("/{id}")
     @PreAuthorize("#id == authentication.principal.usuario.id or hasRole('ADMIN')")
-    public UsuarioResponseDTO atualizarUsuario(@PathVariable Long id, @RequestBody UsuarioRequestDTO usuarioRequestDTO) {
-        return usuarioService.atualizarUsuario(id, usuarioRequestDTO);
+    public RespostaApi<UsuarioResponseDTO> atualizarUsuario(@PathVariable Long id, @RequestBody UsuarioRequestDTO usuarioRequestDTO) {
+        return RespostaApi.sucesso(usuarioService.atualizarUsuario(id, usuarioRequestDTO),
+                "Usuário atualizado");
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
-    public void removerUsuario(@PathVariable Long id) {
+    public RespostaApi<Void> removerUsuario(@PathVariable Long id) {
         usuarioService.removerUsuario(id);
+        return RespostaApi.sucesso(null, "Usuário removido com sucesso");
     }
 
 }

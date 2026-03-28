@@ -6,6 +6,7 @@ import br.com.api.pedidos.auth.dto.RefreshTokenRequestDTO;
 import br.com.api.pedidos.auth.dto.RegistraRequestDTO;
 import br.com.api.pedidos.auth.service.AutenticacaoService;
 import br.com.api.pedidos.auth.service.TokenBlacklistService;
+import br.com.api.pedidos.shared.response.RespostaApi;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -24,32 +25,36 @@ public class AutenticacaoController {
     }
 
     @PostMapping("/login")
-    public LoginResponseDTO login(@RequestBody LoginRequestDTO loginRequestDTO) {
-        return autenticacaoService.login(loginRequestDTO);
+    public RespostaApi<LoginResponseDTO> login(@RequestBody LoginRequestDTO loginRequestDTO) {
+        return RespostaApi.sucesso(autenticacaoService.login(loginRequestDTO),
+                "Login realizado com sucesso");
     }
 
     @PostMapping("/refresh")
-    public LoginResponseDTO refresh(@RequestBody RefreshTokenRequestDTO refreshTokenRequestDTO) {
-        return autenticacaoService.refresh(refreshTokenRequestDTO);
+    public RespostaApi<LoginResponseDTO> refresh(@RequestBody RefreshTokenRequestDTO refreshTokenRequestDTO) {
+        return RespostaApi.sucesso(autenticacaoService.refresh(refreshTokenRequestDTO),
+                "Token renovado com sucesso");
     }
 
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/registrar")
-    public void registrarUsuario(@RequestBody RegistraRequestDTO registraRequestDTO) {
+    public RespostaApi<Void> registrarUsuario(@RequestBody RegistraRequestDTO registraRequestDTO) {
         autenticacaoService.registrarUsuario(registraRequestDTO);
+        return RespostaApi.sucesso(null,
+                "Usuário registrado com sucesso");
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PostMapping("/logout")
-    public void logout(HttpServletRequest request) {
+    public RespostaApi<Void> logout(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
 
-        if (header == null || !header.startsWith("Bearer ")) {
-            return;
+        if (header != null && header.startsWith("Bearer ")) {
+            String token = header.substring(7);
+            tokenBlacklistService.adicionarBlacklist(token);
         }
 
-        String token = header.substring(7);
-        tokenBlacklistService.adicionarBlacklist(token);
+        return RespostaApi.sucesso(null, "Logout realizado com sucesso");
     }
 
 }
