@@ -4,6 +4,7 @@ import br.com.api.pedidos.user.dto.UsuarioRequestDTO;
 import br.com.api.pedidos.user.dto.UsuarioResponseDTO;
 import br.com.api.pedidos.user.service.UsuarioService;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +19,7 @@ public class UsuarioController {
         this.usuarioService = usuarioService;
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping
     public UsuarioResponseDTO cadastrarUsuario(@RequestBody UsuarioRequestDTO usuarioRequestDTO) {
@@ -34,16 +36,19 @@ public class UsuarioController {
         return usuarioService.buscarUsuarioPorEmail(email);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public List<UsuarioResponseDTO> listarUsuarios() {
         return usuarioService.listarUsuarios();
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("#id == authentication.principal.usuario.id or hasRole('ADMIN')")
     public UsuarioResponseDTO atualizarUsuario(@PathVariable Long id, @RequestBody UsuarioRequestDTO usuarioRequestDTO) {
         return usuarioService.atualizarUsuario(id, usuarioRequestDTO);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public void removerUsuario(@PathVariable Long id) {
         usuarioService.removerUsuario(id);

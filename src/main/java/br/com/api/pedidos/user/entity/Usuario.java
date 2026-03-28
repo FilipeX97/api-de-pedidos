@@ -1,5 +1,6 @@
 package br.com.api.pedidos.user.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
@@ -12,7 +13,9 @@ public class Usuario {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String nome;
+    @Column(unique = true)
     private String email;
+    @JsonIgnore
     private String senha;
     private LocalDate dataCriacao;
 
@@ -80,6 +83,7 @@ public class Usuario {
         this.email = email;
     }
 
+    @JsonIgnore
     public String getSenha() {
         return senha;
     }
