@@ -7,6 +7,7 @@ import br.com.api.pedidos.auth.dto.RegistraRequestDTO;
 import br.com.api.pedidos.auth.entity.RefreshToken;
 import br.com.api.pedidos.auth.repository.RefreshTokenRepository;
 import br.com.api.pedidos.security.jwt.JwtService;
+import br.com.api.pedidos.security.login.LoginTentativaService;
 import br.com.api.pedidos.user.entity.Perfil;
 import br.com.api.pedidos.user.entity.Usuario;
 import br.com.api.pedidos.user.repository.UsuarioRepository;
@@ -22,19 +23,26 @@ public class AutenticacaoService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final LoginTentativaService loginTentativaService;
 
     public AutenticacaoService(
             UsuarioRepository usuarioRepository,
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
-            JwtService jwtService) {
+            JwtService jwtService,
+            LoginTentativaService loginTentativaService) {
         this.usuarioRepository = usuarioRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.loginTentativaService = loginTentativaService;
     }
 
     public LoginResponseDTO login(LoginRequestDTO loginRequestDTO) {
+        if(loginTentativaService.estaBloqueado(loginRequestDTO.email())) {
+            throw new RuntimeException("Usuário bloqueado temporariamente");
+        }
+
         var usuario = usuarioRepository.findByEmail(loginRequestDTO.email())
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 

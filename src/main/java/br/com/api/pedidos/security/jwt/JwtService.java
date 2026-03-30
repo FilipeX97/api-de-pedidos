@@ -1,11 +1,10 @@
 package br.com.api.pedidos.security.jwt;
 
+import br.com.api.pedidos.config.TokenProperties;
 import br.com.api.pedidos.user.entity.Usuario;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
@@ -13,11 +12,11 @@ import java.util.Date;
 @Service
 public class JwtService {
 
-    @Value("${api.security.token.secret}")
-    private String chaveSecreta;
+    private final TokenProperties tokenProperties;
 
-    @Value("${api.security.token.refresh-secret}")
-    private String chaveRefreshSecreta;
+    public JwtService(TokenProperties tokenProperties) {
+        this.tokenProperties = tokenProperties;
+    }
 
     public String gerarToken(Usuario usuario) {
         return Jwts.builder()
@@ -25,9 +24,9 @@ public class JwtService {
                 .claim("role", usuario.getPerfil().name())
                 .setIssuedAt(new Date())
                 .setExpiration(
-                        new Date(System.currentTimeMillis() + 3600000)
+                        new Date(System.currentTimeMillis() + tokenProperties.expiracao())
                 )
-                .signWith(Keys.hmacShaKeyFor(chaveSecreta.getBytes()))
+                .signWith(Keys.hmacShaKeyFor(tokenProperties.chaveSecreta().getBytes()))
                 .compact();
     }
 
@@ -36,9 +35,9 @@ public class JwtService {
                 .setSubject(usuario.getEmail())
                 .setIssuedAt(new Date())
                 .setExpiration(
-                        new Date(System.currentTimeMillis() + 604800000)
+                        new Date(System.currentTimeMillis() + tokenProperties.expiracaoRefresh())
                 )
-                .signWith(Keys.hmacShaKeyFor(chaveRefreshSecreta.getBytes()))
+                .signWith(Keys.hmacShaKeyFor(tokenProperties.chaveRefreshSecreta().getBytes()))
                 .compact();
     }
 
@@ -48,16 +47,16 @@ public class JwtService {
                 .claim("role", perfil)
                 .setIssuedAt(new Date())
                 .setExpiration(
-                        new Date(System.currentTimeMillis() + 3600000)
+                        new Date(System.currentTimeMillis() + tokenProperties.expiracao())
                 )
-                .signWith(Keys.hmacShaKeyFor(chaveSecreta.getBytes()))
+                .signWith(Keys.hmacShaKeyFor(tokenProperties.chaveSecreta().getBytes()))
                 .compact();
     }
 
     public boolean validarToken(String token) {
         try {
             Jwts.parserBuilder()
-                    .setSigningKey(Keys.hmacShaKeyFor(chaveSecreta.getBytes()))
+                    .setSigningKey(Keys.hmacShaKeyFor(tokenProperties.chaveSecreta().getBytes()))
                     .build()
                     .parseClaimsJws(token);
 
@@ -71,7 +70,7 @@ public class JwtService {
     public boolean validarTokenRefresh(String token) {
         try {
             Jwts.parserBuilder()
-                    .setSigningKey(Keys.hmacShaKeyFor(chaveRefreshSecreta.getBytes()))
+                    .setSigningKey(Keys.hmacShaKeyFor(tokenProperties.chaveRefreshSecreta().getBytes()))
                     .build()
                     .parseClaimsJws(token);
 
@@ -100,18 +99,17 @@ public class JwtService {
     }
 
     public boolean precisaRenovar(String token) {
-        Date expiracao = extrairExpiracao(token);
+        Date expiracaoToken = extrairExpiracao(token);
 
         long tempoRestante =
-                expiracao.getTime() - System.currentTimeMillis();
+                expiracaoToken.getTime() - System.currentTimeMillis();
 
-        long cincoMinutos = 5 * 60 * 1000;
-        return tempoRestante < cincoMinutos;
+        return tempoRestante < tokenProperties.tempoAntesExpiracaoParaRenovar();
     }
 
     private Claims extrairClaimsAccess(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(Keys.hmacShaKeyFor(chaveSecreta.getBytes()))
+                .setSigningKey(Keys.hmacShaKeyFor(tokenProperties.chaveSecreta().getBytes()))
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
@@ -119,7 +117,7 @@ public class JwtService {
 
     private Claims extrairClaimsRefresh(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(Keys.hmacShaKeyFor(chaveRefreshSecreta.getBytes()))
+                .setSigningKey(Keys.hmacShaKeyFor(tokenProperties.chaveRefreshSecreta().getBytes()))
                 .build()
                 .parseClaimsJws(token)
                 .getBody();

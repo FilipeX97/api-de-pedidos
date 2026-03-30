@@ -1,6 +1,7 @@
 package br.com.api.pedidos.security.config;
 
 import br.com.api.pedidos.security.filter.JwtFiltroAutenticacao;
+import br.com.api.pedidos.security.ratelimit.FiltroIntervaloRequisicao;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -18,9 +19,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SegurancaConfig {
 
     private final JwtFiltroAutenticacao jwtFiltroAutenticacao;
+    private final FiltroIntervaloRequisicao filtroIntervaloRequisicao;
 
-    public SegurancaConfig(JwtFiltroAutenticacao jwtFiltroAutenticacao) {
+    public SegurancaConfig(JwtFiltroAutenticacao jwtFiltroAutenticacao,
+                           FiltroIntervaloRequisicao filtroIntervaloRequisicao) {
         this.jwtFiltroAutenticacao = jwtFiltroAutenticacao;
+        this.filtroIntervaloRequisicao = filtroIntervaloRequisicao;
     }
 
     @Bean
@@ -44,6 +48,10 @@ public class SegurancaConfig {
                 .addFilterBefore(
                         jwtFiltroAutenticacao,
                         UsernamePasswordAuthenticationFilter.class
+                )
+                .addFilterBefore(
+                        filtroIntervaloRequisicao,
+                        JwtFiltroAutenticacao.class
                 );
 
         return http.build();
