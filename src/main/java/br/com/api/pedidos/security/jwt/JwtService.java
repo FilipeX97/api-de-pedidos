@@ -1,6 +1,7 @@
 package br.com.api.pedidos.security.jwt;
 
 import br.com.api.pedidos.config.TokenProperties;
+import br.com.api.pedidos.security.token.TokenService;
 import br.com.api.pedidos.user.entity.Usuario;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -14,7 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Service
-public class JwtService {
+public class JwtService implements TokenService {
 
     private final TokenProperties tokenProperties;
 

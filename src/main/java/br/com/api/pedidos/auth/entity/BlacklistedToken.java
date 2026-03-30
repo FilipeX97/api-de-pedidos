@@ -33,16 +33,8 @@ public class BlacklistedToken {
         return token;
     }
 
-    public void setToken(String token) {
-        this.token = token;
-    }
-
     public Date getExpiration() {
         return expiration;
-    }
-
-    public void setExpiration(Date expiration) {
-        this.expiration = expiration;
     }
 
     @Override

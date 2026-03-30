@@ -5,6 +5,7 @@ import br.com.api.pedidos.auth.dto.LoginResponseDTO;
 import br.com.api.pedidos.auth.dto.RefreshTokenRequestDTO;
 import br.com.api.pedidos.auth.dto.RegistraRequestDTO;
 import br.com.api.pedidos.auth.service.AutenticacaoService;
+import br.com.api.pedidos.auth.service.RegistroUsuarioService;
 import br.com.api.pedidos.auth.service.TokenBlacklistService;
 import br.com.api.pedidos.security.util.RequestUtils;
 import br.com.api.pedidos.shared.response.RespostaApi;
@@ -18,11 +19,15 @@ public class AutenticacaoController {
 
     private final AutenticacaoService autenticacaoService;
     private final TokenBlacklistService tokenBlacklistService;
+    private final RegistroUsuarioService registroUsuarioService;
 
     public AutenticacaoController(
-            AutenticacaoService autenticacaoService, TokenBlacklistService tokenBlacklistService) {
+            AutenticacaoService autenticacaoService,
+            TokenBlacklistService tokenBlacklistService,
+            RegistroUsuarioService registroUsuarioService) {
         this.autenticacaoService = autenticacaoService;
         this.tokenBlacklistService = tokenBlacklistService;
+        this.registroUsuarioService = registroUsuarioService;
     }
 
     @PostMapping("/login")
@@ -56,7 +61,7 @@ public class AutenticacaoController {
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/registrar")
     public RespostaApi<Void> registrarUsuario(@RequestBody RegistraRequestDTO registraRequestDTO) {
-        autenticacaoService.registrarUsuario(registraRequestDTO);
+        registroUsuarioService.registrar(registraRequestDTO);
         return RespostaApi.sucesso(null,
                 "Usuário registrado com sucesso");
     }
