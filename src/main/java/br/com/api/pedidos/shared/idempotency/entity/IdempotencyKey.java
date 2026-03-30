@@ -5,11 +5,15 @@ import jakarta.persistence.*;
 import java.util.Date;
 
 @Entity
+@Table(indexes = {
+        @Index(name = "idx_idempotency_chave", columnList = "chave")
+})
 public class IdempotencyKey {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(unique = true)
     private String chave;
     @Lob
     private String respostaJson;

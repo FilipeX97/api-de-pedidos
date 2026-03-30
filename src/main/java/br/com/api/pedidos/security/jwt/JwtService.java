@@ -5,9 +5,13 @@ import br.com.api.pedidos.user.entity.Usuario;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class JwtService {
@@ -18,10 +22,18 @@ public class JwtService {
         this.tokenProperties = tokenProperties;
     }
 
-    public String gerarToken(Usuario usuario) {
+    public String gerarToken(Usuario usuario, String ip, String userAgent) {
+
+        String uaHash = DigestUtils.sha256Hex(userAgent);
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", usuario.getPerfil().name());
+        claims.put("ip", ip);
+        claims.put("ua", uaHash);
+
         return Jwts.builder()
+                .setClaims(claims)
                 .setSubject(usuario.getEmail())
-                .claim("role", usuario.getPerfil().name())
                 .setIssuedAt(new Date())
                 .setExpiration(
                         new Date(System.currentTimeMillis() + tokenProperties.expiracao())
@@ -41,10 +53,16 @@ public class JwtService {
                 .compact();
     }
 
-    public String gerarTokenUsuarioEmailPerfil(String email, String perfil) {
+    public String gerarTokenUsuarioEmailPerfil(String email, String perfil, String ip, String userAgent) {
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", perfil);
+        claims.put("ip", ip);
+        claims.put("ua", userAgent);
+
         return Jwts.builder()
+                .setClaims(claims)
                 .setSubject(email)
-                .claim("role", perfil)
                 .setIssuedAt(new Date())
                 .setExpiration(
                         new Date(System.currentTimeMillis() + tokenProperties.expiracao())
@@ -98,6 +116,14 @@ public class JwtService {
                 .getExpiration();
     }
 
+    public String extrairIp(String token) {
+        return extrairClaimsAccess(token).get("ip", String.class);
+    }
+
+    public String extrairUserAgent(String token) {
+        return extrairClaimsAccess(token).get("ua", String.class);
+    }
+
     public boolean precisaRenovar(String token) {
         Date expiracaoToken = extrairExpiracao(token);
 
@@ -107,7 +133,7 @@ public class JwtService {
         return tempoRestante < tokenProperties.tempoAntesExpiracaoParaRenovar();
     }
 
-    private Claims extrairClaimsAccess(String token) {
+    public Claims extrairClaimsAccess(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(Keys.hmacShaKeyFor(tokenProperties.chaveSecreta().getBytes()))
                 .build()

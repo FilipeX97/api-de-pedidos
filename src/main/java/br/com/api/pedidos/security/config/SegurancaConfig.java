@@ -1,7 +1,7 @@
 package br.com.api.pedidos.security.config;
 
 import br.com.api.pedidos.security.filter.JwtFiltroAutenticacao;
-import br.com.api.pedidos.security.ratelimit.FiltroIntervaloRequisicao;
+import br.com.api.pedidos.security.filter.FiltroIntervaloRequisicao;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;

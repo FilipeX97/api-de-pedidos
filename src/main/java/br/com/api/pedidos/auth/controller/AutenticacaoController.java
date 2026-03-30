@@ -6,6 +6,7 @@ import br.com.api.pedidos.auth.dto.RefreshTokenRequestDTO;
 import br.com.api.pedidos.auth.dto.RegistraRequestDTO;
 import br.com.api.pedidos.auth.service.AutenticacaoService;
 import br.com.api.pedidos.auth.service.TokenBlacklistService;
+import br.com.api.pedidos.security.util.RequestUtils;
 import br.com.api.pedidos.shared.response.RespostaApi;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -25,14 +26,30 @@ public class AutenticacaoController {
     }
 
     @PostMapping("/login")
-    public RespostaApi<LoginResponseDTO> login(@RequestBody LoginRequestDTO loginRequestDTO) {
-        return RespostaApi.sucesso(autenticacaoService.login(loginRequestDTO),
+    public RespostaApi<LoginResponseDTO> login(@RequestBody LoginRequestDTO loginRequestDTO,
+                                               HttpServletRequest request) {
+        String requestIp = RequestUtils.extrairIp(request);
+        String userAgent = RequestUtils.extrairUserAgent(request);
+
+        return RespostaApi.sucesso(
+                autenticacaoService.login(
+                        loginRequestDTO,
+                        requestIp,
+                        userAgent),
                 "Login realizado com sucesso");
     }
 
     @PostMapping("/refresh")
-    public RespostaApi<LoginResponseDTO> refresh(@RequestBody RefreshTokenRequestDTO refreshTokenRequestDTO) {
-        return RespostaApi.sucesso(autenticacaoService.refresh(refreshTokenRequestDTO),
+    public RespostaApi<LoginResponseDTO> refresh(
+            @RequestBody RefreshTokenRequestDTO refreshTokenRequestDTO,
+            HttpServletRequest request) {
+        String requestIp = RequestUtils.extrairIp(request);
+        String userAgent = RequestUtils.extrairUserAgent(request);
+
+        return RespostaApi.sucesso(autenticacaoService.refresh(
+                refreshTokenRequestDTO,
+                requestIp,
+                userAgent),
                 "Token renovado com sucesso");
     }
 

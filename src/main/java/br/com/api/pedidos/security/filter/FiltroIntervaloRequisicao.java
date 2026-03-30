@@ -1,9 +1,12 @@
-package br.com.api.pedidos.security.ratelimit;
+package br.com.api.pedidos.security.filter;
 
+import br.com.api.pedidos.security.ratelimit.RateLimitService;
+import br.com.api.pedidos.security.util.RequestUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -14,9 +17,11 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class FiltroIntervaloRequisicao extends OncePerRequestFilter {
 
-    private final Map<String, Long> ultimaRequisicao = new ConcurrentHashMap<>();
+    private final RateLimitService rateLimitService;
 
-    private static final long INTERVALO_MINIMO = 1000; // 1 segundos
+    public FiltroIntervaloRequisicao(RateLimitService rateLimitService) {
+        this.rateLimitService = rateLimitService;
+    }
 
     @Override
     protected void doFilterInternal(
@@ -24,19 +29,21 @@ public class FiltroIntervaloRequisicao extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        String ip = request.getRemoteAddr();
-        long agora = System.currentTimeMillis();
 
-        Long ultima = ultimaRequisicao.get(ip);
+        String ip = RequestUtils.extrairIp(request);
+        String userAgent = RequestUtils.extrairUserAgent(request);
 
-        if(ultima != null && (agora - ultima) < INTERVALO_MINIMO) {
+        String userAgentHash = DigestUtils.sha256Hex(userAgent);
+
+        String chave = ip + ":" + userAgentHash;
+
+        if (!rateLimitService.permitirRequisicao(chave)) {
+
             response.setStatus(429);
-            response.getWriter().write("Muitas requisições. Por favor, aguarde um momento.");
+            response.getWriter().write("Muitas requisições. Aguarde um momento.");
             return;
         }
 
-        ultimaRequisicao.put(ip, agora);
         filterChain.doFilter(request, response);
     }
-
 }

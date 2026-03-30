@@ -2,12 +2,15 @@ package br.com.api.pedidos.security.filter;
 
 import br.com.api.pedidos.auth.service.TokenBlacklistService;
 import br.com.api.pedidos.security.jwt.JwtService;
+import br.com.api.pedidos.security.util.RequestUtils;
 import br.com.api.pedidos.security.util.UtilToken;
 import br.com.api.pedidos.user.service.UsuarioService;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -45,14 +48,36 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
 
         String token = UtilToken.extrairToken(request);
 
-        if (!jwtService.validarToken(token) ||
+        if (token == null ||
+                !jwtService.validarToken(token) ||
                 tokenBlacklistService.tokenBloqueado(token)) {
+
             filterChain.doFilter(request, response);
             return;
         }
 
-        String email = jwtService.extrairEmail(token);
-        String perfil = jwtService.extrairPerfil(token);
+        Claims claims = jwtService.extrairClaimsAccess(token);
+
+        String tokenIp = claims.get("ip", String.class);
+        String tokenUa = claims.get("ua", String.class);
+
+        String requestIp = RequestUtils.extrairIp(request);
+        String userAgent = RequestUtils.extrairUserAgent(request);
+
+        if (userAgent == null || userAgent.isBlank() || userAgent.length() < 10) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+
+        String userAgentHash = DigestUtils.sha256Hex(userAgent);
+
+        if (!tokenIp.equals(requestIp) || !tokenUa.equals(userAgentHash)) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+
+        String email = claims.getSubject();
+        String perfil = claims.get("role", String.class);
 
         UserDetails usuario = usuarioService.loadUserByUsername(email);
 
@@ -72,7 +97,9 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
         if (jwtService.precisaRenovar(token)) {
             String novoToken = jwtService.gerarTokenUsuarioEmailPerfil(
                     email,
-                    perfil
+                    perfil,
+                    requestIp,
+                    userAgentHash
             );
 
             response.setHeader("X-New-Token", novoToken);

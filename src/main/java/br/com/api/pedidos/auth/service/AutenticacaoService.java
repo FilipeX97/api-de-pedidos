@@ -11,6 +11,7 @@ import br.com.api.pedidos.security.login.LoginTentativaService;
 import br.com.api.pedidos.user.entity.Perfil;
 import br.com.api.pedidos.user.entity.Usuario;
 import br.com.api.pedidos.user.repository.UsuarioRepository;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -38,7 +39,9 @@ public class AutenticacaoService {
         this.loginTentativaService = loginTentativaService;
     }
 
-    public LoginResponseDTO login(LoginRequestDTO loginRequestDTO) {
+    public LoginResponseDTO login(LoginRequestDTO loginRequestDTO,
+                                  String ip,
+                                  String userAgent) {
         if(loginTentativaService.estaBloqueado(loginRequestDTO.email())) {
             throw new RuntimeException("Usuário bloqueado temporariamente");
         }
@@ -52,7 +55,12 @@ public class AutenticacaoService {
         if (!senhaValida)
             throw new RuntimeException("Senha incorreta");
 
-        String accessToken = jwtService.gerarToken(usuario);
+
+        if (userAgent == null || userAgent.isBlank() || userAgent.length() < 10) {
+            throw new RuntimeException("Requisição inválida");
+        }
+
+        String accessToken = jwtService.gerarToken(usuario, ip, userAgent);
         String refreshToken = jwtService.gerarRefreshToken(usuario);
 
         refreshTokenRepository.save(
@@ -66,17 +74,19 @@ public class AutenticacaoService {
         return new LoginResponseDTO(accessToken, refreshToken);
     }
 
-    public LoginResponseDTO refresh(RefreshTokenRequestDTO dto) {
+    public LoginResponseDTO refresh(RefreshTokenRequestDTO refreshTokenRequestDTO,
+                                    String ip,
+                                    String userAgent) {
 
         var tokenSalvo = refreshTokenRepository
-                .findByToken(dto.refreshToken())
+                .findByToken(refreshTokenRequestDTO.refreshToken())
                 .orElseThrow(() -> new RuntimeException("Token inválido"));
 
         if (tokenSalvo.isRevogado()) {
             throw new RuntimeException("Token revogado");
         }
 
-        if (!jwtService.validarTokenRefresh(dto.refreshToken())) {
+        if (!jwtService.validarTokenRefresh(refreshTokenRequestDTO.refreshToken())) {
             throw new RuntimeException("Token expirado");
         }
 
@@ -85,7 +95,11 @@ public class AutenticacaoService {
         tokenSalvo.revogar();
         refreshTokenRepository.save(tokenSalvo);
 
-        String novoAccessToken = jwtService.gerarToken(usuario);
+        if (userAgent == null || userAgent.isBlank() || userAgent.length() < 10) {
+            throw new RuntimeException("Requisição inválida");
+        }
+
+        String novoAccessToken = jwtService.gerarToken(usuario, ip, userAgent);
         String novoRefreshToken = jwtService.gerarRefreshToken(usuario);
 
         refreshTokenRepository.save(

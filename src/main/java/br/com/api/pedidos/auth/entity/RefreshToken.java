@@ -12,6 +12,7 @@ public class RefreshToken {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(unique = true, nullable = false)
     private String token;
     private Date expiration;
     private boolean revogado;
