@@ -1,48 +1,60 @@
 package br.com.api.pedidos.security.login;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class LoginTentativaService {
 
-    private final Map<String, Integer> tentativas = new ConcurrentHashMap<>();
-    private final Map<String, Long> bloqueios = new ConcurrentHashMap<>();
-
     private static final int MAX_TENTATIVAS = 5;
-    private static final long BLOQUEIO = 10 * 60 * 1000; // 10 minutos
 
-    public void registrarFalha(String email) {
-        int tentativa = tentativas.getOrDefault(email, 0);
+    private final Cache<String, Integer> tentativas;
+    private final Cache<String, Boolean> bloqueios;
+
+    public LoginTentativaService() {
+        this.tentativas = Caffeine.newBuilder()
+                .expireAfterWrite(30, TimeUnit.MINUTES)
+                .maximumSize(10_000)
+                .build();
+
+        this.bloqueios = Caffeine.newBuilder()
+                .expireAfterWrite(10, TimeUnit.MINUTES)
+                .maximumSize(10_000)
+                .build();
+    }
+
+    public void registrarFalha(String email, String ip) {
+        String chave = gerarChave(email, ip);
+        Integer tentativa = tentativas.getIfPresent(chave);
+
+        if (tentativa == null) {
+            tentativa = 0;
+        }
+
         tentativa++;
-        tentativas.put(email, tentativa);
+        tentativas.put(chave, tentativa);
 
         if (tentativa >= MAX_TENTATIVAS) {
-            bloqueios.put(email, System.currentTimeMillis());
+            bloqueios.put(chave, true);
         }
     }
 
-    public boolean estaBloqueado(String email) {
-        Long bloqueio = bloqueios.get(email);
-
-        if (bloqueio == null) {
-            return false;
-        }
-
-        if ((System.currentTimeMillis() - bloqueio) > BLOQUEIO) {
-            bloqueios.remove(email);
-            tentativas.remove(email);
-            return false;
-        }
-
-        return true;
+    public boolean estaBloqueado(String email, String ip) {
+        String chave = gerarChave(email, ip);
+        return bloqueios.getIfPresent(chave) != null;
     }
 
-    public void sucessoLogin(String email) {
-        tentativas.remove(email);
-        bloqueios.remove(email);
+    public void sucessoLogin(String email, String ip) {
+        String chave = gerarChave(email, ip);
+        tentativas.invalidate(chave);
+        bloqueios.invalidate(chave);
+    }
+
+    private String gerarChave(String email, String ip) {
+        return email + ":" + ip;
     }
 
 }

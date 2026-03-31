@@ -38,7 +38,7 @@ public class AutenticacaoService {
             String ip,
             String userAgent) {
 
-        if (loginTentativaService.estaBloqueado(dto.email())) {
+        if (loginTentativaService.estaBloqueado(dto.email(), ip)) {
             throw new RuntimeException("Usuário bloqueado temporariamente");
         }
 
@@ -49,11 +49,11 @@ public class AutenticacaoService {
                 .matches(dto.senha(), usuario.getSenha());
 
         if (!senhaValida) {
-            loginTentativaService.registrarFalha(dto.email());
+            loginTentativaService.registrarFalha(dto.email(), ip);
             throw new RuntimeException("Senha incorreta");
         }
 
-        loginTentativaService.sucessoLogin(dto.email());
+        loginTentativaService.sucessoLogin(dto.email(), ip);
 
         String accessToken = jwtService.gerarToken(usuario, ip, userAgent);
 
