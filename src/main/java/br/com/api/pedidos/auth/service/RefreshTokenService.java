@@ -7,6 +7,8 @@ import br.com.api.pedidos.security.jwt.JwtService;
 import br.com.api.pedidos.user.entity.Usuario;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Date;
 
 @Service
@@ -26,12 +28,14 @@ public class RefreshTokenService {
     }
 
     public String criar(Usuario usuario) {
-        String token = jwtService.gerarRefreshToken(usuario);
+        String token = gerarTokenSeguro();
 
         refreshTokenRepository.save(
                 new RefreshToken(
                         token,
-                        new Date(System.currentTimeMillis() + tokenProperties.expiracaoRefresh()),
+                        new Date(
+                                System.currentTimeMillis()
+                                        + tokenProperties.expiracaoRefresh()),
                         usuario
                 )
         );
@@ -48,6 +52,37 @@ public class RefreshTokenService {
     public void revogar(RefreshToken token) {
         token.revogar();
         refreshTokenRepository.save(token);
+    }
+
+    public void detectarUsoDeTokenRevogado(RefreshToken token) {
+        if (token.isRevogado()) {
+            Usuario usuario = token.getUsuario();
+            revogarTodosTokensUsuario(usuario);
+
+            throw new RuntimeException(
+                    "Possível roubo de refresh token detectado. Faça login novamente."
+            );
+        }
+    }
+
+    public void revogarTodosTokensUsuario(Usuario usuario) {
+        refreshTokenRepository.deleteAllByUsuario(usuario);
+    }
+
+    public void validarExpiracao(RefreshToken token) {
+        if (token.getExpiration().before(new Date())) {
+            throw new RuntimeException("Refresh token expirado");
+        }
+    }
+
+    private String gerarTokenSeguro() {
+        byte[] bytes = new byte[64];
+        SecureRandom secureRandom = new SecureRandom();
+        secureRandom.nextBytes(bytes);
+
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(bytes);
     }
 
 }

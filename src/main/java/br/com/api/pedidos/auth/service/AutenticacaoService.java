@@ -25,7 +25,6 @@ public class AutenticacaoService {
             JwtService jwtService,
             LoginTentativaService loginTentativaService,
             RefreshTokenService refreshTokenService) {
-
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -58,9 +57,7 @@ public class AutenticacaoService {
         }
 
         loginTentativaService.sucessoLogin(dto.email(), ip);
-
         String accessToken = jwtService.gerarToken(usuario, ip, userAgent);
-
         String refreshToken = refreshTokenService.criar(usuario);
 
         return new LoginResponseDTO(accessToken, refreshToken);
@@ -70,19 +67,15 @@ public class AutenticacaoService {
             RefreshTokenRequestDTO dto,
             String ip,
             String userAgent) {
-
         var tokenSalvo = refreshTokenService.buscar(dto.refreshToken());
-
-        if (tokenSalvo.isRevogado()) {
-            throw new RuntimeException("Token revogado");
-        }
+        refreshTokenService.detectarUsoDeTokenRevogado(tokenSalvo);
+        refreshTokenService.validarExpiracao(tokenSalvo);
 
         if (!jwtService.validarTokenRefresh(dto.refreshToken())) {
             throw new RuntimeException("Token expirado");
         }
 
-        Usuario usuario = tokenSalvo.getUsuario();
-
+        var usuario = tokenSalvo.getUsuario();
         refreshTokenService.revogar(tokenSalvo);
 
         String novoAccessToken = jwtService.gerarToken(usuario, ip, userAgent);
