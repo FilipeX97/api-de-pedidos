@@ -16,9 +16,9 @@ public class RateLimitService {
 
     public boolean permitirRequisicao(String chave) {
         long agora = System.currentTimeMillis();
-        long ultima = ultimaRequisicao.get(chave);
+        Long ultima = ultimaRequisicao.get(chave);
 
-        if(ultima != 0 && (agora - ultima) < INTERVALO_MINIMO) {
+        if(ultima != null && (agora - ultima) < INTERVALO_MINIMO) {
             return false;
         }
 
