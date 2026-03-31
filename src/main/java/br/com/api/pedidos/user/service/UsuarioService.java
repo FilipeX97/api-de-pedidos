@@ -8,7 +8,6 @@ import br.com.api.pedidos.user.dto.UsuarioResponseDTO;
 import br.com.api.pedidos.user.entity.Perfil;
 import br.com.api.pedidos.user.entity.Usuario;
 import br.com.api.pedidos.user.repository.UsuarioRepository;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -25,9 +24,10 @@ public class UsuarioService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
     private final UsuarioCacheService usuarioCacheService;
 
-    public UsuarioService(UsuarioRepository usuarioRepository,
-                          PasswordEncoder passwordEncoder,
-                          UsuarioCacheService usuarioCacheService) {
+    public UsuarioService(
+            UsuarioRepository usuarioRepository,
+            PasswordEncoder passwordEncoder,
+            UsuarioCacheService usuarioCacheService) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.usuarioCacheService = usuarioCacheService;
@@ -115,6 +115,7 @@ public class UsuarioService implements UserDetailsService {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
+        usuario.invalidarTokens();
         usuarioCacheService.removerCacheUsuario(usuario.getEmail());
         usuarioRepository.delete(usuario);
     }
@@ -131,5 +132,22 @@ public class UsuarioService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado"));
 
         return new UsuarioSecurity(usuario);
+    }
+
+    public void desativarUsuario(Long id) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow();
+
+        usuario.desativarUsuario();
+        usuario.invalidarTokens();
+        usuarioRepository.save(usuario);
+    }
+
+    public void ativarUsuario(Long id) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow();
+
+        usuario.ativarUsuario();
+        usuarioRepository.save(usuario);
     }
 }

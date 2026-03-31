@@ -128,6 +128,10 @@ public class Usuario {
         this.ativo = true;
     }
 
+    public void invalidarTokens() {
+        this.senhaAlteradaEm = System.currentTimeMillis();
+    }
+
     public void promoverParaAdmin() {
         this.perfil = Perfil.ADMIN;
     }

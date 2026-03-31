@@ -43,6 +43,7 @@ public class SegurancaConfig {
                 .authorizeHttpRequests(
                         auth -> auth
                                 .requestMatchers("/auth/**").permitAll()
+                                .requestMatchers("/admin/usuarios/**").hasAnyRole("ADMIN")
                                 .anyRequest().authenticated()
                 )
                 .addFilterBefore(

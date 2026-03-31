@@ -40,25 +40,11 @@ public class UsuarioController {
                 "Usuario encontrado");
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping
-    public RespostaApi<List<UsuarioResponseDTO>> listarUsuarios() {
-        return RespostaApi.sucesso(usuarioService.listarUsuarios(),
-                "Lista de usuários");
-    }
-
     @PatchMapping("/{id}")
     @PreAuthorize("#id == authentication.principal.usuario.id or hasRole('ADMIN')")
     public RespostaApi<UsuarioResponseDTO> atualizarUsuario(@PathVariable Long id, @RequestBody UsuarioRequestDTO usuarioRequestDTO) {
         return RespostaApi.sucesso(usuarioService.atualizarUsuario(id, usuarioRequestDTO),
                 "Usuário atualizado");
-    }
-
-    @PreAuthorize("hasRole('ADMIN')")
-    @DeleteMapping("/{id}")
-    public RespostaApi<Void> removerUsuario(@PathVariable Long id) {
-        usuarioService.removerUsuario(id);
-        return RespostaApi.sucesso(null, "Usuário removido com sucesso");
     }
 
 }
