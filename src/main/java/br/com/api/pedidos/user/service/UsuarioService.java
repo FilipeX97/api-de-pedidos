@@ -77,6 +77,8 @@ public class UsuarioService implements UserDetailsService {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
+        String emailAntigo = null;
+
         if(usuarioRequestDTO.nome() != null) {
             usuario.alterarNome(usuarioRequestDTO.nome());
         }
@@ -90,6 +92,7 @@ public class UsuarioService implements UserDetailsService {
                 throw new IllegalArgumentException("E-mail já cadastrado");
             }
 
+            emailAntigo = usuario.getEmail();
             usuario.alterarEmail(usuarioRequestDTO.email());
         }
 
@@ -100,7 +103,11 @@ public class UsuarioService implements UserDetailsService {
         }
 
         usuarioRepository.save(usuario);
-        usuarioCacheService.removerCacheUsuario(usuario.getEmail());
+
+        if(emailAntigo != null) {
+            usuarioCacheService.removerCacheUsuario(emailAntigo);
+        }
+
         return UsuarioResponseDTO.from(usuario);
     }
 
