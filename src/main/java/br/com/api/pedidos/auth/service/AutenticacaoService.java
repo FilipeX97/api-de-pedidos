@@ -45,6 +45,10 @@ public class AutenticacaoService {
         var usuario = usuarioRepository.findByEmail(dto.email())
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
+        if (!usuario.isAtivo()) {
+            throw new RuntimeException("Usuário desativado");
+        }
+
         boolean senhaValida = passwordEncoder
                 .matches(dto.senha(), usuario.getSenha());
 

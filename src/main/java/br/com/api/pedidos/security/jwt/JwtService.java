@@ -6,7 +6,6 @@ import br.com.api.pedidos.user.entity.Usuario;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +30,7 @@ public class JwtService implements TokenService {
         claims.put("role", usuario.getPerfil().name());
         claims.put("ip", ip);
         claims.put("ua", uaHash);
+        claims.put("pwd", usuario.getSenhaAlteradaEm());
 
         return Jwts.builder()
                 .setClaims(claims)
@@ -51,24 +51,6 @@ public class JwtService implements TokenService {
                         new Date(System.currentTimeMillis() + tokenProperties.expiracaoRefresh())
                 )
                 .signWith(Keys.hmacShaKeyFor(tokenProperties.chaveRefreshSecreta().getBytes()))
-                .compact();
-    }
-
-    public String gerarTokenUsuarioEmailPerfil(String email, String perfil, String ip, String userAgent) {
-
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("role", perfil);
-        claims.put("ip", ip);
-        claims.put("ua", userAgent);
-
-        return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(email)
-                .setIssuedAt(new Date())
-                .setExpiration(
-                        new Date(System.currentTimeMillis() + tokenProperties.expiracao())
-                )
-                .signWith(Keys.hmacShaKeyFor(tokenProperties.chaveSecreta().getBytes()))
                 .compact();
     }
 

@@ -18,6 +18,8 @@ public class Usuario {
     @JsonIgnore
     private String senha;
     private LocalDate dataCriacao;
+    private Long senhaAlteradaEm;
+    private boolean ativo;
 
     @Enumerated(EnumType.STRING)
     private Perfil perfil;
@@ -34,6 +36,8 @@ public class Usuario {
         this.senha = senha;
         this.perfil = perfil;
         this.dataCriacao = LocalDate.now();
+        this.senhaAlteradaEm = System.currentTimeMillis();
+        this.ativo = true;
     }
 
     private void validarNome(String nome) {
@@ -91,6 +95,7 @@ public class Usuario {
     public void alterarSenha(String senha) {
         validarSenha(senha);
         this.senha = senha;
+        this.senhaAlteradaEm = System.currentTimeMillis();
     }
 
     public LocalDate getDataCriacao() {
@@ -99,6 +104,28 @@ public class Usuario {
 
     public Perfil getPerfil() {
         return perfil;
+    }
+
+    public Long getSenhaAlteradaEm() {
+        return senhaAlteradaEm;
+    }
+
+    public boolean isAtivo() {
+        return ativo;
+    }
+
+    public void desativarUsuario() {
+        if (!this.ativo) {
+            throw new IllegalStateException("Usuário já está desativado");
+        }
+        this.ativo = false;
+    }
+
+    public void ativarUsuario() {
+        if (this.ativo) {
+            throw new IllegalStateException("Usuário já está ativo");
+        }
+        this.ativo = true;
     }
 
     public void promoverParaAdmin() {

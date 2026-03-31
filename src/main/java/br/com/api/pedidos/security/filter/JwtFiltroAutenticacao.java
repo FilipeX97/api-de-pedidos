@@ -2,9 +2,11 @@ package br.com.api.pedidos.security.filter;
 
 import br.com.api.pedidos.auth.service.TokenBlacklistService;
 import br.com.api.pedidos.security.jwt.JwtService;
+import br.com.api.pedidos.security.userdetails.UsuarioSecurity;
 import br.com.api.pedidos.security.util.RequestUtils;
 import br.com.api.pedidos.security.util.SecurityUtils;
 import br.com.api.pedidos.security.util.TokenUtils;
+import br.com.api.pedidos.user.entity.Usuario;
 import br.com.api.pedidos.user.service.UsuarioService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
@@ -14,7 +16,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -58,6 +59,7 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
 
         String tokenIp = claims.get("ip", String.class);
         String tokenUa = claims.get("ua", String.class);
+        Long tokenPwd = claims.get("pwd", Long.class);
 
         String requestIp = RequestUtils.extrairIp(request);
         String userAgent = RequestUtils.extrairUserAgent(request);
@@ -72,15 +74,27 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
         }
 
         String email = claims.getSubject();
-        String perfil = claims.get("role", String.class);
 
-        UserDetails usuario = usuarioService.loadUserByUsername(email);
+        UsuarioSecurity usuarioSecurity =
+                (UsuarioSecurity) usuarioService.loadUserByUsername(email);
+
+        Usuario usuario = usuarioSecurity.getUsuario();
+
+        if (!usuario.isAtivo()) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+
+        if (!tokenPwd.equals(usuario.getSenhaAlteradaEm())) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
 
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(
-                        usuario,
+                        usuarioSecurity,
                         null,
-                        usuario.getAuthorities()
+                        usuarioSecurity.getAuthorities()
                 );
 
         authentication.setDetails(
@@ -90,9 +104,8 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         if (jwtService.precisaRenovar(token)) {
-            String novoToken = jwtService.gerarTokenUsuarioEmailPerfil(
-                    email,
-                    perfil,
+            String novoToken = jwtService.gerarToken(
+                    usuario,
                     requestIp,
                     userAgentHash
             );
