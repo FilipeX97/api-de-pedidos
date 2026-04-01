@@ -7,7 +7,7 @@ import br.com.api.pedidos.security.util.RequestUtils;
 import br.com.api.pedidos.security.util.SecurityUtils;
 import br.com.api.pedidos.security.util.TokenUtils;
 import br.com.api.pedidos.user.entity.Usuario;
-import br.com.api.pedidos.user.service.UsuarioService;
+import br.com.api.pedidos.user.service.UsuarioAutenticacaoService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -27,15 +27,15 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final TokenBlacklistService tokenBlacklistService;
-    private final UsuarioService usuarioService;
+    private final UsuarioAutenticacaoService usuarioAutenticacaoService;
 
     public JwtFiltroAutenticacao(
             JwtService jwtService,
             TokenBlacklistService tokenBlacklistService,
-            UsuarioService usuarioService) {
+            UsuarioAutenticacaoService usuarioAutenticacaoService) {
         this.jwtService = jwtService;
         this.tokenBlacklistService = tokenBlacklistService;
-        this.usuarioService = usuarioService;
+        this.usuarioAutenticacaoService = usuarioAutenticacaoService;
     }
 
     @Override
@@ -80,7 +80,7 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
         String email = claims.getSubject();
 
         UsuarioSecurity usuarioSecurity =
-                (UsuarioSecurity) usuarioService.loadUserByUsername(email);
+                (UsuarioSecurity) usuarioAutenticacaoService.loadUserByUsername(email);
 
         Usuario usuario = usuarioSecurity.getUsuario();
 
@@ -111,7 +111,7 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
             String novoToken = jwtService.gerarToken(
                     usuario,
                     requestIp,
-                    userAgentHash
+                    userAgent
             );
 
             response.setHeader("X-New-Token", novoToken);

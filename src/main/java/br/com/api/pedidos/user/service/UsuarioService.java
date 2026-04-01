@@ -1,24 +1,18 @@
 package br.com.api.pedidos.user.service;
 
-import br.com.api.pedidos.cache.CacheNames;
-import br.com.api.pedidos.security.userdetails.UsuarioSecurity;
 import br.com.api.pedidos.user.cache.UsuarioCacheService;
 import br.com.api.pedidos.user.dto.UsuarioRequestDTO;
 import br.com.api.pedidos.user.dto.UsuarioResponseDTO;
 import br.com.api.pedidos.user.entity.Perfil;
 import br.com.api.pedidos.user.entity.Usuario;
 import br.com.api.pedidos.user.repository.UsuarioRepository;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
-public class UsuarioService implements UserDetailsService {
+public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
@@ -28,13 +22,14 @@ public class UsuarioService implements UserDetailsService {
             UsuarioRepository usuarioRepository,
             PasswordEncoder passwordEncoder,
             UsuarioCacheService usuarioCacheService) {
+
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.usuarioCacheService = usuarioCacheService;
     }
 
     public UsuarioResponseDTO cadastrarUsuario(UsuarioRequestDTO usuarioRequestDTO) {
-        if(usuarioRepository.findByEmail(usuarioRequestDTO.email()).isPresent()) {
+        if (usuarioRepository.findByEmail(usuarioRequestDTO.email()).isPresent()) {
             throw new IllegalArgumentException("E-mail já cadastrado");
         }
 
@@ -42,28 +37,24 @@ public class UsuarioService implements UserDetailsService {
                 usuarioRequestDTO.nome(),
                 usuarioRequestDTO.email(),
                 passwordEncoder.encode(usuarioRequestDTO.senha()),
-                Perfil.USER);
+                Perfil.USER
+        );
 
         usuarioRepository.save(usuario);
         return UsuarioResponseDTO.from(usuario);
     }
 
-    public UsuarioResponseDTO buscarUsuarioPorId(Long id){
-        return usuarioRepository.findById(id)
-                .map(UsuarioResponseDTO::from)
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+    public UsuarioResponseDTO buscarUsuarioPorId(Long id) {
+        return UsuarioResponseDTO.from(
+                buscarUsuarioOuFalhar(id)
+        );
     }
 
-    @Cacheable(
-            value = CacheNames.USUARIOS_DTO,
-            key = "#email",
-            unless = "#result == null",
-            sync = true
-    )
     public UsuarioResponseDTO buscarUsuarioPorEmail(String email) {
         return usuarioRepository.findByEmail(email)
                 .map(UsuarioResponseDTO::from)
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Usuário não encontrado"));
     }
 
     public List<UsuarioResponseDTO> listarUsuarios() {
@@ -74,37 +65,39 @@ public class UsuarioService implements UserDetailsService {
     }
 
     public UsuarioResponseDTO atualizarUsuario(Long id, UsuarioRequestDTO usuarioRequestDTO) {
-        Usuario usuario = usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+        Usuario usuario = buscarUsuarioOuFalhar(id);
+        String emailAntigo = usuario.getEmail();
+        boolean alterouCredenciais = false;
 
-        String emailAntigo = null;
-
-        if(usuarioRequestDTO.nome() != null) {
+        if (usuarioRequestDTO.nome() != null) {
             usuario.alterarNome(usuarioRequestDTO.nome());
         }
 
-        if(usuarioRequestDTO.email() != null &&
+        if (usuarioRequestDTO.email() != null &&
                 !usuarioRequestDTO.email().equalsIgnoreCase(usuario.getEmail())) {
 
             var existente = usuarioRepository.findByEmail(usuarioRequestDTO.email());
 
-            if (existente.isPresent() && !existente.get().getId().equals(usuario.getId())) {
+            if (existente.isPresent() &&
+                    !existente.get().getId().equals(usuario.getId())) {
+
                 throw new IllegalArgumentException("E-mail já cadastrado");
             }
 
-            emailAntigo = usuario.getEmail();
             usuario.alterarEmail(usuarioRequestDTO.email());
+            alterouCredenciais = true;
         }
 
-        if(usuarioRequestDTO.senha() != null) {
+        if (usuarioRequestDTO.senha() != null) {
             usuario.alterarSenha(
                     passwordEncoder.encode(usuarioRequestDTO.senha())
             );
+            alterouCredenciais = true;
         }
 
         usuarioRepository.save(usuario);
 
-        if(emailAntigo != null) {
+        if (alterouCredenciais) {
             usuarioCacheService.removerCacheUsuario(emailAntigo);
         }
 
@@ -112,42 +105,29 @@ public class UsuarioService implements UserDetailsService {
     }
 
     public void removerUsuario(Long id) {
-        Usuario usuario = usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
-
+        Usuario usuario = buscarUsuarioOuFalhar(id);
         usuario.invalidarTokens();
-        usuarioCacheService.removerCacheUsuario(usuario.getEmail());
         usuarioRepository.delete(usuario);
-    }
-
-    @Cacheable(
-            value = CacheNames.USUARIOS_AUTH,
-            key = "#email",
-            unless = "#result == null",
-            sync = true
-    )
-    @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        var usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado"));
-
-        return new UsuarioSecurity(usuario);
+        usuarioCacheService.removerCacheUsuario(usuario.getEmail());
     }
 
     public void desativarUsuario(Long id) {
-        Usuario usuario = usuarioRepository.findById(id)
-                .orElseThrow();
-
+        Usuario usuario = buscarUsuarioOuFalhar(id);
         usuario.desativarUsuario();
         usuario.invalidarTokens();
         usuarioRepository.save(usuario);
+        usuarioCacheService.removerCacheUsuario(usuario.getEmail());
     }
 
     public void ativarUsuario(Long id) {
-        Usuario usuario = usuarioRepository.findById(id)
-                .orElseThrow();
-
+        Usuario usuario = buscarUsuarioOuFalhar(id);
         usuario.ativarUsuario();
         usuarioRepository.save(usuario);
+    }
+
+    private Usuario buscarUsuarioOuFalhar(Long id) {
+        return usuarioRepository.findById(id)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Usuário não encontrado"));
     }
 }
