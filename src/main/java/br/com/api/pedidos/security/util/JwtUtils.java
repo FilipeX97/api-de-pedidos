@@ -6,10 +6,9 @@ import io.jsonwebtoken.security.Keys;
 
 import java.util.Date;
 
-public class JwtUtils {
+public final class JwtUtils {
 
-    private JwtUtils() {
-    }
+    private JwtUtils() {}
 
     public static Claims extrairClaims(String token, byte[] chaveSecreta) {
         return Jwts.parserBuilder()

@@ -2,6 +2,7 @@ package br.com.api.pedidos.security.filter;
 
 import br.com.api.pedidos.security.ratelimit.RateLimitService;
 import br.com.api.pedidos.security.util.RequestUtils;
+import br.com.api.pedidos.security.util.SecurityHashUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,12 +30,9 @@ public class FiltroIntervaloRequisicao extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-
         String ip = RequestUtils.extrairIp(request);
         String userAgent = RequestUtils.extrairUserAgent(request);
-
-        String userAgentHash = DigestUtils.sha256Hex(userAgent);
-
+        String userAgentHash = SecurityHashUtils.hashUserAgent(userAgent);
         String chave = ip + ":" + userAgentHash;
 
         if (!rateLimitService.permitirRequisicao(chave)) {

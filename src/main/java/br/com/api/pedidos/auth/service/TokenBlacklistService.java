@@ -5,7 +5,7 @@ import br.com.api.pedidos.auth.repository.BlacklistedTokenRepository;
 import br.com.api.pedidos.security.jwt.JwtService;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
+import java.time.Instant;
 
 @Service
 public class TokenBlacklistService {
@@ -21,7 +21,7 @@ public class TokenBlacklistService {
     }
 
     public void adicionarBlacklist(String token) {
-        Date expiracao = jwtService.extrairExpiracao(token);
+        Instant expiracao = jwtService.extrairExpiracao(token);
 
         blacklistedTokenRepository.save(
                 new BlacklistedToken(token, expiracao)

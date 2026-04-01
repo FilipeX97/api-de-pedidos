@@ -3,6 +3,7 @@ package br.com.api.pedidos.security.jwt;
 import br.com.api.pedidos.config.TokenProperties;
 import br.com.api.pedidos.security.token.TokenService;
 import br.com.api.pedidos.security.util.JwtUtils;
+import br.com.api.pedidos.security.util.SecurityHashUtils;
 import br.com.api.pedidos.user.entity.Usuario;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -12,6 +13,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -28,7 +30,7 @@ public class JwtService implements TokenService {
     }
 
     public String gerarToken(Usuario usuario, String ip, String userAgent) {
-        String uaHash = DigestUtils.sha256Hex(userAgent);
+        String uaHash = SecurityHashUtils.hashUserAgent(userAgent);
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", usuario.getPerfil().name());
@@ -36,13 +38,13 @@ public class JwtService implements TokenService {
         claims.put("ua", uaHash);
         claims.put("pwd", usuario.getSenhaAlteradaEm());
 
+        Instant agora = Instant.now();
+
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(usuario.getEmail())
-                .setIssuedAt(new Date())
-                .setExpiration(
-                        new Date(System.currentTimeMillis() + tokenProperties.expiracao())
-                )
+                .setIssuedAt(Date.from(agora))
+                .setExpiration(Date.from(agora.plusMillis(tokenProperties.expiracao())))
                 .signWith(Keys.hmacShaKeyFor(chave))
                 .compact();
     }
@@ -59,8 +61,8 @@ public class JwtService implements TokenService {
         return extrairClaims(token).getSubject();
     }
 
-    public Date extrairExpiracao(String token) {
-        return extrairClaims(token).getExpiration();
+    public Instant extrairExpiracao(String token) {
+        return extrairClaims(token).getExpiration().toInstant();
     }
 
     public Claims extrairClaims(String token) {
@@ -68,10 +70,10 @@ public class JwtService implements TokenService {
     }
 
     public boolean precisaRenovar(String token) {
-        Date expiracaoToken = extrairExpiracao(token);
+        Instant expiracaoToken = extrairExpiracao(token);
 
         long tempoRestante =
-                expiracaoToken.getTime() - System.currentTimeMillis();
+                expiracaoToken.toEpochMilli() - System.currentTimeMillis();
 
         return tempoRestante < tokenProperties.tempoAntesExpiracaoParaRenovar();
     }

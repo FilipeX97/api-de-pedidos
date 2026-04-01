@@ -2,6 +2,7 @@ package br.com.api.pedidos.shared.idempotency.entity;
 
 import jakarta.persistence.*;
 
+import java.time.Instant;
 import java.util.Date;
 
 @Entity
@@ -17,12 +18,12 @@ public class IdempotencyKey {
     private String chave;
     @Lob
     private String respostaJson;
-    private Date criadaEm;
+    private Instant criadaEm;
 
     public IdempotencyKey() {
     }
 
-    public IdempotencyKey(String chave, String respostaJson, Date criadaEm) {
+    public IdempotencyKey(String chave, String respostaJson, Instant criadaEm) {
         this.chave = chave;
         this.respostaJson = respostaJson;
         this.criadaEm = criadaEm;
@@ -48,11 +49,11 @@ public class IdempotencyKey {
         this.respostaJson = respostaJson;
     }
 
-    public Date getCriadaEm() {
+    public Instant getCriadaEm() {
         return criadaEm;
     }
 
-    public void setCriadaEm(Date criadaEm) {
+    public void setCriadaEm(Instant criadaEm) {
         this.criadaEm = criadaEm;
     }
 }

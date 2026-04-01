@@ -3,7 +3,7 @@ package br.com.api.pedidos.auth.entity;
 import br.com.api.pedidos.user.entity.Usuario;
 import jakarta.persistence.*;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.Objects;
 
 @Entity
@@ -14,7 +14,7 @@ public class RefreshToken {
     private Long id;
     @Column(unique = true, nullable = false)
     private String token;
-    private Date expiration;
+    private Instant expiration;
     private boolean revogado;
 
     @ManyToOne
@@ -23,16 +23,14 @@ public class RefreshToken {
     public RefreshToken() {
     }
 
-    public RefreshToken(String token, Date expiration, Usuario  usuario) {
+    public RefreshToken(String token, Instant expiration, Usuario usuario) {
         this.token = token;
         this.expiration = expiration;
         this.usuario = usuario;
         revogado = false;
     }
 
-    public boolean estaExpirado() {
-        return expiration.before(new Date());
-    }
+    public boolean estaExpirado() {return expiration.isBefore(Instant.now());}
 
     public Long getId() {
         return id;
@@ -42,7 +40,7 @@ public class RefreshToken {
         return token;
     }
 
-    public Date getExpiration() {
+    public Instant getExpiration() {
         return expiration;
     }
 

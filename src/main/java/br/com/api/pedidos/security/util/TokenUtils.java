@@ -2,7 +2,9 @@ package br.com.api.pedidos.security.util;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-public class TokenUtils {
+public final class TokenUtils {
+
+    private TokenUtils() {}
 
     public static String extrairToken(HttpServletRequest request) {
         String header = request.getHeader("Authorization");

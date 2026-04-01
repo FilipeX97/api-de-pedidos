@@ -7,8 +7,8 @@ import br.com.api.pedidos.user.entity.Usuario;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
+import java.time.Instant;
 import java.util.Base64;
-import java.util.Date;
 
 @Service
 public class RefreshTokenService {
@@ -29,9 +29,7 @@ public class RefreshTokenService {
         refreshTokenRepository.save(
                 new RefreshToken(
                         token,
-                        new Date(
-                                System.currentTimeMillis()
-                                        + tokenProperties.expiracaoRefresh()),
+                        Instant.now().plusMillis(tokenProperties.expiracaoRefresh()),
                         usuario
                 )
         );
@@ -66,7 +64,7 @@ public class RefreshTokenService {
     }
 
     public void validarExpiracao(RefreshToken token) {
-        if (token.getExpiration().before(new Date())) {
+        if (token.getExpiration().isBefore(Instant.now())) {
             throw new RuntimeException("Refresh token expirado");
         }
     }

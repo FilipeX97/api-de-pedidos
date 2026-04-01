@@ -5,6 +5,7 @@ import br.com.api.pedidos.shared.idempotency.repository.IdempotencyRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.Date;
 import java.util.Optional;
 
@@ -33,7 +34,7 @@ public class IdempotencyService {
             IdempotencyKey key = new IdempotencyKey();
             key.setChave(chave);
             key.setRespostaJson(json);
-            key.setCriadaEm(new Date());
+            key.setCriadaEm(Instant.now());
 
             idempotencyRepository.save(key);
         } catch (Exception e) {

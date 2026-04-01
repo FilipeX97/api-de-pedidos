@@ -5,7 +5,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.Objects;
 
 @Entity
@@ -15,12 +15,12 @@ public class BlacklistedToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String token;
-    private Date expiration;
+    private Instant expiration;
 
     public BlacklistedToken() {
     }
 
-    public BlacklistedToken(String token, Date expiration) {
+    public BlacklistedToken(String token, Instant expiration) {
         this.token = token;
         this.expiration = expiration;
     }
@@ -33,7 +33,7 @@ public class BlacklistedToken {
         return token;
     }
 
-    public Date getExpiration() {
+    public Instant getExpiration() {
         return expiration;
     }
 

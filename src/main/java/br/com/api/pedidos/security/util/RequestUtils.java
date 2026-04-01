@@ -2,7 +2,9 @@ package br.com.api.pedidos.security.util;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-public class RequestUtils {
+public final class RequestUtils {
+
+    private RequestUtils() {}
 
     public static String extrairIp(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");
