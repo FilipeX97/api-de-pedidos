@@ -2,13 +2,16 @@ package br.com.api.pedidos.security.jwt;
 
 import br.com.api.pedidos.config.TokenProperties;
 import br.com.api.pedidos.security.token.TokenService;
+import br.com.api.pedidos.security.util.JwtUtils;
 import br.com.api.pedidos.user.entity.Usuario;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,9 +20,11 @@ import java.util.Map;
 public class JwtService implements TokenService {
 
     private final TokenProperties tokenProperties;
+    private final byte[] chave;
 
     public JwtService(TokenProperties tokenProperties) {
         this.tokenProperties = tokenProperties;
+        chave = tokenProperties.chaveSecreta().getBytes(StandardCharsets.UTF_8);
     }
 
     public String gerarToken(Usuario usuario, String ip, String userAgent) {
@@ -38,31 +43,28 @@ public class JwtService implements TokenService {
                 .setExpiration(
                         new Date(System.currentTimeMillis() + tokenProperties.expiracao())
                 )
-                .signWith(Keys.hmacShaKeyFor(tokenProperties.chaveSecreta().getBytes()))
+                .signWith(Keys.hmacShaKeyFor(chave))
                 .compact();
     }
 
     public boolean validarToken(String token) {
         try {
-            Jwts.parserBuilder()
-                    .setSigningKey(Keys.hmacShaKeyFor(tokenProperties.chaveSecreta().getBytes()))
-                    .build()
-                    .parseClaimsJws(token);
-
-            return !tokenExpiradoAccess(token);
-
-        } catch (Exception e) {
+            return !JwtUtils.tokenExpirado(extrairClaims(token));
+        } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
     }
 
-    public Date extrairExpiracao(String token) {
-        return extrairClaimsAccess(token)
-                .getExpiration();
+    public String getEmail(String token) {
+        return extrairClaims(token).getSubject();
     }
 
-    public String getEmail(String token) {
-        return extrairClaimsAccess(token).getSubject();
+    public Date extrairExpiracao(String token) {
+        return extrairClaims(token).getExpiration();
+    }
+
+    public Claims extrairClaims(String token) {
+        return JwtUtils.extrairClaims(token, chave);
     }
 
     public boolean precisaRenovar(String token) {
@@ -72,20 +74,6 @@ public class JwtService implements TokenService {
                 expiracaoToken.getTime() - System.currentTimeMillis();
 
         return tempoRestante < tokenProperties.tempoAntesExpiracaoParaRenovar();
-    }
-
-    public Claims extrairClaimsAccess(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(Keys.hmacShaKeyFor(tokenProperties.chaveSecreta().getBytes()))
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-    }
-
-    private boolean tokenExpiradoAccess(String token) {
-        return extrairClaimsAccess(token)
-                .getExpiration()
-                .before(new Date());
     }
 
 }

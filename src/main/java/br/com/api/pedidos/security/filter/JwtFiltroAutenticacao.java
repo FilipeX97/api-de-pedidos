@@ -59,21 +59,10 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
             return;
         }
 
-        Claims claims = jwtService.extrairClaimsAccess(token);
+        Claims claims = jwtService.extrairClaims(token);
 
-        String tokenIp = claims.get("ip", String.class);
-        String tokenUa = claims.get("ua", String.class);
-        Long tokenPwd = claims.get("pwd", Long.class);
-
-        String requestIp = RequestUtils.extrairIp(request);
-        String userAgent = RequestUtils.extrairUserAgent(request);
-
-        SecurityUtils.validarUserAgent(userAgent);
-
-        String userAgentHash = DigestUtils.sha256Hex(userAgent);
-
-        if (!tokenIp.equals(requestIp) || !tokenUa.equals(userAgentHash)) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
+            filterChain.doFilter(request, response);
             return;
         }
 
@@ -82,18 +71,56 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
         UsuarioSecurity usuarioSecurity =
                 (UsuarioSecurity) usuarioAutenticacaoService.loadUserByUsername(email);
 
+        if (!validarContextoToken(request, response, claims, usuarioSecurity)) {
+            return;
+        }
+
+        autenticarUsuario(request, usuarioSecurity);
+
+        if (jwtService.precisaRenovar(token)) {
+            renovarToken(request, response, usuarioSecurity);
+        }
+
+        filterChain.doFilter(request, response);
+    }
+
+    private boolean validarContextoToken(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Claims claims,
+            UsuarioSecurity usuarioSecurity) throws IOException {
+        String tokenIp = claims.get("ip", String.class);
+        String tokenUa = claims.get("ua", String.class);
+        Long tokenPwd = claims.get("pwd", Long.class);
+
+        String requestIp = RequestUtils.extrairIp(request);
+        String userAgent = RequestUtils.extrairUserAgent(request);
+        SecurityUtils.validarUserAgent(userAgent);
+        String userAgentHash = DigestUtils.sha256Hex(userAgent);
+
+        if (!requestIp.equals(tokenIp) || !userAgentHash.equals(tokenUa)) {
+            respostaNaoAutorizada(response, "IP ou UserAgent inválido");
+            return false;
+        }
+
         Usuario usuario = usuarioSecurity.getUsuario();
 
         if (!usuario.isAtivo()) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
+            respostaNaoAutorizada(response, "Usuário desativado");
+            return false;
         }
 
         if (!tokenPwd.equals(usuario.getSenhaAlteradaEm())) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
+            respostaNaoAutorizada(response, "Senha alterada");
+            return false;
         }
 
+        return true;
+    }
+
+    private void autenticarUsuario(
+            HttpServletRequest request,
+            UsuarioSecurity usuarioSecurity) {
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(
                         usuarioSecurity,
@@ -106,17 +133,32 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
         );
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
 
-        if (jwtService.precisaRenovar(token)) {
-            String novoToken = jwtService.gerarToken(
-                    usuario,
-                    requestIp,
-                    userAgent
-            );
+    private void renovarToken(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            UsuarioSecurity usuarioSecurity) {
+        Usuario usuario = usuarioSecurity.getUsuario();
+        String requestIp = RequestUtils.extrairIp(request);
+        String userAgent = RequestUtils.extrairUserAgent(request);
 
-            response.setHeader("X-New-Token", novoToken);
-        }
+        String novoToken = jwtService.gerarToken(
+                usuario,
+                requestIp,
+                userAgent
+        );
 
-        filterChain.doFilter(request, response);
+        response.setHeader("X-New-Token", novoToken);
+    }
+
+    private void respostaNaoAutorizada(
+            HttpServletResponse response,
+            String mensagem) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+        response.getWriter().write(
+                "{\"erro\":\"" + mensagem + "\"}"
+        );
     }
 }
