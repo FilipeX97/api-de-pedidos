@@ -69,12 +69,9 @@ public class AutenticacaoController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PostMapping("/logout")
     public RespostaApi<Void> logout(HttpServletRequest request) {
-        String header = request.getHeader("Authorization");
-
-        if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);
-            tokenBlacklistService.adicionarBlacklist(token);
-        }
+        autenticacaoService.logout(
+                request.getHeader("Authorization")
+        );
 
         return RespostaApi.sucesso(null, "Logout realizado com sucesso");
     }

@@ -61,6 +61,10 @@ public class JwtService implements TokenService {
                 .getExpiration();
     }
 
+    public String getEmail(String token) {
+        return extrairClaimsAccess(token).getSubject();
+    }
+
     public boolean precisaRenovar(String token) {
         Date expiracaoToken = extrairExpiracao(token);
 
@@ -83,4 +87,5 @@ public class JwtService implements TokenService {
                 .getExpiration()
                 .before(new Date());
     }
+
 }

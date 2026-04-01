@@ -18,18 +18,21 @@ public class AutenticacaoService {
     private final JwtService jwtService;
     private final LoginTentativaService loginTentativaService;
     private final RefreshTokenService refreshTokenService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     public AutenticacaoService(
             UsuarioRepository usuarioRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             LoginTentativaService loginTentativaService,
-            RefreshTokenService refreshTokenService) {
+            RefreshTokenService refreshTokenService,
+            TokenBlacklistService tokenBlacklistService) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.loginTentativaService = loginTentativaService;
         this.refreshTokenService = refreshTokenService;
+        this.tokenBlacklistService = tokenBlacklistService;
     }
 
     public LoginResponseDTO login(
@@ -78,5 +81,20 @@ public class AutenticacaoService {
         String novoRefreshToken = refreshTokenService.criar(usuario);
 
         return new LoginResponseDTO(novoAccessToken, novoRefreshToken);
+    }
+
+    public void logout(String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            return;
+        }
+
+        String token = authorizationHeader.substring(7);
+        tokenBlacklistService.adicionarBlacklist(token);
+        String email = jwtService.getEmail(token);
+
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+
+        refreshTokenService.revogarTodosTokensUsuario(usuario);
     }
 }
