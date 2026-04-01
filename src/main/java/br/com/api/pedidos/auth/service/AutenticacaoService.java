@@ -71,10 +71,6 @@ public class AutenticacaoService {
         refreshTokenService.detectarUsoDeTokenRevogado(tokenSalvo);
         refreshTokenService.validarExpiracao(tokenSalvo);
 
-        if (!jwtService.validarTokenRefresh(dto.refreshToken())) {
-            throw new RuntimeException("Token expirado");
-        }
-
         var usuario = tokenSalvo.getUsuario();
         refreshTokenService.revogar(tokenSalvo);
 
