@@ -92,6 +92,7 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
         String tokenIp = claims.get("ip", String.class);
         String tokenUa = claims.get("ua", String.class);
         Long tokenPwd = claims.get("pwd", Long.class);
+        Long tokenUserId = claims.get("userId", Long.class);
 
         String requestIp = RequestUtils.extrairIp(request);
         String userAgent = RequestUtils.extrairUserAgent(request);
@@ -104,6 +105,11 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
         }
 
         Usuario usuario = usuarioSecurity.getUsuario();
+
+        if (!tokenUserId.equals(usuarioSecurity.getUsuario().getId())) {
+            respostaNaoAutorizada(response, "Token inválido");
+            return false;
+        }
 
         if (!usuario.isAtivo()) {
             respostaNaoAutorizada(response, "Usuário desativado");

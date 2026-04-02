@@ -37,6 +37,7 @@ public class JwtService implements TokenService {
         claims.put("ip", ip);
         claims.put("ua", uaHash);
         claims.put("pwd", usuario.getSenhaAlteradaEm());
+        claims.put("userId", usuario.getId());
 
         Instant agora = Instant.now();
 
@@ -63,6 +64,10 @@ public class JwtService implements TokenService {
 
     public Instant extrairExpiracao(String token) {
         return extrairClaims(token).getExpiration().toInstant();
+    }
+
+    public String extrairUserId(String token) {
+        return String.valueOf(extrairClaims(token).get("userId"));
     }
 
     public Claims extrairClaims(String token) {
