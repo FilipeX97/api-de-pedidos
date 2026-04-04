@@ -35,7 +35,12 @@ public class SegurancaConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers("/h2-console/**")
+                )
+                .headers(headers -> headers
+                        .frameOptions(frame -> frame.disable())
+                )
                 .sessionManagement(
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
@@ -50,9 +55,9 @@ public class SegurancaConfig {
                         jwtFiltroAutenticacao,
                         UsernamePasswordAuthenticationFilter.class
                 )
-                .addFilterBefore(
+                .addFilterAfter(
                         filtroIntervaloRequisicao,
-                        UsernamePasswordAuthenticationFilter.class
+                        JwtFiltroAutenticacao.class
                 );
 
         return http.build();
