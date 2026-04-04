@@ -1,5 +1,6 @@
 package br.com.api.pedidos.config;
 
+import br.com.api.pedidos.cache.CacheNames;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
@@ -21,8 +22,26 @@ public class CacheConfig {
                 Caffeine.newBuilder()
                         .maximumSize(10000)
                         .expireAfterWrite(5, TimeUnit.MINUTES)
-                        .refreshAfterWrite(2, TimeUnit.MINUTES)
                         .recordStats()
+        );
+
+        manager.registerCustomCache(
+                CacheNames.USUARIOS_AUTH,
+                Caffeine.newBuilder()
+                        .expireAfterWrite(30, TimeUnit.SECONDS)
+                        .expireAfterAccess(30, TimeUnit.SECONDS)
+                        .maximumSize(10_000)
+                        .recordStats()
+                        .build()
+        );
+
+        manager.registerCustomCache(
+                CacheNames.USUARIOS_DTO,
+                Caffeine.newBuilder()
+                        .expireAfterWrite(2, TimeUnit.MINUTES)
+                        .maximumSize(10_000)
+                        .recordStats()
+                        .build()
         );
 
         return manager;
