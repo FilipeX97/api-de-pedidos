@@ -37,12 +37,12 @@ public class SegurancaConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(
-                        session ->
-                                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(
                         auth -> auth
                                 .requestMatchers("/auth/**").permitAll()
+                                .requestMatchers("/h2-console/**").permitAll()
                                 .requestMatchers("/admin/usuarios/**").hasAnyRole("ADMIN")
                                 .anyRequest().authenticated()
                 )
@@ -52,7 +52,7 @@ public class SegurancaConfig {
                 )
                 .addFilterBefore(
                         filtroIntervaloRequisicao,
-                        JwtFiltroAutenticacao.class
+                        UsernamePasswordAuthenticationFilter.class
                 );
 
         return http.build();

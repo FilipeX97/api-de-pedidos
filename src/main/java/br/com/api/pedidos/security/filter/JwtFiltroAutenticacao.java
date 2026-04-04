@@ -44,7 +44,10 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain)
             throws ServletException, IOException {
-        if (request.getRequestURI().startsWith("/auth")) {
+
+        String uri = request.getRequestURI();
+
+        if (uri.startsWith("/h2-console") || uri.startsWith("/auth")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -104,9 +107,9 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
             return false;
         }
 
-        Usuario usuario = usuarioSecurity.getUsuario();
+        var usuario = usuarioSecurity.getUsuario();
 
-        if (!tokenUserId.equals(usuarioSecurity.getUsuario().getId())) {
+        if (!tokenUserId.equals(usuario.getId())) {
             respostaNaoAutorizada(response, "Token inválido");
             return false;
         }

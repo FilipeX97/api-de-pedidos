@@ -3,6 +3,7 @@ package br.com.api.pedidos.auth.service;
 import br.com.api.pedidos.auth.entity.BlacklistedToken;
 import br.com.api.pedidos.auth.repository.BlacklistedTokenRepository;
 import br.com.api.pedidos.security.jwt.JwtService;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -28,6 +29,7 @@ public class TokenBlacklistService {
         );
     }
 
+    @Cacheable(value = "blacklist", key = "#token")
     public boolean tokenBloqueado(String token) {
         return blacklistedTokenRepository.existsByToken(token);
     }

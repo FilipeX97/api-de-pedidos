@@ -52,7 +52,16 @@ public class JwtService implements TokenService {
 
     public boolean validarToken(String token) {
         try {
-            return !JwtUtils.tokenExpirado(extrairClaims(token));
+            Claims claims = extrairClaims(token);
+
+            if (claims.getSubject() == null ||
+                    claims.get("userId") == null ||
+                    claims.get("ip") == null ||
+                    claims.get("ua") == null) {
+                return false;
+            }
+
+            return !JwtUtils.tokenExpirado(claims);
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }

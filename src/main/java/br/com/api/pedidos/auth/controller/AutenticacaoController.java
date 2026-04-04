@@ -6,7 +6,6 @@ import br.com.api.pedidos.auth.dto.RefreshTokenRequestDTO;
 import br.com.api.pedidos.auth.dto.RegistraRequestDTO;
 import br.com.api.pedidos.auth.service.AutenticacaoService;
 import br.com.api.pedidos.auth.service.RegistroUsuarioService;
-import br.com.api.pedidos.auth.service.TokenBlacklistService;
 import br.com.api.pedidos.security.util.RequestUtils;
 import br.com.api.pedidos.shared.response.RespostaApi;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,15 +17,12 @@ import org.springframework.web.bind.annotation.*;
 public class AutenticacaoController {
 
     private final AutenticacaoService autenticacaoService;
-    private final TokenBlacklistService tokenBlacklistService;
     private final RegistroUsuarioService registroUsuarioService;
 
     public AutenticacaoController(
             AutenticacaoService autenticacaoService,
-            TokenBlacklistService tokenBlacklistService,
             RegistroUsuarioService registroUsuarioService) {
         this.autenticacaoService = autenticacaoService;
-        this.tokenBlacklistService = tokenBlacklistService;
         this.registroUsuarioService = registroUsuarioService;
     }
 

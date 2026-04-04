@@ -21,7 +21,6 @@ public class UsuarioAutenticacaoService implements UserDetailsService {
     @Cacheable(
             value = CacheNames.USUARIOS_AUTH,
             key = "#email",
-            unless = "#result == null",
             sync = true
     )
     @Override
