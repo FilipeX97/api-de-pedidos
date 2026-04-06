@@ -34,7 +34,8 @@ public class FiltroIntervaloRequisicao extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         String uri = request.getRequestURI();
 
-        if (uri.startsWith("/h2-console") || uri.startsWith("/auth")) {
+        System.out.println(uri);
+        if (uri.contains("/auth") || uri.contains("/h2-console")) {
             filterChain.doFilter(request, response);
             return;
         }

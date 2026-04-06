@@ -17,7 +17,11 @@ public class LimpezaChavesIdempotencyJob {
 
     @Scheduled(cron = "0 0 * * * *")
     public void limparChavesExpiradas() {
-        repository.deleteByExpiraEmBefore(Instant.now());
+        try {
+            repository.deleteByExpiraEmBefore(Instant.now());
+        } catch (Exception e) {
+            e.printStackTrace(); // ou log.error(...)
+        }
     }
 
 }

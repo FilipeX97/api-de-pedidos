@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -35,8 +36,7 @@ public class SegurancaConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/h2-console/**")
+                .csrf(AbstractHttpConfigurer::disable
                 )
                 .headers(headers -> headers
                         .frameOptions(frame -> frame.disable())
@@ -52,13 +52,11 @@ public class SegurancaConfig {
                                 .anyRequest().authenticated()
                 )
                 .addFilterBefore(
-                        jwtFiltroAutenticacao,
-                        UsernamePasswordAuthenticationFilter.class
-                )
-                .addFilterAfter(
                         filtroIntervaloRequisicao,
-                        JwtFiltroAutenticacao.class
-                );
+                        UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(
+                        jwtFiltroAutenticacao,
+                        UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

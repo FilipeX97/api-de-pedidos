@@ -4,6 +4,7 @@ import br.com.api.pedidos.auth.repository.BlacklistedTokenRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.Date;
 
 @Component
@@ -17,7 +18,7 @@ public class BlacklistCleanupJob {
 
     @Scheduled(cron = "0 0 * * * *") // a cada hora
     public void limparTokensExpirados() {
-        repository.deleteByExpirationBefore(new Date());
+        repository.deleteByExpirationBefore(Instant.now());
     }
 
 }
