@@ -2,6 +2,7 @@ package br.com.api.pedidos.security.filter;
 
 import br.com.api.pedidos.auth.service.TokenBlacklistService;
 import br.com.api.pedidos.security.jwt.JwtService;
+import br.com.api.pedidos.security.service.TokenRenovacaoService;
 import br.com.api.pedidos.security.userdetails.UsuarioSecurity;
 import br.com.api.pedidos.security.util.RequestUtils;
 import br.com.api.pedidos.security.util.SecurityUtils;
@@ -28,14 +29,17 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final TokenBlacklistService tokenBlacklistService;
     private final UsuarioAutenticacaoService usuarioAutenticacaoService;
+    private final TokenRenovacaoService tokenRenovacaoService;
 
     public JwtFiltroAutenticacao(
             JwtService jwtService,
             TokenBlacklistService tokenBlacklistService,
-            UsuarioAutenticacaoService usuarioAutenticacaoService) {
+            UsuarioAutenticacaoService usuarioAutenticacaoService,
+            TokenRenovacaoService tokenRenovacaoService) {
         this.jwtService = jwtService;
         this.tokenBlacklistService = tokenBlacklistService;
         this.usuarioAutenticacaoService = usuarioAutenticacaoService;
+        this.tokenRenovacaoService = tokenRenovacaoService;
     }
 
     @Override
@@ -78,10 +82,7 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
         }
 
         autenticarUsuario(request, usuarioSecurity);
-
-        if (jwtService.precisaRenovar(token)) {
-            renovarToken(request, response, usuarioSecurity);
-        }
+        tokenRenovacaoService.renovarSeNecessario(request, response, usuarioSecurity);
 
         filterChain.doFilter(request, response);
     }
@@ -141,23 +142,6 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
         );
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
-    }
-
-    private void renovarToken(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            UsuarioSecurity usuarioSecurity) {
-        Usuario usuario = usuarioSecurity.getUsuario();
-        String requestIp = RequestUtils.extrairIp(request);
-        String userAgent = RequestUtils.extrairUserAgent(request);
-
-        String novoToken = jwtService.gerarToken(
-                usuario,
-                requestIp,
-                userAgent
-        );
-
-        response.setHeader("X-New-Token", novoToken);
     }
 
     private void respostaNaoAutorizada(
