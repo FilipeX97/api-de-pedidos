@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Random;
 
 @Configuration
@@ -69,7 +70,7 @@ public class CarregadorDadosIniciais {
 
     private BigDecimal gerarPreco() {
         double valor = 50 + (5000 - 50) * random.nextDouble();
-        return BigDecimal.valueOf(valor).setScale(2, BigDecimal.ROUND_HALF_UP);
+        return BigDecimal.valueOf(valor).setScale(2, RoundingMode.HALF_UP);
     }
 
     private Long gerarEstoque() {

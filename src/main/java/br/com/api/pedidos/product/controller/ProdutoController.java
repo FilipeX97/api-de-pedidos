@@ -21,15 +21,12 @@ public class ProdutoController {
 
     private final ProdutoService produtoService;
     private final IdempotencyService idempotencyService;
-    private final ObjectMapper objectMapper;
 
     public ProdutoController(
             ProdutoService produtoService,
-            IdempotencyService idempotencyService,
-            ObjectMapper objectMapper) {
+            IdempotencyService idempotencyService) {
         this.produtoService = produtoService;
         this.idempotencyService = idempotencyService;
-        this.objectMapper = objectMapper;
     }
 
     @GetMapping("/{id}")
