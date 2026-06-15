@@ -27,14 +27,16 @@ public class AdminUsuarioController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{id}/ativar")
-    public void ativar(@PathVariable Long id) {
+    public RespostaApi<Void> ativar(@PathVariable Long id) {
         usuarioService.ativarUsuario(id);
+        return RespostaApi.sucesso(null, "Usuario ativado com sucesso");
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{id}/desativar")
-    public void desativar(@PathVariable Long id) {
+    public RespostaApi<Void> desativar(@PathVariable Long id) {
         usuarioService.desativarUsuario(id);
+        return RespostaApi.sucesso(null, "Usuario desativado com sucesso");
     }
 
     @PreAuthorize("hasRole('ADMIN')")
