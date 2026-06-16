@@ -15,6 +15,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -30,6 +32,8 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
     private final TokenBlacklistService tokenBlacklistService;
     private final UsuarioAutenticacaoService usuarioAutenticacaoService;
     private final TokenRenovacaoService tokenRenovacaoService;
+
+    private static final Logger log = LoggerFactory.getLogger(JwtFiltroAutenticacao.class);
 
     public JwtFiltroAutenticacao(
             JwtService jwtService,
@@ -49,7 +53,8 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
             FilterChain filterChain)
             throws ServletException, IOException {
         String uri = request.getRequestURI();
-        System.out.println(uri);
+        log.info("Processando autenticação para URI: {}", uri);
+
         if (uri.contains("/auth") || uri.contains("/h2-console")) {
             filterChain.doFilter(request, response);
             return;
