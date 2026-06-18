@@ -1,5 +1,6 @@
 package br.com.api.pedidos.shared.idempotency.service;
 
+import br.com.api.pedidos.security.service.UsuarioLogadoService;
 import br.com.api.pedidos.security.userdetails.UsuarioSecurity;
 import br.com.api.pedidos.shared.idempotency.entity.IdempotencyKey;
 import br.com.api.pedidos.shared.idempotency.repository.IdempotencyRepository;
@@ -23,15 +24,18 @@ public class IdempotencyService {
     private final IdempotencyRepository idempotencyRepository;
     private final ObjectMapper objectMapper;
     private final GeradorHashRequest geradorHashRequest;
+    private final UsuarioLogadoService usuarioLogadoService;
 
     public IdempotencyService(
             IdempotencyRepository idempotencyRepository,
             ObjectMapper objectMapper,
-            GeradorHashRequest geradorHashRequest
+            GeradorHashRequest geradorHashRequest,
+            UsuarioLogadoService usuarioLogadoService
     ) {
         this.idempotencyRepository = idempotencyRepository;
         this.objectMapper = objectMapper;
         this.geradorHashRequest = geradorHashRequest;
+        this.usuarioLogadoService = usuarioLogadoService;
     }
 
     public <T> RespostaApi<T> executar(
@@ -90,7 +94,7 @@ public class IdempotencyService {
             String metodo,
             Object request
     ) {
-        String usuarioId = getUsuarioId();
+        String usuarioId = usuarioLogadoService.getIdUsuarioLogado().toString();
 
         Optional<IdempotencyKey> registro =
                 idempotencyRepository
@@ -130,7 +134,7 @@ public class IdempotencyService {
             Object request,
             Object resposta
     ) {
-        String usuarioId = getUsuarioId();
+        String usuarioId = usuarioLogadoService.getIdUsuarioLogado().toString();
         String hash = geradorHashRequest.gerarHash(request);
 
         try {
@@ -178,15 +182,5 @@ public class IdempotencyService {
         } catch (Exception e) {
             throw new RuntimeException("Erro ao salvar idempotency key", e);
         }
-    }
-
-    private String getUsuarioId() {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-
-        if (auth == null || !(auth.getPrincipal() instanceof UsuarioSecurity usuarioSecurity)) {
-            throw new IllegalStateException("Usuário não autenticado");
-        }
-
-        return usuarioSecurity.getUsuario().getId().toString();
     }
 }
