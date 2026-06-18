@@ -6,6 +6,6 @@ public record ProdutoRequestDTO(
         String nome,
         String descricao,
         BigDecimal preco,
-        Long estoque
+        Integer estoque
 ) {
 }

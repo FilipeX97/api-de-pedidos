@@ -17,13 +17,13 @@ public class Produto {
     private String nome;
     private String descricao;
     private BigDecimal preco;
-    private Long estoque;
+    private Integer estoque;
     private boolean ativo;
 
     public Produto() {
     }
 
-    public Produto(String nome, String descricao, BigDecimal preco, Long estoque) {
+    public Produto(String nome, String descricao, BigDecimal preco, Integer estoque) {
         validarNome(nome);
         validarPreco(preco);
         validarEstoque(estoque);
@@ -47,7 +47,7 @@ public class Produto {
         }
     }
 
-    private void validarEstoque(Long estoque) {
+    private void validarEstoque(Integer estoque) {
         if(estoque == null || estoque < 0) {
             throw new IllegalArgumentException("Estoque não pode ser negativo");
         }
@@ -83,16 +83,16 @@ public class Produto {
         this.preco = novoPreco;
     }
 
-    public Long getEstoque() {
+    public Integer getEstoque() {
         return estoque;
     }
 
-    public void ajustarEstoque(Long novoEstoque) {
+    public void ajustarEstoque(Integer novoEstoque) {
         validarEstoque(novoEstoque);
         this.estoque = novoEstoque;
     }
 
-    public void adicionarEstoque(Long quantidade) {
+    public void adicionarEstoque(Integer quantidade) {
         if(quantidade == null || quantidade <= 0) {
             throw new IllegalArgumentException("Quantidade deve ser maior que zero");
         }
@@ -100,7 +100,7 @@ public class Produto {
         this.estoque += quantidade;
     }
 
-    public void removerEstoque(Long quantidade) {
+    public void removerEstoque(Integer quantidade) {
         if(quantidade == null || quantidade <= 0) {
             throw new IllegalArgumentException("Quantidade deve ser maior que zero");
         }

@@ -9,7 +9,7 @@ public record ProdutoResponseDTO(
         String nome,
         String descricao,
         BigDecimal preco,
-        Long estoque,
+        Integer estoque,
         Boolean ativo
 ) {
     public static ProdutoResponseDTO from(Produto produto) {
