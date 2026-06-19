@@ -1,5 +1,6 @@
 package br.com.api.pedidos.order.entity;
 
+import br.com.api.pedidos.coupon.entity.Cupom;
 import br.com.api.pedidos.order.valueobject.ItemPedidoId;
 import br.com.api.pedidos.product.entity.Produto;
 import br.com.api.pedidos.user.entity.Usuario;
@@ -22,7 +23,12 @@ public class Pedido {
     private Usuario usuario;
 
     private LocalDateTime dataCriacao;
-    private BigDecimal valorTotal;
+    private BigDecimal valorBruto;
+    private BigDecimal valorDesconto;
+    private BigDecimal valorFinal;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Cupom cupom;
 
     @Version
     private Long versao;
@@ -43,13 +49,17 @@ public class Pedido {
 
         this.usuario = usuario;
         this.dataCriacao = LocalDateTime.now();
-        this.valorTotal = BigDecimal.ZERO;
+        this.valorBruto = BigDecimal.ZERO;
+        this.valorDesconto = BigDecimal.ZERO;
+        this.valorFinal = BigDecimal.ZERO;
     }
 
-    private void calcularValorTotal() {
-        this.valorTotal = itens.stream()
+    private void recalcularValores() {
+        this.valorBruto = itens.stream()
                 .map(ItemPedido::getSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        this.valorFinal = valorBruto.subtract(valorDesconto);
     }
 
     public Long getId() {
@@ -64,12 +74,58 @@ public class Pedido {
         return dataCriacao;
     }
 
-    public BigDecimal getValorTotal() {
-        return valorTotal;
+    public BigDecimal getValorBruto() {
+        return valorBruto;
+    }
+
+    public BigDecimal getValorDesconto() {
+        return valorDesconto;
+    }
+
+    public BigDecimal getValorFinal() {
+        return valorFinal;
+    }
+
+    public Cupom getCupom() {
+        return cupom;
+    }
+
+    public void aplicarCupom(Cupom novoCupom) {
+        if (novoCupom == null) {
+            throw new IllegalArgumentException("Cupom inválido");
+        }
+
+        if (this.cupom != null && this.cupom.equals(novoCupom)) {
+            return;
+        }
+
+        this.cupom = novoCupom;
+    }
+
+    public boolean possuiCupom() {
+        return cupom != null;
     }
 
     public List<ItemPedido> getItens() {
         return List.copyOf(itens);
+    }
+
+    public void aplicarDesconto(BigDecimal desconto) {
+        if (desconto == null) {
+            desconto = BigDecimal.ZERO;
+        }
+
+        if (desconto.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Desconto inválido");
+        }
+
+        this.valorDesconto = desconto;
+        this.valorFinal = valorBruto.subtract(valorDesconto);
+    }
+
+    public void limparDescontos() {
+        this.valorDesconto = BigDecimal.ZERO;
+        this.valorFinal = valorBruto;
     }
 
     public void alterarQuantidadeDoItem(
@@ -79,7 +135,7 @@ public class Pedido {
         validarItens();
         ItemPedido item = buscarItemPorId(itemId);
         item.alterarQuantidade(novaQuantidade);
-        calcularValorTotal();
+        recalcularValores();
     }
 
     public void removerItem(ItemPedidoId itemId) {
@@ -87,7 +143,7 @@ public class Pedido {
         ItemPedido item = buscarItemPorId(itemId);
         item.removerCompletamente();
         itens.remove(item);
-        calcularValorTotal();
+        recalcularValores();
     }
 
     public void adicionarItem(Produto produto, Integer quantidade) {
@@ -112,7 +168,7 @@ public class Pedido {
                     this.itens.add(item);
                 });
 
-        calcularValorTotal();
+        recalcularValores();
     }
 
     private ItemPedido buscarItemPorId(ItemPedidoId itemId) {

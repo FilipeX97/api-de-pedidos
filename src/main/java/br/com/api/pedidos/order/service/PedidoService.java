@@ -1,11 +1,14 @@
 package br.com.api.pedidos.order.service;
 
+import br.com.api.pedidos.coupon.service.CupomService;
+import br.com.api.pedidos.order.promotion.engine.MotorPromocao;
 import br.com.api.pedidos.order.dto.AdicionarPedidoRequestDTO;
 import br.com.api.pedidos.order.dto.AlterarQuantidadeItemRequestDTO;
 import br.com.api.pedidos.order.dto.PedidoResponseDTO;
 import br.com.api.pedidos.order.entity.Pedido;
 import br.com.api.pedidos.order.repository.PedidoRepository;
 import br.com.api.pedidos.order.valueobject.ItemPedidoId;
+import br.com.api.pedidos.product.entity.Produto;
 import br.com.api.pedidos.product.repository.ProdutoRepository;
 import br.com.api.pedidos.user.entity.Usuario;
 import org.springframework.stereotype.Service;
@@ -18,18 +21,22 @@ public class PedidoService {
 
     private final PedidoRepository pedidoRepository;
     private final ProdutoRepository produtoRepository;
+    private final CupomService cupomService;
+    private final MotorPromocao motorPromocao;
 
     public PedidoService(PedidoRepository pedidoRepository,
-                         ProdutoRepository produtoRepository) {
+                         ProdutoRepository produtoRepository,
+                         CupomService cupomService,
+                         MotorPromocao motorPromocao) {
         this.pedidoRepository = pedidoRepository;
         this.produtoRepository = produtoRepository;
+        this.cupomService = cupomService;
+        this.motorPromocao = motorPromocao;
     }
 
     @Transactional(readOnly = true)
-    public PedidoResponseDTO buscarPedidoPorId(Long id, Usuario usuario) {
-        return pedidoRepository.findByIdAndUsuario(id, usuario)
-                .map(PedidoResponseDTO::from)
-                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+    public PedidoResponseDTO buscarPedidoPorId(Long idPedido, Usuario usuario) {
+        return PedidoResponseDTO.from(buscarPedido(idPedido, usuario));
     }
 
     @Transactional(readOnly = true)
@@ -51,12 +58,10 @@ public class PedidoService {
             AdicionarPedidoRequestDTO adicionarPedidoRequestDTO,
             Usuario usuario
             ) {
-        var pedido = pedidoRepository.findByIdAndUsuario(idPedido, usuario)
-                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
-        var produto = produtoRepository.findById(adicionarPedidoRequestDTO.idProduto())
-                .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
-
+        var pedido = buscarPedido(idPedido, usuario);
+        var produto = buscarProduto(adicionarPedidoRequestDTO.idProduto());
         pedido.adicionarItem(produto, adicionarPedidoRequestDTO.quantidade());
+        recalcularPedido(pedido);
         return PedidoResponseDTO.from(pedido);
     }
 
@@ -66,10 +71,9 @@ public class PedidoService {
             Long itemId,
             AlterarQuantidadeItemRequestDTO alterarQuantidadeItemRequestDTO,
             Usuario usuario) {
-        var pedido = pedidoRepository.findByIdAndUsuario(idPedido, usuario)
-                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
-
+        var pedido = buscarPedido(idPedido, usuario);
         pedido.alterarQuantidadeDoItem(new ItemPedidoId(itemId), alterarQuantidadeItemRequestDTO.novaQuantidade());
+        recalcularPedido(pedido);
         return PedidoResponseDTO.from(pedido);
     }
 
@@ -78,11 +82,40 @@ public class PedidoService {
             Long idPedido,
             Long itemId,
             Usuario usuario) {
-        var pedido = pedidoRepository.findByIdAndUsuario(idPedido, usuario)
-                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
-
+        var pedido = buscarPedido(idPedido, usuario);
         pedido.removerItem(new ItemPedidoId(itemId));
+        recalcularPedido(pedido);
         return PedidoResponseDTO.from(pedido);
+    }
+
+    @Transactional
+    public PedidoResponseDTO aplicarCupom(
+            Long idPedido,
+            Usuario usuario,
+            String codigoCupom) {
+        var pedido = buscarPedido(idPedido, usuario);
+        var cupom = cupomService.buscarCupomValido(codigoCupom);
+        pedido.aplicarCupom(cupom);
+        recalcularPedido(pedido);
+        return PedidoResponseDTO.from(pedido);
+    }
+
+    private void recalcularPedido(Pedido pedido) {
+        motorPromocao.recalcular(pedido);
+    }
+
+    private Pedido buscarPedido(Long idPedido, Usuario usuario) {
+        return pedidoRepository.findByIdAndUsuario(idPedido, usuario)
+                .orElseThrow(() ->
+                        new RuntimeException("Pedido não encontrado")
+                );
+    }
+
+    private Produto buscarProduto(Long idProduto) {
+        return produtoRepository.findById(idProduto)
+                .orElseThrow(() ->
+                        new RuntimeException("Produto não encontrado")
+                );
     }
 
 }

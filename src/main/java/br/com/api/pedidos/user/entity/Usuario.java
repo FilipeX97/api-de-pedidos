@@ -13,13 +13,16 @@ public class Usuario {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String nome;
+
     @Column(unique = true)
     private String email;
+
     @JsonIgnore
     private String senha;
     private LocalDate dataCriacao;
     private Long senhaAlteradaEm;
     private boolean ativo;
+    private boolean clienteVIP;
 
     @Enumerated(EnumType.STRING)
     private Perfil perfil;
@@ -38,6 +41,7 @@ public class Usuario {
         this.dataCriacao = LocalDate.now();
         this.senhaAlteradaEm = System.currentTimeMillis();
         this.ativo = true;
+        this.clienteVIP = false;
     }
 
     private void validarNome(String nome) {
@@ -114,6 +118,8 @@ public class Usuario {
         return ativo;
     }
 
+    public boolean isClienteVip() { return clienteVIP; }
+
     public void desativarUsuario() {
         if (!this.ativo) {
             throw new IllegalStateException("Usuário já está desativado");
@@ -126,6 +132,20 @@ public class Usuario {
             throw new IllegalStateException("Usuário já está ativo");
         }
         this.ativo = true;
+    }
+
+    public void ativarClienteVIP() {
+        if (this.clienteVIP) {
+            throw new IllegalStateException("Usuário já é cliente VIP");
+        }
+        this.clienteVIP = true;
+    }
+
+    public void desativarClienteVIP() {
+        if (!this.clienteVIP) {
+            throw new IllegalStateException("Usuário não é cliente VIP");
+        }
+        clienteVIP = false;
     }
 
     public void invalidarTokens() {

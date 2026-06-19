@@ -10,7 +10,10 @@ public record PedidoResponseDTO(
     Long idPedido,
     Long idUsuario,
     LocalDateTime dataCriacao,
-    BigDecimal valorTotal,
+    BigDecimal valorBruto,
+    BigDecimal valorDesconto,
+    BigDecimal valorFinal,
+    String codigoCupom,
     List<ItemPedidoDTO> itens
 ) {
     public static PedidoResponseDTO from(Pedido pedido) {
@@ -18,7 +21,10 @@ public record PedidoResponseDTO(
                 pedido.getId(),
                 pedido.getUsuario().getId(),
                 pedido.getDataCriacao(),
-                pedido.getValorTotal(),
+                pedido.getValorBruto(),
+                pedido.getValorDesconto(),
+                pedido.getValorFinal(),
+                pedido.getCupom() == null ? null : pedido.getCupom().getCodigo(),
                 pedido.getItens()
                         .stream()
                         .map(ItemPedidoDTO::from)

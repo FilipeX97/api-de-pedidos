@@ -2,6 +2,7 @@ package br.com.api.pedidos.order.controller;
 
 import br.com.api.pedidos.order.dto.AdicionarPedidoRequestDTO;
 import br.com.api.pedidos.order.dto.AlterarQuantidadeItemRequestDTO;
+import br.com.api.pedidos.order.dto.AplicarCupomRequestDTO;
 import br.com.api.pedidos.order.dto.PedidoResponseDTO;
 import br.com.api.pedidos.order.service.PedidoService;
 import br.com.api.pedidos.security.service.UsuarioLogadoService;
@@ -64,6 +65,21 @@ public class PedidoController {
         return RespostaApi.sucesso(
                 pedidoService.adicionarItemPedido(idPedido, adicionarPedidoRequestDTO, usuario),
                 "Item adicionado ao pedido com sucesso"
+        );
+    }
+
+    @PostMapping("/{idPedido}/coupon")
+    public RespostaApi<PedidoResponseDTO> aplicarCupom(
+            @PathVariable Long idPedido,
+            @RequestBody AplicarCupomRequestDTO dto) {
+        var usuario = usuarioLogadoService.getUsuarioLogado();
+
+        return RespostaApi.sucesso(
+                pedidoService.aplicarCupom(
+                        idPedido,
+                        usuario,
+                        dto.codigoCupom()),
+                "Cupom aplicado com sucesso"
         );
     }
 
