@@ -199,5 +199,4 @@ README.html
 *.iml
 .idea
 .exercism
-.ps1
-.ps1
+*.ps1

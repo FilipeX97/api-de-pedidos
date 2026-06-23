@@ -25,6 +25,9 @@ public class Cupom {
     private Integer limiteUso;
     private Integer quantidadeDeUso;
 
+    @Version
+    private Long versao;
+
     protected Cupom() {
     }
 
@@ -35,6 +38,11 @@ public class Cupom {
             LocalDateTime dataFim,
             Integer limiteUso
     ) {
+        validarCodigo(codigo);
+        validarPercentual(percentual);
+        validarPeriodo(dataInicio, dataFim);
+        validarLimiteUso(limiteUso);
+
         this.codigo = codigo.toUpperCase();
         this.percentual = percentual;
         this.dataInicio = dataInicio;
@@ -107,6 +115,36 @@ public class Cupom {
 
     public Integer getQuantidadeDeUso() {
         return quantidadeDeUso;
+    }
+
+    private void validarCodigo(String codigo) {
+        if (codigo == null || codigo.isBlank()) {
+            throw new IllegalArgumentException("Código do cupom é obrigatório");
+        }
+    }
+
+    private void validarPercentual(BigDecimal percentual) {
+        if (percentual == null ||
+                percentual.compareTo(BigDecimal.ZERO) <= 0 ||
+                percentual.compareTo(BigDecimal.ONE) > 0) {
+            throw new IllegalArgumentException("Percentual do cupom deve ser entre 0 e 1");
+        }
+    }
+
+    private void validarPeriodo(LocalDateTime dataInicio, LocalDateTime dataFim) {
+        if (dataInicio == null || dataFim == null) {
+            throw new IllegalArgumentException("Período do cupom é obrigatório");
+        }
+
+        if (dataFim.isBefore(dataInicio)) {
+            throw new IllegalArgumentException("Data final não pode ser anterior à data inicial");
+        }
+    }
+
+    private void validarLimiteUso(Integer limiteUso) {
+        if (limiteUso == null || limiteUso <= 0) {
+            throw new IllegalArgumentException("Limite de uso deve ser maior que zero");
+        }
     }
 
     @Override
