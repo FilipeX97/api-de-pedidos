@@ -1,6 +1,8 @@
 package br.com.api.pedidos.order.entity;
 
 import br.com.api.pedidos.coupon.entity.Cupom;
+import br.com.api.pedidos.order.state.EstadoPedido;
+import br.com.api.pedidos.order.state.StatusPedido;
 import br.com.api.pedidos.order.valueobject.ItemPedidoId;
 import br.com.api.pedidos.product.entity.Produto;
 import br.com.api.pedidos.user.entity.Usuario;
@@ -27,6 +29,10 @@ public class Pedido {
     private BigDecimal valorDesconto;
     private BigDecimal valorFinal;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private StatusPedido status;
+
     @ManyToOne(fetch = FetchType.LAZY)
     private Cupom cupom;
 
@@ -52,6 +58,7 @@ public class Pedido {
         this.valorBruto = BigDecimal.ZERO;
         this.valorDesconto = BigDecimal.ZERO;
         this.valorFinal = BigDecimal.ZERO;
+        this.status = StatusPedido.CRIADO;
     }
 
     private void recalcularValores() {
@@ -90,6 +97,14 @@ public class Pedido {
         return cupom;
     }
 
+    public boolean estaVazio() {
+        return this.itens.isEmpty();
+    }
+
+    public StatusPedido getStatus() {
+        return status;
+    }
+
     public void aplicarCupom(Cupom novoCupom) {
         if (novoCupom == null) {
             throw new IllegalArgumentException("Cupom inválido");
@@ -108,6 +123,33 @@ public class Pedido {
 
     public List<ItemPedido> getItens() {
         return List.copyOf(itens);
+    }
+
+    public void pagar(EstadoPedido estadoPedido) {
+        this.status = estadoPedido.pagar(this);
+    }
+
+    public void enviar(EstadoPedido estadoPedido) {
+        this.status = estadoPedido.enviar(this);
+    }
+
+    public void entregar(EstadoPedido estadoPedido) {
+        this.status = estadoPedido.entregar(this);
+    }
+
+    public void cancelar(EstadoPedido estadoPedido) {
+        var novoStatus = estadoPedido.cancelar(this);
+
+        if (novoStatus == StatusPedido.CANCELADO) {
+            devolverEstoqueDosItens();
+        }
+
+        this.status = novoStatus;
+    }
+
+    public void estornar(EstadoPedido estadoPedido) {
+        this.status = estadoPedido.estornar(this);
+        devolverEstoqueDosItens();
     }
 
     public void aplicarDesconto(BigDecimal desconto) {
@@ -176,6 +218,10 @@ public class Pedido {
                 .filter(i -> itemId.valor().equals(i.getId()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Item não encontrado no pedido"));
+    }
+
+    private void devolverEstoqueDosItens() {
+        itens.forEach(ItemPedido::devolverEstoqueReservado);
     }
 
     private void validarItens() {

@@ -63,6 +63,12 @@ public class ItemPedido {
         this.quantidade = novaQuantidade;
     }
 
+    protected void devolverEstoqueReservado() {
+        if (this.quantidade != null && this.quantidade > 0) {
+            produto.adicionarEstoque(this.quantidade);
+        }
+    }
+
     protected void removerCompletamente() {
         produto.adicionarEstoque(this.quantidade);
         this.quantidade = 0;

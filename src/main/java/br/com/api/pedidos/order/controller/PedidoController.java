@@ -7,6 +7,7 @@ import br.com.api.pedidos.order.dto.PedidoResponseDTO;
 import br.com.api.pedidos.order.service.PedidoService;
 import br.com.api.pedidos.security.service.UsuarioLogadoService;
 import br.com.api.pedidos.shared.response.RespostaApi;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -68,6 +69,36 @@ public class PedidoController {
         );
     }
 
+    @PatchMapping("/{idPedido}/items/{itemId}")
+    public RespostaApi<PedidoResponseDTO> alterarQuantidadeItemPedido(
+            @PathVariable Long idPedido,
+            @PathVariable Long itemId,
+            @RequestBody AlterarQuantidadeItemRequestDTO dto) {
+        var usuario = usuarioLogadoService.getUsuarioLogado();
+
+        return RespostaApi.sucesso(
+                pedidoService.alterarQuantidadeItemPedido(
+                        idPedido,
+                        itemId,
+                        dto,
+                        usuario
+                ),
+                "Quantidade alterada com sucesso"
+        );
+    }
+
+    @DeleteMapping("/{idPedido}/items/{itemId}")
+    public RespostaApi<PedidoResponseDTO> removerItemPedido(
+            @PathVariable Long idPedido,
+            @PathVariable Long itemId) {
+        var usuario = usuarioLogadoService.getUsuarioLogado();
+
+        return RespostaApi.sucesso(
+                pedidoService.removerItemPedido(idPedido, itemId, usuario),
+                "Item removido do pedido com sucesso"
+        );
+    }
+
     @PostMapping("/{idPedido}/coupon")
     public RespostaApi<PedidoResponseDTO> aplicarCupom(
             @PathVariable Long idPedido,
@@ -83,35 +114,55 @@ public class PedidoController {
         );
     }
 
-    @PatchMapping("/{idPedido}/items/{itemId}")
-    public RespostaApi<PedidoResponseDTO>
-    alterarQuantidadeItemPedido(
-            @PathVariable Long idPedido,
-            @PathVariable Long itemId,
-            @RequestBody AlterarQuantidadeItemRequestDTO dto
-    ) {
+    @PostMapping("/{idPedido}/pay")
+    public RespostaApi<PedidoResponseDTO> pagarPedido(
+            @PathVariable Long idPedido) {
         var usuario = usuarioLogadoService.getUsuarioLogado();
 
         return RespostaApi.sucesso(
-                pedidoService.alterarQuantidadeItemPedido(
-                                idPedido,
-                                itemId,
-                                dto,
-                                usuario
-                        ),
-                "Quantidade alterada com sucesso"
+                pedidoService.pagarPedido(idPedido, usuario),
+                "Pedido pago com sucesso"
         );
     }
 
-    @DeleteMapping("/{idPedido}/items/{itemId}")
-    public RespostaApi<PedidoResponseDTO> removerItemPedido(
-            @PathVariable Long idPedido,
-            @PathVariable Long itemId) {
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/{idPedido}/ship")
+    public RespostaApi<PedidoResponseDTO> enviarPedido(
+            @PathVariable Long idPedido) {
+        return RespostaApi.sucesso(
+                pedidoService.enviarPedido(idPedido),
+                "Pedido enviado com sucesso"
+        );
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/{idPedido}/deliver")
+    public RespostaApi<PedidoResponseDTO> entregarPedido(
+            @PathVariable Long idPedido) {
+        return RespostaApi.sucesso(
+                pedidoService.entregarPedido(idPedido),
+                "Pedido entregue com sucesso"
+        );
+    }
+
+    @PostMapping("/{idPedido}/cancel")
+    public RespostaApi<PedidoResponseDTO> cancelarPedido(
+            @PathVariable Long idPedido) {
         var usuario = usuarioLogadoService.getUsuarioLogado();
 
         return RespostaApi.sucesso(
-                pedidoService.removerItemPedido(idPedido, itemId, usuario),
-                "Item removido do pedido com sucesso"
+                pedidoService.cancelarPedido(idPedido, usuario),
+                "Cancelamento do pedido realizado com sucesso"
+        );
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/{idPedido}/refund")
+    public RespostaApi<PedidoResponseDTO> estornarPedido(
+            @PathVariable Long idPedido) {
+        return RespostaApi.sucesso(
+                pedidoService.estornarPedido(idPedido),
+                "Pedido estornado com sucesso"
         );
     }
 

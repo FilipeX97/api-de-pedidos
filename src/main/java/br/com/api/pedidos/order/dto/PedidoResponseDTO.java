@@ -1,6 +1,7 @@
 package br.com.api.pedidos.order.dto;
 
 import br.com.api.pedidos.order.entity.Pedido;
+import br.com.api.pedidos.order.state.StatusPedido;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -10,6 +11,7 @@ public record PedidoResponseDTO(
     Long idPedido,
     Long idUsuario,
     LocalDateTime dataCriacao,
+    StatusPedido status,
     BigDecimal valorBruto,
     BigDecimal valorDesconto,
     BigDecimal valorFinal,
@@ -21,6 +23,7 @@ public record PedidoResponseDTO(
                 pedido.getId(),
                 pedido.getUsuario().getId(),
                 pedido.getDataCriacao(),
+                pedido.getStatus(),
                 pedido.getValorBruto(),
                 pedido.getValorDesconto(),
                 pedido.getValorFinal(),

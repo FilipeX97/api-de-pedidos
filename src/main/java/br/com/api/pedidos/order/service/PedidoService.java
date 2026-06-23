@@ -7,6 +7,8 @@ import br.com.api.pedidos.order.dto.AlterarQuantidadeItemRequestDTO;
 import br.com.api.pedidos.order.dto.PedidoResponseDTO;
 import br.com.api.pedidos.order.entity.Pedido;
 import br.com.api.pedidos.order.repository.PedidoRepository;
+import br.com.api.pedidos.order.state.EstadoPedido;
+import br.com.api.pedidos.order.state.EstadoPedidoFactory;
 import br.com.api.pedidos.order.valueobject.ItemPedidoId;
 import br.com.api.pedidos.product.entity.Produto;
 import br.com.api.pedidos.product.repository.ProdutoRepository;
@@ -23,20 +25,23 @@ public class PedidoService {
     private final ProdutoRepository produtoRepository;
     private final CupomService cupomService;
     private final MotorPromocao motorPromocao;
+    private final EstadoPedidoFactory estadoPedidoFactory;
 
     public PedidoService(PedidoRepository pedidoRepository,
                          ProdutoRepository produtoRepository,
                          CupomService cupomService,
-                         MotorPromocao motorPromocao) {
+                         MotorPromocao motorPromocao,
+                         EstadoPedidoFactory estadoPedidoFactory) {
         this.pedidoRepository = pedidoRepository;
         this.produtoRepository = produtoRepository;
         this.cupomService = cupomService;
         this.motorPromocao = motorPromocao;
+        this.estadoPedidoFactory = estadoPedidoFactory;
     }
 
     @Transactional(readOnly = true)
     public PedidoResponseDTO buscarPedidoPorId(Long idPedido, Usuario usuario) {
-        return PedidoResponseDTO.from(buscarPedido(idPedido, usuario));
+        return PedidoResponseDTO.from(buscarPedidoDoUsuario(idPedido, usuario));
     }
 
     @Transactional(readOnly = true)
@@ -58,7 +63,9 @@ public class PedidoService {
             AdicionarPedidoRequestDTO adicionarPedidoRequestDTO,
             Usuario usuario
             ) {
-        var pedido = buscarPedido(idPedido, usuario);
+        var pedido = buscarPedidoDoUsuario(idPedido, usuario);
+        var estadoAtual = buscarEstadoAtual(pedido);
+        validarPermissaoParaAlterarItens(estadoAtual, pedido);
         var produto = buscarProduto(adicionarPedidoRequestDTO.idProduto());
         pedido.adicionarItem(produto, adicionarPedidoRequestDTO.quantidade());
         recalcularPedido(pedido);
@@ -71,7 +78,9 @@ public class PedidoService {
             Long itemId,
             AlterarQuantidadeItemRequestDTO alterarQuantidadeItemRequestDTO,
             Usuario usuario) {
-        var pedido = buscarPedido(idPedido, usuario);
+        var pedido = buscarPedidoDoUsuario(idPedido, usuario);
+        var estadoAtual = buscarEstadoAtual(pedido);
+        validarPermissaoParaAlterarItens(estadoAtual, pedido);
         pedido.alterarQuantidadeDoItem(new ItemPedidoId(itemId), alterarQuantidadeItemRequestDTO.novaQuantidade());
         recalcularPedido(pedido);
         return PedidoResponseDTO.from(pedido);
@@ -82,7 +91,9 @@ public class PedidoService {
             Long idPedido,
             Long itemId,
             Usuario usuario) {
-        var pedido = buscarPedido(idPedido, usuario);
+        var pedido = buscarPedidoDoUsuario(idPedido, usuario);
+        var estadoAtual = buscarEstadoAtual(pedido);
+        validarPermissaoParaAlterarItens(estadoAtual, pedido);
         pedido.removerItem(new ItemPedidoId(itemId));
         recalcularPedido(pedido);
         return PedidoResponseDTO.from(pedido);
@@ -93,22 +104,118 @@ public class PedidoService {
             Long idPedido,
             Usuario usuario,
             String codigoCupom) {
-        var pedido = buscarPedido(idPedido, usuario);
+        var pedido = buscarPedidoDoUsuario(idPedido, usuario);
+        var estadoAtual = buscarEstadoAtual(pedido);
+        validarPermissaoParaAplicarCupom(estadoAtual, pedido);
         var cupom = cupomService.buscarCupomValido(codigoCupom);
         pedido.aplicarCupom(cupom);
         recalcularPedido(pedido);
         return PedidoResponseDTO.from(pedido);
     }
 
+    @Transactional
+    public PedidoResponseDTO pagarPedido(Long idPedido, Usuario usuario) {
+        var pedido = buscarPedidoDoUsuario(idPedido, usuario);
+        recalcularPedido(pedido);
+        var estadoAtual = buscarEstadoAtual(pedido);
+        pedido.pagar(estadoAtual);
+
+        if (pedido.possuiCupom()) {
+            pedido.getCupom().registrarUso();
+        }
+
+        return PedidoResponseDTO.from(pedido);
+    }
+
+    @Transactional
+    public PedidoResponseDTO enviarPedido(Long idPedido) {
+        Pedido pedido = buscarPedidoParaAdministracao(idPedido);
+        EstadoPedido estadoAtual = buscarEstadoAtual(pedido);
+
+        pedido.enviar(estadoAtual);
+
+        return PedidoResponseDTO.from(pedido);
+    }
+
+    @Transactional
+    public PedidoResponseDTO entregarPedido(Long idPedido) {
+        Pedido pedido = buscarPedidoParaAdministracao(idPedido);
+        EstadoPedido estadoAtual = buscarEstadoAtual(pedido);
+
+        pedido.entregar(estadoAtual);
+
+        return PedidoResponseDTO.from(pedido);
+    }
+
+    @Transactional
+    public PedidoResponseDTO cancelarPedido(Long idPedido, Usuario usuario) {
+        Pedido pedido = buscarPedidoDoUsuario(idPedido, usuario);
+        EstadoPedido estadoAtual = buscarEstadoAtual(pedido);
+
+        pedido.cancelar(estadoAtual);
+
+        return PedidoResponseDTO.from(pedido);
+    }
+
+    @Transactional
+    public PedidoResponseDTO estornarPedido(Long idPedido) {
+        Pedido pedido = buscarPedidoParaAdministracao(idPedido);
+        EstadoPedido estadoAtual = buscarEstadoAtual(pedido);
+
+        /*
+         * Futuramente aqui você chamaria um serviço de pagamento.
+         *
+         * Exemplo:
+         * pagamentoService.estornar(pedido);
+         *
+         * Se o estorno der certo, aí sim muda o status.
+         */
+
+        pedido.estornar(estadoAtual);
+
+        return PedidoResponseDTO.from(pedido);
+    }
+
+    private void validarPermissaoParaAlterarItens(
+            EstadoPedido estadoAtual,
+            Pedido pedido) {
+
+        if (!estadoAtual.permiteAlterarItens()) {
+            throw new IllegalStateException(
+                    "Pedido com status " + pedido.getStatus() + " não permite alterar itens."
+            );
+        }
+    }
+
+    private void validarPermissaoParaAplicarCupom(
+            EstadoPedido estadoAtual,
+            Pedido pedido) {
+
+        if (!estadoAtual.permiteAplicarCupom()) {
+            throw new IllegalStateException(
+                    "Pedido com status " + pedido.getStatus() + " não permite aplicar cupom."
+            );
+        }
+    }
+
+    private EstadoPedido buscarEstadoAtual(Pedido pedido) {
+        return estadoPedidoFactory.obter(pedido.getStatus());
+    }
+
     private void recalcularPedido(Pedido pedido) {
         motorPromocao.recalcular(pedido);
     }
 
-    private Pedido buscarPedido(Long idPedido, Usuario usuario) {
+    private Pedido buscarPedidoDoUsuario(Long idPedido, Usuario usuario) {
         return pedidoRepository.findByIdAndUsuario(idPedido, usuario)
                 .orElseThrow(() ->
                         new RuntimeException("Pedido não encontrado")
                 );
+    }
+
+    private Pedido buscarPedidoParaAdministracao(Long idPedido) {
+        return pedidoRepository.findById(idPedido)
+                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
     }
 
     private Produto buscarProduto(Long idProduto) {
@@ -117,5 +224,4 @@ public class PedidoService {
                         new RuntimeException("Produto não encontrado")
                 );
     }
-
 }

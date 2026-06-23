@@ -1,9 +1,6 @@
 package br.com.api.pedidos.product.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.util.Objects;
@@ -19,6 +16,9 @@ public class Produto {
     private BigDecimal preco;
     private Integer estoque;
     private boolean ativo;
+
+    @Version
+    private Long versao;
 
     public Produto() {
     }
