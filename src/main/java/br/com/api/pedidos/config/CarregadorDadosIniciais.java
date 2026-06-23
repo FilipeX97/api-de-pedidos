@@ -73,7 +73,7 @@ public class CarregadorDadosIniciais {
         return BigDecimal.valueOf(valor).setScale(2, RoundingMode.HALF_UP);
     }
 
-    private Long gerarEstoque() {
-        return (long) random.nextInt(100);
+    private Integer gerarEstoque() {
+        return random.nextInt(100);
     }
 }
