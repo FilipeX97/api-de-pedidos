@@ -1,7 +1,5 @@
 package br.com.api.pedidos.order.controller;
 
-import br.com.api.pedidos.coupon.dto.CupomRequestDTO;
-import br.com.api.pedidos.coupon.dto.CupomResponseDTO;
 import br.com.api.pedidos.order.dto.AdicionarPedidoRequestDTO;
 import br.com.api.pedidos.order.dto.AlterarQuantidadeItemRequestDTO;
 import br.com.api.pedidos.order.dto.AplicarCupomRequestDTO;
