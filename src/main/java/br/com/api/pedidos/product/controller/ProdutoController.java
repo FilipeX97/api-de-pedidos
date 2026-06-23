@@ -3,14 +3,11 @@ package br.com.api.pedidos.product.controller;
 import br.com.api.pedidos.product.dto.ProdutoRequestDTO;
 import br.com.api.pedidos.product.dto.ProdutoResponseDTO;
 import br.com.api.pedidos.product.service.ProdutoService;
-import br.com.api.pedidos.security.userdetails.UsuarioSecurity;
 import br.com.api.pedidos.shared.idempotency.service.IdempotencyService;
 import br.com.api.pedidos.shared.response.RespostaApi;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -41,6 +38,7 @@ public class ProdutoController {
                 "Lista de produtos");
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public RespostaApi<ProdutoResponseDTO> criarProduto(
@@ -58,12 +56,14 @@ public class ProdutoController {
         );
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}")
     public RespostaApi<ProdutoResponseDTO> atualizarProduto(@PathVariable Long id, @RequestBody ProdutoRequestDTO produtoRequestDTO) {
         return RespostaApi.sucesso(produtoService.atualizarProduto(id, produtoRequestDTO),
                 "Produto atualizado");
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public RespostaApi<Void> removerProduto(@PathVariable Long id) {
         produtoService.removerProduto(id);
