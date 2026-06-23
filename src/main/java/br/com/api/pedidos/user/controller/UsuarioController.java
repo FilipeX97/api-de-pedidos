@@ -27,12 +27,14 @@ public class UsuarioController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("#id == authentication.principal.usuario.id or hasRole('ADMIN')")
     public RespostaApi<UsuarioResponseDTO> buscarUsuarioPorId(@PathVariable Long id){
         return RespostaApi.sucesso(usuarioService.buscarUsuarioPorId(id),
                 "Usuário encontrado");
     }
 
     @GetMapping("/email")
+    @PreAuthorize("hasRole('ADMIN')")
     public RespostaApi<UsuarioResponseDTO> buscarUsuarioPorEmail(@RequestParam String email) {
         return RespostaApi.sucesso(usuarioService.buscarUsuarioPorEmail(email),
                 "Usuario encontrado");
