@@ -61,6 +61,22 @@ public class Cupom {
         quantidadeDeUso++;
     }
 
+    public void ativar() {
+        if (this.ativo) {
+            throw new IllegalStateException("Cupom já está ativo");
+        }
+
+        this.ativo = true;
+    }
+
+    public void desativar() {
+        if (!this.ativo) {
+            throw new IllegalStateException("Cupom já está desativado");
+        }
+
+        this.ativo = false;
+    }
+
     public Long getId() {
         return id;
     }
@@ -71,6 +87,26 @@ public class Cupom {
 
     public BigDecimal getPercentual() {
         return percentual;
+    }
+
+    public LocalDateTime getDataInicio() {
+        return dataInicio;
+    }
+
+    public LocalDateTime getDataFim() {
+        return dataFim;
+    }
+
+    public boolean isAtivo() {
+        return ativo;
+    }
+
+    public Integer getLimiteUso() {
+        return limiteUso;
+    }
+
+    public Integer getQuantidadeDeUso() {
+        return quantidadeDeUso;
     }
 
     @Override
