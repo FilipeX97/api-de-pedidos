@@ -1,12 +1,17 @@
 package br.com.api.pedidos.order.controller;
 
+import br.com.api.pedidos.coupon.dto.CupomRequestDTO;
+import br.com.api.pedidos.coupon.dto.CupomResponseDTO;
 import br.com.api.pedidos.order.dto.AdicionarPedidoRequestDTO;
 import br.com.api.pedidos.order.dto.AlterarQuantidadeItemRequestDTO;
 import br.com.api.pedidos.order.dto.AplicarCupomRequestDTO;
 import br.com.api.pedidos.order.dto.PedidoResponseDTO;
 import br.com.api.pedidos.order.service.PedidoService;
 import br.com.api.pedidos.security.service.UsuarioLogadoService;
+import br.com.api.pedidos.shared.idempotency.service.IdempotencyService;
 import br.com.api.pedidos.shared.response.RespostaApi;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,13 +23,16 @@ public class PedidoController {
 
     private final PedidoService pedidoService;
     private final UsuarioLogadoService usuarioLogadoService;
+    private final IdempotencyService idempotencyService;
 
     public PedidoController(
             PedidoService pedidoService,
-            UsuarioLogadoService usuarioLogadoService
+            UsuarioLogadoService usuarioLogadoService,
+            IdempotencyService idempotencyService
     ) {
         this.pedidoService = pedidoService;
         this.usuarioLogadoService = usuarioLogadoService;
+        this.idempotencyService = idempotencyService;
     }
 
     @GetMapping
@@ -48,23 +56,39 @@ public class PedidoController {
     }
 
     @PostMapping
-    public RespostaApi<PedidoResponseDTO> criarPedido() {
+    @ResponseStatus(HttpStatus.CREATED)
+    public RespostaApi<PedidoResponseDTO> criarPedido(
+            @RequestHeader("Idempotency-Key") String key,
+            HttpServletRequest request) {
         var usuario = usuarioLogadoService.getUsuarioLogado();
 
-        return RespostaApi.sucesso(
-                pedidoService.criarPedido(usuario),
+        return idempotencyService.executar(
+                key,
+                request,
+                null,
+                PedidoResponseDTO.class,
+                () -> pedidoService.criarPedido(usuario),
                 "Pedido criado com sucesso"
         );
     }
 
     @PostMapping("/{idPedido}/items")
     public RespostaApi<PedidoResponseDTO> adicionarItemPedido(
+            @RequestHeader("Idempotency-Key") String key,
+            HttpServletRequest request,
             @PathVariable Long idPedido,
             @RequestBody AdicionarPedidoRequestDTO adicionarPedidoRequestDTO) {
         var usuario = usuarioLogadoService.getUsuarioLogado();
 
-        return RespostaApi.sucesso(
-                pedidoService.adicionarItemPedido(idPedido, adicionarPedidoRequestDTO, usuario),
+        return idempotencyService.executar(
+                key,
+                request,
+                adicionarPedidoRequestDTO,
+                PedidoResponseDTO.class,
+                () -> pedidoService.adicionarItemPedido(
+                        idPedido,
+                        adicionarPedidoRequestDTO,
+                        usuario),
                 "Item adicionado ao pedido com sucesso"
         );
     }
@@ -116,11 +140,17 @@ public class PedidoController {
 
     @PostMapping("/{idPedido}/pay")
     public RespostaApi<PedidoResponseDTO> pagarPedido(
+            @RequestHeader("Idempotency-Key") String key,
+            HttpServletRequest request,
             @PathVariable Long idPedido) {
         var usuario = usuarioLogadoService.getUsuarioLogado();
 
-        return RespostaApi.sucesso(
-                pedidoService.pagarPedido(idPedido, usuario),
+        return idempotencyService.executar(
+                key,
+                request,
+                null,
+                PedidoResponseDTO.class,
+                () -> pedidoService.pagarPedido(idPedido, usuario),
                 "Pedido pago com sucesso"
         );
     }
@@ -147,11 +177,17 @@ public class PedidoController {
 
     @PostMapping("/{idPedido}/cancel")
     public RespostaApi<PedidoResponseDTO> cancelarPedido(
+            @RequestHeader("Idempotency-Key") String key,
+            HttpServletRequest request,
             @PathVariable Long idPedido) {
         var usuario = usuarioLogadoService.getUsuarioLogado();
 
-        return RespostaApi.sucesso(
-                pedidoService.cancelarPedido(idPedido, usuario),
+        return idempotencyService.executar(
+                key,
+                request,
+                null,
+                PedidoResponseDTO.class,
+                () -> pedidoService.cancelarPedido(idPedido, usuario),
                 "Cancelamento do pedido realizado com sucesso"
         );
     }
@@ -159,9 +195,15 @@ public class PedidoController {
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{idPedido}/refund")
     public RespostaApi<PedidoResponseDTO> estornarPedido(
+            @RequestHeader("Idempotency-Key") String key,
+            HttpServletRequest request,
             @PathVariable Long idPedido) {
-        return RespostaApi.sucesso(
-                pedidoService.estornarPedido(idPedido),
+        return idempotencyService.executar(
+                key,
+                request,
+                null,
+                PedidoResponseDTO.class,
+                () -> pedidoService.estornarPedido(idPedido),
                 "Pedido estornado com sucesso"
         );
     }
