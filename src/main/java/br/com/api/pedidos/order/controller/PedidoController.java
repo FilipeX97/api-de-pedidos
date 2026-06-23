@@ -156,9 +156,15 @@ public class PedidoController {
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{idPedido}/ship")
     public RespostaApi<PedidoResponseDTO> enviarPedido(
+            @RequestHeader("Idempotency-Key") String key,
+            HttpServletRequest request,
             @PathVariable Long idPedido) {
-        return RespostaApi.sucesso(
-                pedidoService.enviarPedido(idPedido),
+        return idempotencyService.executar(
+                key,
+                request,
+                null,
+                PedidoResponseDTO.class,
+                () -> pedidoService.enviarPedido(idPedido),
                 "Pedido enviado com sucesso"
         );
     }
@@ -166,9 +172,15 @@ public class PedidoController {
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{idPedido}/deliver")
     public RespostaApi<PedidoResponseDTO> entregarPedido(
+            @RequestHeader("Idempotency-Key") String key,
+            HttpServletRequest request,
             @PathVariable Long idPedido) {
-        return RespostaApi.sucesso(
-                pedidoService.entregarPedido(idPedido),
+        return idempotencyService.executar(
+                key,
+                request,
+                null,
+                PedidoResponseDTO.class,
+                () -> pedidoService.entregarPedido(idPedido),
                 "Pedido entregue com sucesso"
         );
     }
