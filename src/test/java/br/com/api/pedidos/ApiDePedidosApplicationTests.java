@@ -1,4 +1,4 @@
-package br.com.dio;
+package br.com.api.pedidos;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
