@@ -22,7 +22,7 @@ public class Usuario {
     private LocalDate dataCriacao;
     private Long senhaAlteradaEm;
     private boolean ativo;
-    private boolean clienteVIP;
+    private boolean clienteVip;
 
     @Enumerated(EnumType.STRING)
     private Perfil perfil;
@@ -41,7 +41,7 @@ public class Usuario {
         this.dataCriacao = LocalDate.now();
         this.senhaAlteradaEm = System.currentTimeMillis();
         this.ativo = true;
-        this.clienteVIP = false;
+        this.clienteVip = false;
     }
 
     private void validarNome(String nome) {
@@ -118,7 +118,7 @@ public class Usuario {
         return ativo;
     }
 
-    public boolean isClienteVip() { return clienteVIP; }
+    public boolean isClienteVip() { return clienteVip; }
 
     public void desativarUsuario() {
         if (!this.ativo) {
@@ -134,18 +134,18 @@ public class Usuario {
         this.ativo = true;
     }
 
-    public void ativarClienteVIP() {
-        if (this.clienteVIP) {
+    public void ativarClienteVip() {
+        if (this.clienteVip) {
             throw new IllegalStateException("Usuário já é cliente VIP");
         }
-        this.clienteVIP = true;
+        this.clienteVip = true;
     }
 
     public void desativarClienteVIP() {
-        if (!this.clienteVIP) {
+        if (!this.clienteVip) {
             throw new IllegalStateException("Usuário não é cliente VIP");
         }
-        clienteVIP = false;
+        clienteVip = false;
     }
 
     public void invalidarTokens() {
