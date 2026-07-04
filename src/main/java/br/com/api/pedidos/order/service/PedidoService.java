@@ -1,6 +1,7 @@
 package br.com.api.pedidos.order.service;
 
 import br.com.api.pedidos.coupon.service.CupomService;
+import br.com.api.pedidos.order.event.*;
 import br.com.api.pedidos.order.promotion.engine.MotorPromocao;
 import br.com.api.pedidos.order.dto.AdicionarPedidoRequestDTO;
 import br.com.api.pedidos.order.dto.AlterarQuantidadeItemRequestDTO;
@@ -9,13 +10,16 @@ import br.com.api.pedidos.order.entity.Pedido;
 import br.com.api.pedidos.order.repository.PedidoRepository;
 import br.com.api.pedidos.order.state.EstadoPedido;
 import br.com.api.pedidos.order.state.EstadoPedidoFactory;
+import br.com.api.pedidos.order.state.StatusPedido;
 import br.com.api.pedidos.order.valueobject.ItemPedidoId;
 import br.com.api.pedidos.product.entity.Produto;
 import br.com.api.pedidos.product.repository.ProdutoRepository;
 import br.com.api.pedidos.user.entity.Usuario;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -26,17 +30,20 @@ public class PedidoService {
     private final CupomService cupomService;
     private final MotorPromocao motorPromocao;
     private final EstadoPedidoFactory estadoPedidoFactory;
+    private final ApplicationEventPublisher eventPublisher;
 
     public PedidoService(PedidoRepository pedidoRepository,
                          ProdutoRepository produtoRepository,
                          CupomService cupomService,
                          MotorPromocao motorPromocao,
-                         EstadoPedidoFactory estadoPedidoFactory) {
+                         EstadoPedidoFactory estadoPedidoFactory,
+                         ApplicationEventPublisher eventPublisher) {
         this.pedidoRepository = pedidoRepository;
         this.produtoRepository = produtoRepository;
         this.cupomService = cupomService;
         this.motorPromocao = motorPromocao;
         this.estadoPedidoFactory = estadoPedidoFactory;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -54,21 +61,29 @@ public class PedidoService {
     @Transactional
     public PedidoResponseDTO criarPedido(Usuario usuario) {
         var pedido = pedidoRepository.save(new Pedido(usuario));
+
+        eventPublisher.publishEvent(
+                new PedidoCriadoEvent(
+                        pedido.getId(),
+                        usuario.getId(),
+                        LocalDateTime.now()
+                )
+        );
+
         return PedidoResponseDTO.from(pedido);
     }
 
-    @Transactional
     public PedidoResponseDTO adicionarItemPedido(
             Long idPedido,
             AdicionarPedidoRequestDTO adicionarPedidoRequestDTO,
-            Usuario usuario
-            ) {
+            Usuario usuario) {
         var pedido = buscarPedidoDoUsuario(idPedido, usuario);
         var estadoAtual = buscarEstadoAtual(pedido);
         validarPermissaoParaAlterarItens(estadoAtual, pedido);
         var produto = buscarProduto(adicionarPedidoRequestDTO.idProduto());
         pedido.adicionarItem(produto, adicionarPedidoRequestDTO.quantidade());
         recalcularPedido(pedido);
+        pedidoRepository.save(pedido);
         return PedidoResponseDTO.from(pedido);
     }
 
@@ -110,6 +125,17 @@ public class PedidoService {
         var cupom = cupomService.buscarCupomValido(codigoCupom);
         pedido.aplicarCupom(cupom);
         recalcularPedido(pedido);
+
+        eventPublisher.publishEvent(
+                new CupomAplicadoEvent(
+                        pedido.getId(),
+                        usuario.getId(),
+                        cupom.getCodigo(),
+                        pedido.getStatus(),
+                        LocalDateTime.now()
+                )
+        );
+
         return PedidoResponseDTO.from(pedido);
     }
 
@@ -124,6 +150,15 @@ public class PedidoService {
             pedido.getCupom().registrarUso();
         }
 
+        eventPublisher.publishEvent(
+                new PedidoPagoEvent(
+                        pedido.getId(),
+                        usuario.getId(),
+                        pedido.getValorFinal(),
+                        LocalDateTime.now()
+                )
+        );
+
         return PedidoResponseDTO.from(pedido);
     }
 
@@ -133,6 +168,15 @@ public class PedidoService {
         EstadoPedido estadoAtual = buscarEstadoAtual(pedido);
 
         pedido.enviar(estadoAtual);
+
+        eventPublisher.publishEvent(
+                new PedidoEnviadoEvent(
+                        pedido.getId(),
+                        pedido.getUsuario().getId(),
+                        pedido.getStatus(),
+                        LocalDateTime.now()
+                )
+        );
 
         return PedidoResponseDTO.from(pedido);
     }
@@ -144,6 +188,15 @@ public class PedidoService {
 
         pedido.entregar(estadoAtual);
 
+        eventPublisher.publishEvent(
+                new PedidoEntregueEvent(
+                        pedido.getId(),
+                        pedido.getUsuario().getId(),
+                        pedido.getValorFinal(),
+                        LocalDateTime.now()
+                )
+        );
+
         return PedidoResponseDTO.from(pedido);
     }
 
@@ -151,8 +204,19 @@ public class PedidoService {
     public PedidoResponseDTO cancelarPedido(Long idPedido, Usuario usuario) {
         Pedido pedido = buscarPedidoDoUsuario(idPedido, usuario);
         EstadoPedido estadoAtual = buscarEstadoAtual(pedido);
+        StatusPedido statusAnterior = pedido.getStatus();
 
         pedido.cancelar(estadoAtual);
+
+        eventPublisher.publishEvent(
+                new PedidoCanceladoEvent(
+                        pedido.getId(),
+                        pedido.getUsuario().getId(),
+                        statusAnterior,
+                        pedido.getStatus(),
+                        LocalDateTime.now()
+                )
+        );
 
         return PedidoResponseDTO.from(pedido);
     }
@@ -172,6 +236,15 @@ public class PedidoService {
          */
 
         pedido.estornar(estadoAtual);
+
+        eventPublisher.publishEvent(
+                new PedidoEstornadoEvent(
+                        pedido.getId(),
+                        pedido.getUsuario().getId(),
+                        pedido.getValorFinal(),
+                        LocalDateTime.now()
+                )
+        );
 
         return PedidoResponseDTO.from(pedido);
     }

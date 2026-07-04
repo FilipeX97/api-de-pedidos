@@ -111,24 +111,39 @@ public class PedidoController {
 
     @DeleteMapping("/{idPedido}/items/{itemId}")
     public RespostaApi<PedidoResponseDTO> removerItemPedido(
+            @RequestHeader("Idempotency-Key") String key,
+            HttpServletRequest request,
             @PathVariable Long idPedido,
             @PathVariable Long itemId) {
         var usuario = usuarioLogadoService.getUsuarioLogado();
 
-        return RespostaApi.sucesso(
-                pedidoService.removerItemPedido(idPedido, itemId, usuario),
+        return idempotencyService.executar(
+                key,
+                request,
+                null,
+                PedidoResponseDTO.class,
+                () -> pedidoService.removerItemPedido(
+                        idPedido,
+                        itemId,
+                        usuario),
                 "Item removido do pedido com sucesso"
         );
     }
 
     @PostMapping("/{idPedido}/coupon")
     public RespostaApi<PedidoResponseDTO> aplicarCupom(
+            @RequestHeader("Idempotency-Key") String key,
+            HttpServletRequest request,
             @PathVariable Long idPedido,
             @RequestBody AplicarCupomRequestDTO dto) {
         var usuario = usuarioLogadoService.getUsuarioLogado();
 
-        return RespostaApi.sucesso(
-                pedidoService.aplicarCupom(
+        return idempotencyService.executar(
+                key,
+                request,
+                dto,
+                PedidoResponseDTO.class,
+                () -> pedidoService.aplicarCupom(
                         idPedido,
                         usuario,
                         dto.codigoCupom()),

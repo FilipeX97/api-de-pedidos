@@ -4,6 +4,7 @@ import br.com.api.pedidos.coupon.service.CupomService;
 import br.com.api.pedidos.order.dto.AdicionarPedidoRequestDTO;
 import br.com.api.pedidos.order.dto.PedidoResponseDTO;
 import br.com.api.pedidos.order.entity.Pedido;
+import br.com.api.pedidos.order.event.PedidoCriadoEvent;
 import br.com.api.pedidos.order.promotion.engine.MotorPromocao;
 import br.com.api.pedidos.order.promotion.strategy.DescontoQuantidade;
 import br.com.api.pedidos.order.repository.PedidoRepository;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -39,6 +41,9 @@ public class PedidoServiceTest {
 
     @Mock
     private CupomService cupomService;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     private PedidoService pedidoService;
 
@@ -65,7 +70,8 @@ public class PedidoServiceTest {
                 produtoRepository,
                 cupomService,
                 motorPromocao,
-                estadoPedidoFactory
+                estadoPedidoFactory,
+                eventPublisher
         );
     }
 
@@ -82,6 +88,7 @@ public class PedidoServiceTest {
         assertEquals(BigDecimal.ZERO, response.valorBruto());
 
         verify(pedidoRepository).save(any(Pedido.class));
+        verify(eventPublisher).publishEvent(any(PedidoCriadoEvent.class));
     }
 
     @Test
