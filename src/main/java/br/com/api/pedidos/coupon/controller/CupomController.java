@@ -60,17 +60,31 @@ public class CupomController {
     }
 
     @PostMapping("/{id}/ativar")
-    public RespostaApi<CupomResponseDTO> ativarCupom(@PathVariable Long id) {
-        return RespostaApi.sucesso(
-                cupomService.ativarCupom(id),
+    public RespostaApi<CupomResponseDTO> ativarCupom(
+            @RequestHeader("Idempotency-Key") String key,
+            HttpServletRequest request,
+            @PathVariable Long id) {
+        return idempotencyService.executar(
+                key,
+                request,
+                null,
+                CupomResponseDTO.class,
+                () -> cupomService.ativarCupom(id),
                 "Cupom ativado com sucesso"
         );
     }
 
     @PostMapping("/{id}/desativar")
-    public RespostaApi<CupomResponseDTO> desativarCupom(@PathVariable Long id) {
-        return RespostaApi.sucesso(
-                cupomService.desativarCupom(id),
+    public RespostaApi<CupomResponseDTO> desativarCupom(
+            @RequestHeader("Idempotency-Key") String key,
+            HttpServletRequest request,
+            @PathVariable Long id) {
+        return idempotencyService.executar(
+                key,
+                request,
+                null,
+                CupomResponseDTO.class,
+                () -> cupomService.desativarCupom(id),
                 "Cupom desativado com sucesso"
         );
     }
