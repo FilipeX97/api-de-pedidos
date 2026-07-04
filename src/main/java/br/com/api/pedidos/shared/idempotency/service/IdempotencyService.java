@@ -1,15 +1,14 @@
 package br.com.api.pedidos.shared.idempotency.service;
 
 import br.com.api.pedidos.security.service.UsuarioLogadoService;
-import br.com.api.pedidos.security.userdetails.UsuarioSecurity;
 import br.com.api.pedidos.shared.idempotency.entity.IdempotencyKey;
 import br.com.api.pedidos.shared.idempotency.repository.IdempotencyRepository;
 import br.com.api.pedidos.shared.idempotency.util.GeradorHashRequest;
 import br.com.api.pedidos.shared.response.RespostaApi;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -38,14 +37,16 @@ public class IdempotencyService {
         this.usuarioLogadoService = usuarioLogadoService;
     }
 
+    @Transactional
     public <T> RespostaApi<T> executar(
             String chave,
             HttpServletRequest request,
             Object requestBody,
             Class<T> responseType,
             Supplier<T> action,
-            String mensagemSucesso
-    ) {
+            String mensagemSucesso) {
+        validarChave(chave);
+
         String endpoint = request.getRequestURI()
                 .replaceAll("/$", "")
                 .toLowerCase();
@@ -181,6 +182,16 @@ public class IdempotencyService {
             );
         } catch (Exception e) {
             throw new RuntimeException("Erro ao salvar idempotency key", e);
+        }
+    }
+
+    private void validarChave(String chave) {
+        if (chave == null || chave.isBlank()) {
+            throw new IllegalArgumentException("Idempotency-Key é obrigatória");
+        }
+
+        if (chave.length() > 255) {
+            throw new IllegalArgumentException("Idempotency-Key deve ter no máximo 255 caracteres");
         }
     }
 }

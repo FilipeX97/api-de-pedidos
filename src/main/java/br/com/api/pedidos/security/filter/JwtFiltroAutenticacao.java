@@ -52,6 +52,7 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain)
             throws ServletException, IOException {
+
         String uri = request.getRequestURI();
         log.info("Processando autenticação para URI: {}", uri);
 
@@ -62,11 +63,18 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
 
         String token = TokenUtils.extrairToken(request);
 
-        if (token == null ||
-                !jwtService.validarToken(token) ||
-                tokenBlacklistService.tokenBloqueado(token)) {
+        if (token == null) {
+            respostaNaoAutorizada(response, "Token não enviado");
+            return;
+        }
 
-            filterChain.doFilter(request, response);
+        if (!jwtService.validarToken(token)) {
+            respostaNaoAutorizada(response, "Token inválido ou expirado");
+            return;
+        }
+
+        if (tokenBlacklistService.tokenBloqueado(token)) {
+            respostaNaoAutorizada(response, "Token bloqueado. Faça login novamente.");
             return;
         }
 
