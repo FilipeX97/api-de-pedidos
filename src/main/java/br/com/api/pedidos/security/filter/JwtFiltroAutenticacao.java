@@ -33,7 +33,8 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
     private final UsuarioAutenticacaoService usuarioAutenticacaoService;
     private final TokenRenovacaoService tokenRenovacaoService;
 
-    private static final Logger log = LoggerFactory.getLogger(JwtFiltroAutenticacao.class);
+    private static final Logger log =
+            LoggerFactory.getLogger(JwtFiltroAutenticacao.class);
 
     public JwtFiltroAutenticacao(
             JwtService jwtService,
@@ -54,7 +55,7 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String uri = request.getRequestURI();
-        log.info("Processando autenticação para URI: {}", uri);
+        log.debug("Processando autenticação para URI: {}", uri);
 
         if (uri.contains("/auth") || uri.contains("/h2-console")) {
             filterChain.doFilter(request, response);

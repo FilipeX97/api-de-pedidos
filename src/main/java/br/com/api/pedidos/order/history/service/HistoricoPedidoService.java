@@ -29,7 +29,7 @@ public class HistoricoPedidoService {
     public void registrar(Long idPedido, StatusPedido status, String descricao) {
         Pedido pedido = buscarPedido(idPedido);
 
-        historicoPedidoRepository.save(
+        historicoPedidoRepository.saveAndFlush(
                 new HistoricoPedido(pedido, status, descricao)
         );
     }

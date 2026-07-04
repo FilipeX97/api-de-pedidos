@@ -5,6 +5,7 @@ import br.com.api.pedidos.product.dto.ProdutoResponseDTO;
 import br.com.api.pedidos.product.entity.Produto;
 import br.com.api.pedidos.product.repository.ProdutoRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -28,10 +29,17 @@ public class ProdutoService {
                 .map(ProdutoResponseDTO::from).toList();
     }
 
+    @Transactional
     public ProdutoResponseDTO criarProduto(ProdutoRequestDTO produtoRequestDTO) {
-        var produto = new Produto(produtoRequestDTO.nome(), produtoRequestDTO.descricao(), produtoRequestDTO.preco(), produtoRequestDTO.estoque());
-        produtoRepository.save(produto);
-        return ProdutoResponseDTO.from(produto);
+        Produto produto = new Produto(
+                produtoRequestDTO.nome(),
+                produtoRequestDTO.descricao(),
+                produtoRequestDTO.preco(),
+                produtoRequestDTO.estoque()
+        );
+
+        Produto produtoSalvo = produtoRepository.saveAndFlush(produto);
+        return ProdutoResponseDTO.from(produtoSalvo);
     }
 
     public ProdutoResponseDTO atualizarProduto(Long id, ProdutoRequestDTO produtoRequestDTO) {

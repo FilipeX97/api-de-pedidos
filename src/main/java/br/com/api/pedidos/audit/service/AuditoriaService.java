@@ -38,7 +38,7 @@ public class AuditoriaService {
 
         var usuarioDonoDoPedido = pedido.getUsuario();
 
-        auditoriaRepository.save(
+        auditoriaRepository.saveAndFlush(
                 new Auditoria(
                         usuarioDonoDoPedido,
                         pedido,

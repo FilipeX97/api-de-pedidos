@@ -25,7 +25,7 @@ public class CupomController {
             IdempotencyService idempotencyService) {
         this.cupomService = cupomService;
         this.idempotencyService = idempotencyService;
-    };
+    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

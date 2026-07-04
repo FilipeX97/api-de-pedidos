@@ -8,14 +8,11 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class FiltroIntervaloRequisicao extends OncePerRequestFilter {
@@ -34,7 +31,6 @@ public class FiltroIntervaloRequisicao extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         String uri = request.getRequestURI();
 
-        System.out.println(uri);
         if (uri.contains("/auth") || uri.contains("/h2-console")) {
             filterChain.doFilter(request, response);
             return;

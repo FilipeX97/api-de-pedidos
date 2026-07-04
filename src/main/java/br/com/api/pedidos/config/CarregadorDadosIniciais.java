@@ -5,6 +5,8 @@ import br.com.api.pedidos.product.repository.ProdutoRepository;
 import br.com.api.pedidos.user.entity.Perfil;
 import br.com.api.pedidos.user.entity.Usuario;
 import br.com.api.pedidos.user.repository.UsuarioRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,6 +20,8 @@ import java.util.Random;
 public class CarregadorDadosIniciais {
 
     private final Random random = new Random();
+    private static final Logger log =
+            LoggerFactory.getLogger(CarregadorDadosIniciais.class);
 
     @Bean
     public CommandLineRunner gerarMassa(
@@ -55,7 +59,7 @@ public class CarregadorDadosIniciais {
                 ));
             }
 
-            System.out.println("Massa de dados gerada com sucesso!");
+            log.info("Massa de dados gerada com sucesso!");
         };
     }
 

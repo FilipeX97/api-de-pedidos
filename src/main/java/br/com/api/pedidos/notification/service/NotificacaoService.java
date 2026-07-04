@@ -42,7 +42,7 @@ public class NotificacaoService {
 
         var usuarioDonoDoPedido = pedido.getUsuario();
 
-        notificacaoRepository.save(
+        notificacaoRepository.saveAndFlush(
                 new Notificacao(
                         usuarioDonoDoPedido,
                         pedido,

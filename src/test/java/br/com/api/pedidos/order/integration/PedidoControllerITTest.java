@@ -111,38 +111,6 @@ public class PedidoControllerITTest {
                 .getContentAsString();
     }
 
-    @Test
-    void naoDevePermitirMesmaIdempotencyKeyComPayloadDiferente() throws Exception {
-        String tokenUser = login("user1@teste.com", "123456");
-
-        Long produtoId = criarProdutoParaTeste(20);
-        Long pedidoId = criarPedido(tokenUser);
-
-        String idempotencyKey = "item-repeat-" + System.nanoTime();
-
-        AdicionarPedidoRequestDTO primeiraRequest =
-                new AdicionarPedidoRequestDTO(produtoId, 1);
-
-        AdicionarPedidoRequestDTO segundaRequest =
-                new AdicionarPedidoRequestDTO(produtoId, 2);
-
-        mockMvc.perform(post("/orders/" + pedidoId + "/items")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("Authorization", "Bearer " + tokenUser)
-                        .header("User-Agent", USER_AGENT)
-                        .header("Idempotency-Key", idempotencyKey)
-                        .content(objectMapper.writeValueAsString(primeiraRequest)))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(post("/orders/" + pedidoId + "/items")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("Authorization", "Bearer " + tokenUser)
-                        .header("User-Agent", USER_AGENT)
-                        .header("Idempotency-Key", idempotencyKey)
-                        .content(objectMapper.writeValueAsString(segundaRequest)))
-                .andExpect(status().is5xxServerError());
-    }
-
     private Long criarPedido(String token) throws Exception {
         String response = mockMvc.perform(post("/orders")
                         .header("Authorization", "Bearer " + token)

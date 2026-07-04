@@ -5,6 +5,7 @@ import br.com.api.pedidos.auth.repository.RefreshTokenRepository;
 import br.com.api.pedidos.config.TokenProperties;
 import br.com.api.pedidos.user.entity.Usuario;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.Instant;
@@ -23,26 +24,28 @@ public class RefreshTokenService {
         this.tokenProperties = tokenProperties;
     }
 
+    @Transactional
     public String criar(Usuario usuario) {
         String token = gerarTokenSeguro();
 
-        refreshTokenRepository.save(
-                new RefreshToken(
-                        token,
-                        Instant.now().plusMillis(tokenProperties.expiracaoRefresh()),
-                        usuario
-                )
+        RefreshToken refreshToken = new RefreshToken(
+                token,
+                Instant.now().plusMillis(tokenProperties.expiracaoRefresh()),
+                usuario
         );
 
+        refreshTokenRepository.saveAndFlush(refreshToken);
         return token;
     }
 
+    @Transactional(readOnly = true)
     public RefreshToken buscar(String token) {
         return refreshTokenRepository
                 .findByToken(token)
                 .orElseThrow(() -> new RuntimeException("Token inválido"));
     }
 
+    @Transactional
     public void revogar(RefreshToken token) {
         token.revogar();
         refreshTokenRepository.save(token);
@@ -59,6 +62,7 @@ public class RefreshTokenService {
         }
     }
 
+    @Transactional
     public void revogarTodosTokensUsuario(Usuario usuario) {
         refreshTokenRepository.deleteAllByUsuario(usuario);
     }

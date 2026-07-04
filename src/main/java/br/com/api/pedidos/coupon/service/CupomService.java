@@ -5,6 +5,7 @@ import br.com.api.pedidos.coupon.dto.CupomResponseDTO;
 import br.com.api.pedidos.coupon.entity.Cupom;
 import br.com.api.pedidos.coupon.repository.CupomRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -17,12 +18,13 @@ public class CupomService {
         this.cupomRepository = cupomRepository;
     }
 
+    @Transactional
     public CupomResponseDTO criarCupom(CupomRequestDTO cupomRequestDTO) {
-        if(cupomRepository.findByCodigoIgnoreCase(cupomRequestDTO.codigo()).isPresent()) {
+        if (cupomRepository.findByCodigoIgnoreCase(cupomRequestDTO.codigo()).isPresent()) {
             throw new RuntimeException("Código de cupom já existe");
         }
 
-        var cupom = new Cupom(
+        Cupom cupom = new Cupom(
                 cupomRequestDTO.codigo(),
                 cupomRequestDTO.percentual(),
                 cupomRequestDTO.dataInicio(),
@@ -30,8 +32,8 @@ public class CupomService {
                 cupomRequestDTO.limiteUso()
         );
 
-        cupomRepository.save(cupom);
-        return CupomResponseDTO.from(cupom);
+        Cupom cupomSalvo = cupomRepository.saveAndFlush(cupom);
+        return CupomResponseDTO.from(cupomSalvo);
     }
 
     public List<CupomResponseDTO> listarCupons() {

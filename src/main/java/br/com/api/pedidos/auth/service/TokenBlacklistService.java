@@ -5,6 +5,7 @@ import br.com.api.pedidos.auth.repository.BlacklistedTokenRepository;
 import br.com.api.pedidos.security.jwt.JwtService;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 
@@ -21,12 +22,16 @@ public class TokenBlacklistService {
         this.jwtService = jwtService;
     }
 
+    @Transactional
     public void adicionarBlacklist(String token) {
         Instant expiracao = jwtService.extrairExpiracao(token);
 
-        blacklistedTokenRepository.save(
-                new BlacklistedToken(token, expiracao)
+        BlacklistedToken blacklistedToken = new BlacklistedToken(
+                token,
+                expiracao
         );
+
+        blacklistedTokenRepository.saveAndFlush(blacklistedToken);
     }
 
     @Cacheable(value = "blacklist", key = "#token")

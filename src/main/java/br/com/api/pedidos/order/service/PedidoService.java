@@ -60,31 +60,38 @@ public class PedidoService {
 
     @Transactional
     public PedidoResponseDTO criarPedido(Usuario usuario) {
-        var pedido = pedidoRepository.save(new Pedido(usuario));
+        Pedido pedido = new Pedido(usuario);
+        Pedido pedidoSalvo = pedidoRepository.saveAndFlush(pedido);
 
         eventPublisher.publishEvent(
                 new PedidoCriadoEvent(
-                        pedido.getId(),
+                        pedidoSalvo.getId(),
                         usuario.getId(),
                         LocalDateTime.now()
                 )
         );
 
-        return PedidoResponseDTO.from(pedido);
+        return PedidoResponseDTO.from(pedidoSalvo);
     }
 
+    @Transactional
     public PedidoResponseDTO adicionarItemPedido(
             Long idPedido,
             AdicionarPedidoRequestDTO adicionarPedidoRequestDTO,
             Usuario usuario) {
-        var pedido = buscarPedidoDoUsuario(idPedido, usuario);
-        var estadoAtual = buscarEstadoAtual(pedido);
+        Pedido pedido = buscarPedidoDoUsuario(idPedido, usuario);
+        EstadoPedido estadoAtual = buscarEstadoAtual(pedido);
         validarPermissaoParaAlterarItens(estadoAtual, pedido);
-        var produto = buscarProduto(adicionarPedidoRequestDTO.idProduto());
-        pedido.adicionarItem(produto, adicionarPedidoRequestDTO.quantidade());
+        Produto produto = buscarProduto(adicionarPedidoRequestDTO.idProduto());
+
+        pedido.adicionarItem(
+                produto,
+                adicionarPedidoRequestDTO.quantidade()
+        );
+
         recalcularPedido(pedido);
-        pedidoRepository.save(pedido);
-        return PedidoResponseDTO.from(pedido);
+        Pedido pedidoSalvo = pedidoRepository.saveAndFlush(pedido);
+        return PedidoResponseDTO.from(pedidoSalvo);
     }
 
     @Transactional

@@ -41,7 +41,11 @@ public class Pedido {
 
     @OneToMany(
             mappedBy = "pedido",
-            cascade = {CascadeType.PERSIST, CascadeType.REMOVE},
+            cascade = {
+                    CascadeType.PERSIST,
+                    CascadeType.MERGE,
+                    CascadeType.REMOVE
+            },
             orphanRemoval = true)
     private List<ItemPedido> itens = new ArrayList<>();
 
