@@ -64,6 +64,7 @@ public class PedidoServiceTest {
         EstadoPedidoFactory estadoPedidoFactory = new EstadoPedidoFactory(
                 List.of(
                         new EstadoCriado(),
+                        new EstadoAguardandoPagamento(),
                         new EstadoPago(),
                         new EstadoEnviado(),
                         new EstadoEntregue(),

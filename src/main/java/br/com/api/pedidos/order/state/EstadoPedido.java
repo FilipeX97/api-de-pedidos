@@ -12,6 +12,18 @@ public interface EstadoPedido {
         );
     }
 
+    default StatusPedido aguardarPagamento(Pedido pedido) {
+        throw new IllegalStateException(
+                "Pedido com status " + getStatus() + " não pode aguardar pagamento."
+        );
+    }
+
+    default StatusPedido confirmarPagamento(Pedido pedido) {
+        throw new IllegalStateException(
+                "Pedido com status " + getStatus() + " não pode confirmar pagamento."
+        );
+    }
+
     default StatusPedido enviar(Pedido pedido) {
         throw new IllegalStateException(
                 "Pedido com status " + getStatus() + " não pode ser enviado."

@@ -133,6 +133,14 @@ public class Pedido {
         this.status = estadoPedido.pagar(this);
     }
 
+    public void aguardarPagamento(EstadoPedido estadoPedido) {
+        this.status = estadoPedido.aguardarPagamento(this);
+    }
+
+    public void confirmarPagamento(EstadoPedido estadoPedido) {
+        this.status = estadoPedido.confirmarPagamento(this);
+    }
+
     public void enviar(EstadoPedido estadoPedido) {
         this.status = estadoPedido.enviar(this);
     }

@@ -13,11 +13,14 @@ public final class EstadoCriado implements EstadoPedido {
 
     @Override
     public StatusPedido pagar(Pedido pedido) {
-        if (pedido.estaVazio()) {
-            throw new IllegalStateException("Não é possível pagar um pedido sem itens.");
-        }
-
+        validarPedidoComItens(pedido);
         return StatusPedido.PAGO;
+    }
+
+    @Override
+    public StatusPedido aguardarPagamento(Pedido pedido) {
+        validarPedidoComItens(pedido);
+        return StatusPedido.AGUARDANDO_PAGAMENTO;
     }
 
     @Override
@@ -28,5 +31,13 @@ public final class EstadoCriado implements EstadoPedido {
     @Override
     public boolean permiteAlterarItens() {
         return true;
+    }
+
+    private void validarPedidoComItens(Pedido pedido) {
+        if (pedido.estaVazio()) {
+            throw new IllegalStateException(
+                    "Não é possível iniciar pagamento de um pedido sem itens."
+            );
+        }
     }
 }
