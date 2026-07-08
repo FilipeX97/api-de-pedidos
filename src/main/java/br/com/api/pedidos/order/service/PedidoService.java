@@ -256,6 +256,53 @@ public class PedidoService {
         return PedidoResponseDTO.from(pedido);
     }
 
+    @Transactional(readOnly = true)
+    public Pedido buscarPedidoDoUsuarioParaCheckout(
+            Long idPedido,
+            Usuario usuario) {
+        return buscarPedidoDoUsuario(idPedido, usuario);
+    }
+
+    @Transactional
+    public void recalcularPedidoParaCheckout(Pedido pedido) {
+        recalcularPedido(pedido);
+    }
+
+    @Transactional
+    public void marcarPedidoComoPagoAposPagamento(Pedido pedido) {
+        EstadoPedido estadoAtual = buscarEstadoAtual(pedido);
+
+        if (pedido.getStatus() == StatusPedido.CRIADO) {
+            pedido.pagar(estadoAtual);
+        } else if (pedido.getStatus() == StatusPedido.AGUARDANDO_PAGAMENTO) {
+            pedido.confirmarPagamento(estadoAtual);
+        } else {
+            throw new IllegalStateException(
+                    "Pedido com status " + pedido.getStatus()
+                            + " não pode ser marcado como pago."
+            );
+        }
+
+        if (pedido.possuiCupom()) {
+            pedido.getCupom().registrarUso();
+        }
+
+        eventPublisher.publishEvent(
+                new PedidoPagoEvent(
+                        pedido.getId(),
+                        pedido.getUsuario().getId(),
+                        pedido.getValorFinal(),
+                        LocalDateTime.now()
+                )
+        );
+    }
+
+    @Transactional
+    public void marcarPedidoComoAguardandoPagamento(Pedido pedido) {
+        EstadoPedido estadoAtual = buscarEstadoAtual(pedido);
+        pedido.aguardarPagamento(estadoAtual);
+    }
+
     private void validarPermissaoParaAlterarItens(
             EstadoPedido estadoAtual,
             Pedido pedido) {

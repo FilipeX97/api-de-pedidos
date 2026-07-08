@@ -151,23 +151,6 @@ public class PedidoController {
         );
     }
 
-    @PostMapping("/{idPedido}/pay")
-    public RespostaApi<PedidoResponseDTO> pagarPedido(
-            @RequestHeader("Idempotency-Key") String key,
-            HttpServletRequest request,
-            @PathVariable Long idPedido) {
-        var usuario = usuarioLogadoService.getUsuarioLogado();
-
-        return idempotencyService.executar(
-                key,
-                request,
-                null,
-                PedidoResponseDTO.class,
-                () -> pedidoService.pagarPedido(idPedido, usuario),
-                "Pedido pago com sucesso"
-        );
-    }
-
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{idPedido}/ship")
     public RespostaApi<PedidoResponseDTO> enviarPedido(
