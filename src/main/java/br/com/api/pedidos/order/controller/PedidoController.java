@@ -9,6 +9,7 @@ import br.com.api.pedidos.security.service.UsuarioLogadoService;
 import br.com.api.pedidos.shared.idempotency.service.IdempotencyService;
 import br.com.api.pedidos.shared.response.RespostaApi;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -75,7 +76,7 @@ public class PedidoController {
             @RequestHeader("Idempotency-Key") String key,
             HttpServletRequest request,
             @PathVariable Long idPedido,
-            @RequestBody AdicionarPedidoRequestDTO adicionarPedidoRequestDTO) {
+            @Valid @RequestBody AdicionarPedidoRequestDTO adicionarPedidoRequestDTO) {
         var usuario = usuarioLogadoService.getUsuarioLogado();
 
         return idempotencyService.executar(
@@ -95,7 +96,7 @@ public class PedidoController {
     public RespostaApi<PedidoResponseDTO> alterarQuantidadeItemPedido(
             @PathVariable Long idPedido,
             @PathVariable Long itemId,
-            @RequestBody AlterarQuantidadeItemRequestDTO dto) {
+            @Valid @RequestBody AlterarQuantidadeItemRequestDTO dto) {
         var usuario = usuarioLogadoService.getUsuarioLogado();
 
         return RespostaApi.sucesso(
@@ -135,7 +136,7 @@ public class PedidoController {
             @RequestHeader("Idempotency-Key") String key,
             HttpServletRequest request,
             @PathVariable Long idPedido,
-            @RequestBody AplicarCupomRequestDTO dto) {
+            @Valid @RequestBody AplicarCupomRequestDTO dto) {
         var usuario = usuarioLogadoService.getUsuarioLogado();
 
         return idempotencyService.executar(

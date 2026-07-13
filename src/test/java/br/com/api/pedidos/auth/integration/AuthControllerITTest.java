@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -50,5 +51,25 @@ public class AuthControllerITTest {
 
         assertFalse(accessToken.isBlank());
         assertFalse(refreshToken.isBlank());
+    }
+
+    @Test
+    void deveRetornarBadRequestQuandoLoginForInvalido() throws Exception {
+        String payload = """
+            {
+              "email": "email-invalido",
+              "senha": ""
+            }
+            """;
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("User-Agent", USER_AGENT)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.sucesso").value(false))
+                .andExpect(jsonPath("$.mensagem").value("Dados inválidos"))
+                .andExpect(jsonPath("$.dados.email").exists())
+                .andExpect(jsonPath("$.dados.senha").exists());
     }
 }

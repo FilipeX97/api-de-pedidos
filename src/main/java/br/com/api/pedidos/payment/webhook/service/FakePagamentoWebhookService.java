@@ -8,7 +8,6 @@ import br.com.api.pedidos.payment.webhook.dto.FakePagamentoWebhookDTO;
 import br.com.api.pedidos.payment.webhook.service.result.ResultadoRegistroWebhook;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class FakePagamentoWebhookService {
@@ -34,7 +33,6 @@ public class FakePagamentoWebhookService {
         this.webhookPagamentoRecebidoService = webhookPagamentoRecebidoService;
     }
 
-    @Transactional
     public PagamentoResponseDTO processarWebhook(
             String corpoOriginal,
             String assinatura) {

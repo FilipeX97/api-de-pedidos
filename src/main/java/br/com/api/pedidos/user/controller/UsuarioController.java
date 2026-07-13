@@ -4,6 +4,7 @@ import br.com.api.pedidos.shared.response.RespostaApi;
 import br.com.api.pedidos.user.dto.UsuarioRequestDTO;
 import br.com.api.pedidos.user.dto.UsuarioResponseDTO;
 import br.com.api.pedidos.user.service.UsuarioService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +22,8 @@ public class UsuarioController {
     @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping
-    public RespostaApi<UsuarioResponseDTO> cadastrarUsuario(@RequestBody UsuarioRequestDTO usuarioRequestDTO) {
+    public RespostaApi<UsuarioResponseDTO> cadastrarUsuario(
+            @Valid @RequestBody UsuarioRequestDTO usuarioRequestDTO) {
         return RespostaApi.sucesso(usuarioService.cadastrarUsuario(usuarioRequestDTO),
                 "Usuario cadastrado com sucesso");
     }
@@ -42,7 +44,9 @@ public class UsuarioController {
 
     @PatchMapping("/{id}")
     @PreAuthorize("#id == authentication.principal.usuario.id or hasRole('ADMIN')")
-    public RespostaApi<UsuarioResponseDTO> atualizarUsuario(@PathVariable Long id, @RequestBody UsuarioRequestDTO usuarioRequestDTO) {
+    public RespostaApi<UsuarioResponseDTO> atualizarUsuario(
+            @PathVariable Long id,
+            @Valid @RequestBody UsuarioRequestDTO usuarioRequestDTO) {
         return RespostaApi.sucesso(usuarioService.atualizarUsuario(id, usuarioRequestDTO),
                 "Usuário atualizado");
     }

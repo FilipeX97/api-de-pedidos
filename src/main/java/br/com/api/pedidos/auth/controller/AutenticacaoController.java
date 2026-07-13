@@ -9,6 +9,7 @@ import br.com.api.pedidos.auth.service.RegistroUsuarioService;
 import br.com.api.pedidos.security.util.RequestUtils;
 import br.com.api.pedidos.shared.response.RespostaApi;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,7 +28,7 @@ public class AutenticacaoController {
     }
 
     @PostMapping("/login")
-    public RespostaApi<LoginResponseDTO> login(@RequestBody LoginRequestDTO loginRequestDTO,
+    public RespostaApi<LoginResponseDTO> login(@Valid @RequestBody LoginRequestDTO loginRequestDTO,
                                                HttpServletRequest request) {
         String requestIp = RequestUtils.extrairIp(request);
         String userAgent = RequestUtils.extrairUserAgent(request);
@@ -42,7 +43,7 @@ public class AutenticacaoController {
 
     @PostMapping("/refresh")
     public RespostaApi<LoginResponseDTO> refresh(
-            @RequestBody RefreshTokenRequestDTO refreshTokenRequestDTO,
+            @Valid @RequestBody RefreshTokenRequestDTO refreshTokenRequestDTO,
             HttpServletRequest request) {
         String requestIp = RequestUtils.extrairIp(request);
         String userAgent = RequestUtils.extrairUserAgent(request);
@@ -56,7 +57,7 @@ public class AutenticacaoController {
 
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/registrar")
-    public RespostaApi<Void> registrarUsuario(@RequestBody RegistraRequestDTO registraRequestDTO) {
+    public RespostaApi<Void> registrarUsuario(@Valid @RequestBody RegistraRequestDTO registraRequestDTO) {
         registroUsuarioService.registrar(registraRequestDTO);
         return RespostaApi.sucesso(null,
                 "Usuário registrado com sucesso");

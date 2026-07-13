@@ -6,6 +6,7 @@ import br.com.api.pedidos.product.service.ProdutoService;
 import br.com.api.pedidos.shared.idempotency.service.IdempotencyService;
 import br.com.api.pedidos.shared.response.RespostaApi;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -43,7 +44,7 @@ public class ProdutoController {
     @ResponseStatus(HttpStatus.CREATED)
     public RespostaApi<ProdutoResponseDTO> criarProduto(
             @RequestHeader("Idempotency-Key") String key,
-            @RequestBody ProdutoRequestDTO dto,
+            @Valid @RequestBody ProdutoRequestDTO dto,
             HttpServletRequest request
     ) {
         return idempotencyService.executar(
@@ -58,7 +59,10 @@ public class ProdutoController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}")
-    public RespostaApi<ProdutoResponseDTO> atualizarProduto(@PathVariable Long id, @RequestBody ProdutoRequestDTO produtoRequestDTO) {
+    public RespostaApi<ProdutoResponseDTO> atualizarProduto(
+            @PathVariable Long id,
+            @Valid @RequestBody ProdutoRequestDTO produtoRequestDTO
+    ) {
         return RespostaApi.sucesso(produtoService.atualizarProduto(id, produtoRequestDTO),
                 "Produto atualizado");
     }

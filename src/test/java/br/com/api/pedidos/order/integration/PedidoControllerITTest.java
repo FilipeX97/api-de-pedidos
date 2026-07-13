@@ -2,6 +2,8 @@ package br.com.api.pedidos.order.integration;
 
 import br.com.api.pedidos.auth.dto.LoginRequestDTO;
 import br.com.api.pedidos.order.dto.AdicionarPedidoRequestDTO;
+import br.com.api.pedidos.payment.dto.PagamentoRequestDTO;
+import br.com.api.pedidos.payment.entity.FormaPagamento;
 import br.com.api.pedidos.product.entity.Produto;
 import br.com.api.pedidos.product.repository.ProdutoRepository;
 import br.com.api.pedidos.security.ratelimit.RateLimitService;
@@ -56,12 +58,17 @@ public class PedidoControllerITTest {
         Long pedidoId = criarPedido(tokenUser);
         adicionarItem(tokenUser, pedidoId, produtoId, 2);
 
-        mockMvc.perform(post("/orders/" + pedidoId + "/pay")
-                .header("Authorization", "Bearer " + tokenUser)
-                .header("User-Agent", USER_AGENT)
-                .header("Idempotency-Key", "pay-it-" + System.nanoTime()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.dados.status").value("PAGO"));
+        PagamentoRequestDTO pagamentoRequestDTO =
+                new PagamentoRequestDTO(FormaPagamento.CARTAO_CREDITO);
+
+        mockMvc.perform(post("/orders/" + pedidoId + "/payments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", "Bearer " + tokenUser)
+                        .header("User-Agent", USER_AGENT)
+                        .header("Idempotency-Key", "pay-it-" + System.nanoTime())
+                        .content(objectMapper.writeValueAsString(pagamentoRequestDTO)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.dados.statusPagamento").value("APROVADO"));
     }
 
     @Test
@@ -89,26 +96,29 @@ public class PedidoControllerITTest {
 
         String idempotencyKey = "pay-repeat-" + System.nanoTime();
 
-        String primeiraResposta = mockMvc.perform(post("/orders/" + pedidoId + "/pay")
-                        .header("Authorization", "Bearer " + tokenUser)
-                        .header("User-Agent", USER_AGENT)
-                        .header("Idempotency-Key", idempotencyKey))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.dados.status").value("PAGO"))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        PagamentoRequestDTO pagamentoRequestDTO =
+                new PagamentoRequestDTO(FormaPagamento.CARTAO_CREDITO);
 
-        String segundaResposta = mockMvc.perform(post("/orders/" + pedidoId + "/pay")
+        mockMvc.perform(post("/orders/" + pedidoId + "/payments")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "Bearer " + tokenUser)
                         .header("User-Agent", USER_AGENT)
-                        .header("Idempotency-Key", idempotencyKey))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.dados.status").value("PAGO"))
-                .andExpect(jsonPath("$.mensagem").value("Requisição já processada anteriormente (idempotência)"))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+                        .header("Idempotency-Key", idempotencyKey)
+                        .content(objectMapper.writeValueAsString(pagamentoRequestDTO)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.dados.statusPagamento").value("APROVADO"));
+
+        mockMvc.perform(post("/orders/" + pedidoId + "/payments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", "Bearer " + tokenUser)
+                        .header("User-Agent", USER_AGENT)
+                        .header("Idempotency-Key", idempotencyKey)
+                        .content(objectMapper.writeValueAsString(pagamentoRequestDTO)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.dados.statusPagamento").value("APROVADO"))
+                .andExpect(jsonPath("$.mensagem").value(
+                        "Requisição já processada anteriormente (idempotência)"
+                ));
     }
 
     private Long criarPedido(String token) throws Exception {

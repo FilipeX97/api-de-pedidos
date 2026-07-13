@@ -25,20 +25,6 @@ public class WebhookPagamentoRecebidoService {
         return webhookPagamentoRecebidoRepository.findByEventId(eventId);
     }
 
-    @Transactional
-    public WebhookPagamentoRecebido registrar(
-            FakePagamentoWebhookDTO fakePagamentoWebhookDTO,
-            String payloadOriginal) {
-        WebhookPagamentoRecebido webhook = new WebhookPagamentoRecebido(
-                fakePagamentoWebhookDTO.eventId(),
-                fakePagamentoWebhookDTO.codigoTransacao(),
-                fakePagamentoWebhookDTO.statusPagamento(),
-                payloadOriginal
-        );
-
-        return webhookPagamentoRecebidoRepository.saveAndFlush(webhook);
-    }
-
     public ResultadoRegistroWebhook registrarOuBuscarExistente(
             FakePagamentoWebhookDTO fakePagamentoWebhookDTO,
             String payloadOriginal) {
@@ -86,5 +72,4 @@ public class WebhookPagamentoRecebidoService {
             );
         }
     }
-
 }

@@ -6,6 +6,7 @@ import br.com.api.pedidos.coupon.service.CupomService;
 import br.com.api.pedidos.shared.idempotency.service.IdempotencyService;
 import br.com.api.pedidos.shared.response.RespostaApi;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -31,7 +32,7 @@ public class CupomController {
     @ResponseStatus(HttpStatus.CREATED)
     public RespostaApi<CupomResponseDTO> criarCupom(
             @RequestHeader("Idempotency-Key") String key,
-            @RequestBody CupomRequestDTO cupomRequestDTO,
+            @Valid @RequestBody CupomRequestDTO cupomRequestDTO,
             HttpServletRequest request) {
         return idempotencyService.executar(
                 key,

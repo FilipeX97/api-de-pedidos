@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -79,6 +80,32 @@ public class ProdutoControllerITTest {
                 .header("Idempotency-Key", "produto-user-teste-" + System.nanoTime())
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adminNaoDeveCriarProdutoComDadosInvalidos() throws Exception {
+        String tokenAdmin = login("admin@api.com", "123456");
+
+        String payload = """
+            {
+              "nome": "Produto inválido",
+              "descricao": "Produto com preço inválido",
+              "preco": -10,
+              "estoque": -1
+            }
+            """;
+
+        mockMvc.perform(post("/produtos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", "Bearer " + tokenAdmin)
+                        .header("User-Agent", USER_AGENT)
+                        .header("Idempotency-Key", "produto-invalido-" + System.nanoTime())
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.sucesso").value(false))
+                .andExpect(jsonPath("$.mensagem").value("Dados inválidos"))
+                .andExpect(jsonPath("$.dados.preco").exists())
+                .andExpect(jsonPath("$.dados.estoque").exists());
     }
 
     private String login(String email, String senha) throws Exception {

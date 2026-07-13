@@ -7,8 +7,8 @@ import br.com.api.pedidos.security.service.UsuarioLogadoService;
 import br.com.api.pedidos.shared.idempotency.service.IdempotencyService;
 import br.com.api.pedidos.shared.response.RespostaApi;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -36,7 +36,7 @@ public class PagamentoController {
             @RequestHeader("Idempotency-Key") String key,
             HttpServletRequest request,
             @PathVariable Long idPedido,
-            @RequestBody PagamentoRequestDTO pagamentoRequestDTO) {
+            @Valid @RequestBody PagamentoRequestDTO pagamentoRequestDTO) {
         var usuario = usuarioLogadoService.getUsuarioLogado();
 
         return idempotencyService.executar(
