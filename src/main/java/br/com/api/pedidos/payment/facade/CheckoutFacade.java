@@ -94,6 +94,17 @@ public class CheckoutFacade {
         );
     }
 
+    @Transactional(readOnly = true)
+    public PagamentoResponseDTO buscarPagamentoPorCodigoTransacao(
+            String codigoTransacao) {
+        Pagamento pagamento =
+                pagamentoService.buscarPagamentoPorCodigoTransacao(
+                        codigoTransacao
+                );
+
+        return PagamentoResponseDTO.from(pagamento);
+    }
+
     private void aplicarResultadoPagamentoNoPedido(
             Pagamento pagamento,
             Pedido pedido) {

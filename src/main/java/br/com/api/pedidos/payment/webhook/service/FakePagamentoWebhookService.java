@@ -18,16 +18,19 @@ public class FakePagamentoWebhookService {
     private final AssinaturaWebhookFakeService assinaturaWebhookFakeService;
     private final GatewayPagamentoFakeConsulta gatewayPagamentoFakeConsulta;
     private final CheckoutFacade checkoutFacade;
+    private final WebhookPagamentoRecebidoService webhookPagamentoRecebidoService;
 
     public FakePagamentoWebhookService(
             ObjectMapper objectMapper,
             AssinaturaWebhookFakeService assinaturaWebhookFakeService,
             GatewayPagamentoFakeConsulta gatewayPagamentoFakeConsulta,
-            CheckoutFacade checkoutFacade) {
+            CheckoutFacade checkoutFacade,
+            WebhookPagamentoRecebidoService webhookPagamentoRecebidoService) {
         this.objectMapper = objectMapper;
         this.assinaturaWebhookFakeService = assinaturaWebhookFakeService;
         this.gatewayPagamentoFakeConsulta = gatewayPagamentoFakeConsulta;
         this.checkoutFacade = checkoutFacade;
+        this.webhookPagamentoRecebidoService = webhookPagamentoRecebidoService;
     }
 
     @Transactional
@@ -35,11 +38,28 @@ public class FakePagamentoWebhookService {
             String corpoOriginal,
             String assinatura) {
         assinaturaWebhookFakeService.validarAssinatura(
-                corpoOriginal, assinatura
+                corpoOriginal,
+                assinatura
         );
 
-        var dto = converter(corpoOriginal);
+        FakePagamentoWebhookDTO dto = converter(corpoOriginal);
         validarWebhook(dto);
+
+        var eventoJaRecebido =
+                webhookPagamentoRecebidoService.buscarPorEventId(
+                        dto.eventId()
+                );
+
+        if (eventoJaRecebido.isPresent()) {
+            return checkoutFacade.buscarPagamentoPorCodigoTransacao(
+                    eventoJaRecebido.get().getCodigoTransacao()
+            );
+        }
+
+        webhookPagamentoRecebidoService.registrar(
+                dto,
+                corpoOriginal
+        );
 
         // Criado pra simular que o gateway/banco alterou o status da transação no ambiente externo.
         gatewayPagamentoFakeConsulta.simularAtualizacaoExterna(
@@ -59,10 +79,7 @@ public class FakePagamentoWebhookService {
                     FakePagamentoWebhookDTO.class
             );
         } catch (Exception e) {
-            throw new IllegalArgumentException(
-                    "Payload do webhook inválido",
-                    e
-            );
+            throw new IllegalArgumentException("Payload do webhook inválido", e);
         }
     }
 

@@ -150,6 +150,20 @@ public class PagamentoService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public Pagamento buscarPagamentoPorCodigoTransacao(
+            String codigoTransacao) {
+        if (codigoTransacao == null || codigoTransacao.isBlank()) {
+            throw new IllegalArgumentException("Código da transação é obrigatório");
+        }
+
+        return pagamentoRepository
+                .findByCodigoTransacao(codigoTransacao)
+                .orElseThrow(() ->
+                        new RuntimeException("Pagamento não encontrado pela transação")
+                );
+    }
+
     private void aplicarResultado(
             Pagamento pagamento,
             ResultadoPagamento resultado) {
