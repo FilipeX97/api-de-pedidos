@@ -26,18 +26,13 @@ public class GatewayPixAdapter implements GatewayPagamentoAdapter {
         RespostaPixGateway resposta =
                 gatewayPixFake.cobrar(pagamento.getValor());
 
-        if (resposta.aprovado()) {
-            return new ResultadoPagamento(
-                    StatusPagamento.APROVADO,
-                    resposta.codigoPix(),
-                    "PIX aprovado com sucesso"
-            );
-        }
-
         return new ResultadoPagamento(
-                StatusPagamento.RECUSADO,
-                resposta.codigoPix(),
-                "PIX recusado"
+                StatusPagamento.PENDENTE,
+                resposta.txid(),
+                "PIX gerado. QR Code: "
+                        + resposta.qrCode()
+                        + " | Copia e cola: "
+                        + resposta.codigoCopiaECola()
         );
     }
 }

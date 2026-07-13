@@ -57,7 +57,8 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
         String uri = request.getRequestURI();
         log.debug("Processando autenticação para URI: {}", uri);
 
-        if (uri.contains("/auth") || uri.contains("/h2-console")) {
+        if (uri.contains("/auth") || uri.contains("/h2-console")
+                || uri.contains("/webhooks")) {
             filterChain.doFilter(request, response);
             return;
         }

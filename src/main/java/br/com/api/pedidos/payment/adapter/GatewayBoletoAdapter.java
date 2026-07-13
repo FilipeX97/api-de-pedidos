@@ -28,8 +28,11 @@ public class GatewayBoletoAdapter implements GatewayPagamentoAdapter {
 
         return new ResultadoPagamento(
                 StatusPagamento.PENDENTE,
-                resposta.linhaDigitavel(),
-                "Boleto gerado com vencimento em " + resposta.dataVencimento()
+                resposta.codigoBoleto(),
+                "Boleto gerado. Linha digitável: "
+                        + resposta.linhaDigitavel()
+                        + " | Vencimento: "
+                        + resposta.dataVencimento()
         );
     }
 }

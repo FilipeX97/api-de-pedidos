@@ -59,6 +59,41 @@ public class CheckoutFacade {
         return pagamentoService.listarPagamentosDoPedido(pedido.getId());
     }
 
+    @Transactional
+    public PagamentoResponseDTO processarWebhookPagamento(String codigoTransacao) {
+        var pagamento = pagamentoService.processarConfirmacaoDoGateway(codigoTransacao);
+        var pedido = pagamento.getPedido();
+
+        if(pagamento.getStatusPagamento() == StatusPagamento.APROVADO) {
+            if (pedido.getStatus() == StatusPedido.PAGO) {
+                return PagamentoResponseDTO.from(pagamento);
+            }
+
+            if (pedido.getStatus() != StatusPedido.AGUARDANDO_PAGAMENTO) {
+                throw new IllegalStateException(
+                        "Somente pedido aguardando pagamento pode ser confirmado pelo webhook. Status atual: "
+                                + pedido.getStatus()
+                );
+            }
+
+            pedidoService.marcarPedidoComoPagoAposPagamento(pedido);
+            return PagamentoResponseDTO.from(pagamento);
+        }
+
+        if (pagamento.getStatusPagamento() == StatusPagamento.RECUSADO) {
+            return PagamentoResponseDTO.from(pagamento);
+        }
+
+        if (pagamento.getStatusPagamento() == StatusPagamento.PENDENTE) {
+            return PagamentoResponseDTO.from(pagamento);
+        }
+
+        throw new IllegalStateException(
+                "Status de pagamento não tratado no webhook: "
+                        + pagamento.getStatusPagamento()
+        );
+    }
+
     private void aplicarResultadoPagamentoNoPedido(
             Pagamento pagamento,
             Pedido pedido) {

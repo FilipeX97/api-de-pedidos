@@ -2,6 +2,7 @@ package br.com.api.pedidos.payment.service;
 
 import br.com.api.pedidos.order.entity.Pedido;
 import br.com.api.pedidos.payment.adapter.ResultadoPagamento;
+import br.com.api.pedidos.payment.adapter.fake.GatewayPagamentoFakeConsulta;
 import br.com.api.pedidos.payment.dto.PagamentoResponseDTO;
 import br.com.api.pedidos.payment.entity.FormaPagamento;
 import br.com.api.pedidos.payment.entity.Pagamento;
@@ -12,18 +13,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class PagamentoService {
 
     private final PagamentoRepository pagamentoRepository;
     private final EstrategiaPagamentoFactory estrategiaPagamentoFactory;
+    private final GatewayPagamentoFakeConsulta gatewayPagamentoFakeConsulta;
 
     public PagamentoService(
             PagamentoRepository pagamentoRepository,
-            EstrategiaPagamentoFactory estrategiaPagamentoFactory) {
+            EstrategiaPagamentoFactory estrategiaPagamentoFactory,
+            GatewayPagamentoFakeConsulta gatewayPagamentoFakeConsulta) {
         this.pagamentoRepository = pagamentoRepository;
         this.estrategiaPagamentoFactory = estrategiaPagamentoFactory;
+        this.gatewayPagamentoFakeConsulta = gatewayPagamentoFakeConsulta;
     }
 
     @Transactional
@@ -65,6 +70,84 @@ public class PagamentoService {
                 .orElseThrow(() ->
                         new RuntimeException("Pagamento não encontrado para este pedido")
                 );
+    }
+
+    @Transactional
+    public Pagamento confirmarPagamentoPendente(
+            Long idPedido,
+            Long idPagamento) {
+        var pagamento = buscarPagamentoDoPedido(idPedido, idPagamento);
+
+        if(!pagamento.estaPendente()) {
+            throw new IllegalStateException(
+                    "Somente pagamento pendente pode ser confirmado"
+            );
+        }
+
+        pagamento.confirmarPagamentoPendente(
+                "CONFIRM-" + UUID.randomUUID(),
+                "Pagamento pendente confirmado manualmente"
+        );
+
+        return pagamentoRepository.saveAndFlush(pagamento);
+    }
+
+    @Transactional
+    public Pagamento processarConfirmacaoDoGateway(String codigoTransacao) {
+        var pagamento = pagamentoRepository
+                .findByCodigoTransacao(codigoTransacao)
+                .orElseThrow(() ->
+                        new RuntimeException("Pagamento não encontrado pela transação")
+                );
+
+        StatusPagamento statusConfirmado =
+                gatewayPagamentoFakeConsulta.consultarStatus(codigoTransacao);
+
+        if (statusConfirmado == StatusPagamento.PENDENTE) {
+            return pagamento;
+        }
+
+        if (statusConfirmado == StatusPagamento.APROVADO) {
+            if (pagamento.estaAprovado()) {
+                return pagamento;
+            }
+
+            if (!pagamento.estaPendente()) {
+                throw new IllegalStateException(
+                        "Somente pagamento pendente pode ser aprovado pelo gateway"
+                );
+            }
+
+            pagamento.confirmarPagamentoPendente(
+                    codigoTransacao,
+                    "Pagamento confirmado pelo gateway fake via webhook"
+            );
+
+            return pagamentoRepository.saveAndFlush(pagamento);
+        }
+
+        if (statusConfirmado == StatusPagamento.RECUSADO) {
+            if (pagamento.estaRecusado()) {
+                return pagamento;
+            }
+
+            if (!pagamento.estaPendente()) {
+                throw new IllegalStateException(
+                        "Somente pagamento pendente pode ser recusado pelo gateway"
+                );
+            }
+
+            pagamento.recusar(
+                    codigoTransacao,
+                    "Pagamento recusado pelo gateway fake via webhook"
+            );
+
+            return pagamentoRepository.saveAndFlush(pagamento);
+        }
+
+        throw new IllegalStateException(
+                "Status de gateway não suportado: " + statusConfirmado
+        );
     }
 
     private void aplicarResultado(

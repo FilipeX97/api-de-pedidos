@@ -48,6 +48,7 @@ public class SegurancaConfig {
                         auth -> auth
                                 .requestMatchers("/auth/**").permitAll()
                                 .requestMatchers("/h2-console/**").permitAll()
+                                .requestMatchers("/webhooks/**").permitAll()
                                 .requestMatchers("/admin/usuarios/**").hasAnyRole("ADMIN")
                                 .anyRequest().authenticated()
                 )

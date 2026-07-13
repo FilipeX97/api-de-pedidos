@@ -81,6 +81,18 @@ public class Pagamento {
         atualizarData();
     }
 
+    public void confirmarPagamentoPendente(
+            String codigoTransacao,
+            String mensagemRetorno) {
+        if (this.statusPagamento != StatusPagamento.PENDENTE) {
+            throw new IllegalStateException(
+                    "Somente pagamento pendente pode ser confirmado"
+            );
+        }
+
+        aprovar(codigoTransacao, mensagemRetorno);
+    }
+
     public void cancelar(String mensagemRetorno) {
         this.statusPagamento = StatusPagamento.CANCELADO;
         this.mensagemRetorno = mensagemRetorno;

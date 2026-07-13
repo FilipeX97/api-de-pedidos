@@ -5,14 +5,25 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Random;
+import java.util.UUID;
 
 @Component
 public class GatewayBoletoFake {
 
     private final Random random = new Random();
+    private final GatewayPagamentoFakeConsulta  gatewayPagamentoFakeConsulta;
+
+    public  GatewayBoletoFake(
+            GatewayPagamentoFakeConsulta gatewayPagamentoFakeConsulta) {
+        this.gatewayPagamentoFakeConsulta = gatewayPagamentoFakeConsulta;
+    }
 
     public RespostaBoletoGateway gerarBoleto(BigDecimal valor) {
+        String codigoBoleto = "BOL-" + UUID.randomUUID();
+        gatewayPagamentoFakeConsulta.registrarPagamentoPendente(codigoBoleto);
+
         return new RespostaBoletoGateway(
+                codigoBoleto,
                 gerarLinhaDigitavel(),
                 LocalDate.now().plusDays(3),
                 "GERADO"
