@@ -5,6 +5,7 @@ import br.com.api.pedidos.payment.dto.PagamentoResponseDTO;
 import br.com.api.pedidos.payment.entity.StatusPagamento;
 import br.com.api.pedidos.payment.facade.CheckoutFacade;
 import br.com.api.pedidos.payment.webhook.dto.FakePagamentoWebhookDTO;
+import br.com.api.pedidos.payment.webhook.service.result.ResultadoRegistroWebhook;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,21 +46,17 @@ public class FakePagamentoWebhookService {
         FakePagamentoWebhookDTO dto = converter(corpoOriginal);
         validarWebhook(dto);
 
-        var eventoJaRecebido =
-                webhookPagamentoRecebidoService.buscarPorEventId(
-                        dto.eventId()
+        ResultadoRegistroWebhook resultadoRegistro =
+                webhookPagamentoRecebidoService.registrarOuBuscarExistente(
+                        dto,
+                        corpoOriginal
                 );
 
-        if (eventoJaRecebido.isPresent()) {
+        if (resultadoRegistro.duplicado()) {
             return checkoutFacade.buscarPagamentoPorCodigoTransacao(
-                    eventoJaRecebido.get().getCodigoTransacao()
+                    resultadoRegistro.evento().getCodigoTransacao()
             );
         }
-
-        webhookPagamentoRecebidoService.registrar(
-                dto,
-                corpoOriginal
-        );
 
         // Criado pra simular que o gateway/banco alterou o status da transação no ambiente externo.
         gatewayPagamentoFakeConsulta.simularAtualizacaoExterna(
