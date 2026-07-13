@@ -84,10 +84,16 @@ class FakePagamentoWebhookServiceTest {
         );
 
         verify(checkoutFacade).processarWebhookPagamento("PIX-123");
+
+        verify(webhookPagamentoRecebidoService)
+                .marcarComoProcessado(evento);
+
+        verify(webhookPagamentoRecebidoService, never())
+                .marcarComoErro(any(), any());
     }
 
     @Test
-    void naoDeveProcessarNovamenteWebhookDuplicado() {
+    void naoDeveProcessarNovamenteWebhookDuplicadoJaProcessado() {
         String payload = payloadValido();
 
         WebhookPagamentoRecebido evento =
@@ -97,6 +103,8 @@ class FakePagamentoWebhookServiceTest {
                         StatusPagamento.APROVADO,
                         payload
                 );
+
+        evento.marcarComoProcessado();
 
         PagamentoResponseDTO resposta =
                 respostaPagamento(StatusPagamento.APROVADO);
@@ -122,6 +130,12 @@ class FakePagamentoWebhookServiceTest {
 
         verify(checkoutFacade)
                 .buscarPagamentoPorCodigoTransacao("PIX-123");
+
+        verify(webhookPagamentoRecebidoService, never())
+                .marcarComoProcessado(any());
+
+        verify(webhookPagamentoRecebidoService, never())
+                .marcarComoErro(any(), any());
     }
 
     @Test
@@ -143,6 +157,96 @@ class FakePagamentoWebhookServiceTest {
         verifyNoInteractions(webhookPagamentoRecebidoService);
         verifyNoInteractions(gatewayPagamentoFakeConsulta);
         verifyNoInteractions(checkoutFacade);
+    }
+
+    @Test
+    void deveReprocessarWebhookDuplicadoComErro() {
+        String payload = payloadValido();
+
+        WebhookPagamentoRecebido evento =
+                new WebhookPagamentoRecebido(
+                        "evt-1",
+                        "PIX-123",
+                        StatusPagamento.APROVADO,
+                        payload
+                );
+
+        evento.marcarComoErro("Erro anterior");
+
+        PagamentoResponseDTO resposta =
+                respostaPagamento(StatusPagamento.APROVADO);
+
+        when(webhookPagamentoRecebidoService.registrarOuBuscarExistente(
+                any(),
+                eq(payload)
+        )).thenReturn(new ResultadoRegistroWebhook(evento, false));
+
+        when(checkoutFacade.processarWebhookPagamento("PIX-123"))
+                .thenReturn(resposta);
+
+        PagamentoResponseDTO resultado =
+                service.processarWebhook(payload, "assinatura");
+
+        assertEquals(StatusPagamento.APROVADO, resultado.statusPagamento());
+
+        verify(gatewayPagamentoFakeConsulta)
+                .simularAtualizacaoExterna(
+                        "PIX-123",
+                        StatusPagamento.APROVADO
+                );
+
+        verify(checkoutFacade)
+                .processarWebhookPagamento("PIX-123");
+
+        verify(webhookPagamentoRecebidoService)
+                .marcarComoProcessado(evento);
+
+        verify(webhookPagamentoRecebidoService, never())
+                .marcarComoErro(any(), any());
+    }
+
+    @Test
+    void deveMarcarWebhookComoErroQuandoProcessamentoFalhar() {
+        String payload = payloadValido();
+
+        WebhookPagamentoRecebido evento =
+                new WebhookPagamentoRecebido(
+                        "evt-1",
+                        "PIX-123",
+                        StatusPagamento.APROVADO,
+                        payload
+                );
+
+        IllegalStateException exception =
+                new IllegalStateException("Falha ao processar pagamento");
+
+        when(webhookPagamentoRecebidoService.registrarOuBuscarExistente(
+                any(),
+                eq(payload)
+        )).thenReturn(new ResultadoRegistroWebhook(evento, true));
+
+        when(checkoutFacade.processarWebhookPagamento("PIX-123"))
+                .thenThrow(exception);
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> service.processarWebhook(payload, "assinatura")
+        );
+
+        verify(gatewayPagamentoFakeConsulta)
+                .simularAtualizacaoExterna(
+                        "PIX-123",
+                        StatusPagamento.APROVADO
+                );
+
+        verify(checkoutFacade)
+                .processarWebhookPagamento("PIX-123");
+
+        verify(webhookPagamentoRecebidoService, never())
+                .marcarComoProcessado(any());
+
+        verify(webhookPagamentoRecebidoService)
+                .marcarComoErro(evento, exception);
     }
 
     private String payloadValido() {

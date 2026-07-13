@@ -5,6 +5,7 @@ import br.com.api.pedidos.payment.dto.PagamentoResponseDTO;
 import br.com.api.pedidos.payment.entity.StatusPagamento;
 import br.com.api.pedidos.payment.facade.CheckoutFacade;
 import br.com.api.pedidos.payment.webhook.dto.FakePagamentoWebhookDTO;
+import br.com.api.pedidos.payment.webhook.entity.WebhookPagamentoRecebido;
 import br.com.api.pedidos.payment.webhook.service.result.ResultadoRegistroWebhook;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
@@ -30,12 +31,14 @@ public class FakePagamentoWebhookService {
         this.assinaturaWebhookFakeService = assinaturaWebhookFakeService;
         this.gatewayPagamentoFakeConsulta = gatewayPagamentoFakeConsulta;
         this.checkoutFacade = checkoutFacade;
-        this.webhookPagamentoRecebidoService = webhookPagamentoRecebidoService;
+        this.webhookPagamentoRecebidoService =
+                webhookPagamentoRecebidoService;
     }
 
     public PagamentoResponseDTO processarWebhook(
             String corpoOriginal,
-            String assinatura) {
+            String assinatura
+    ) {
         assinaturaWebhookFakeService.validarAssinatura(
                 corpoOriginal,
                 assinatura
@@ -50,21 +53,46 @@ public class FakePagamentoWebhookService {
                         corpoOriginal
                 );
 
-        if (resultadoRegistro.duplicado()) {
+        if (!resultadoRegistro.deveProcessar()) {
             return checkoutFacade.buscarPagamentoPorCodigoTransacao(
                     resultadoRegistro.evento().getCodigoTransacao()
             );
         }
 
-        // Criado pra simular que o gateway/banco alterou o status da transação no ambiente externo.
-        gatewayPagamentoFakeConsulta.simularAtualizacaoExterna(
-                dto.codigoTransacao(),
-                dto.statusPagamento()
+        return processarEventoRecebido(
+                resultadoRegistro.evento()
         );
+    }
 
-        return checkoutFacade.processarWebhookPagamento(
-                dto.codigoTransacao()
-        );
+    private PagamentoResponseDTO processarEventoRecebido(
+            WebhookPagamentoRecebido evento
+    ) {
+        try {
+            // Criado pra simular que o gateway/banco alterou o status da transação no ambiente externo.
+            gatewayPagamentoFakeConsulta.simularAtualizacaoExterna(
+                    evento.getCodigoTransacao(),
+                    evento.getStatusRecebido()
+            );
+
+            PagamentoResponseDTO pagamentoResponseDTO =
+                    checkoutFacade.processarWebhookPagamento(
+                            evento.getCodigoTransacao()
+                    );
+
+            webhookPagamentoRecebidoService.marcarComoProcessado(
+                    evento
+            );
+
+            return pagamentoResponseDTO;
+
+        } catch (Exception exception) {
+            webhookPagamentoRecebidoService.marcarComoErro(
+                    evento,
+                    exception
+            );
+
+            throw exception;
+        }
     }
 
     private FakePagamentoWebhookDTO converter(String corpoOriginal) {
@@ -74,13 +102,18 @@ public class FakePagamentoWebhookService {
                     FakePagamentoWebhookDTO.class
             );
         } catch (Exception e) {
-            throw new IllegalArgumentException("Payload do webhook inválido", e);
+            throw new IllegalArgumentException(
+                    "Payload do webhook inválido",
+                    e
+            );
         }
     }
 
     private void validarWebhook(FakePagamentoWebhookDTO dto) {
         if (dto.eventId() == null || dto.eventId().isBlank()) {
-            throw new IllegalArgumentException("EventId do webhook é obrigatório");
+            throw new IllegalArgumentException(
+                    "EventId do webhook é obrigatório"
+            );
         }
 
         if (!TIPO_PAYMENT_UPDATED.equals(dto.tipo())) {
@@ -89,7 +122,8 @@ public class FakePagamentoWebhookService {
             );
         }
 
-        if (dto.codigoTransacao() == null || dto.codigoTransacao().isBlank()) {
+        if (dto.codigoTransacao() == null
+                || dto.codigoTransacao().isBlank()) {
             throw new IllegalArgumentException(
                     "Código da transação é obrigatório"
             );

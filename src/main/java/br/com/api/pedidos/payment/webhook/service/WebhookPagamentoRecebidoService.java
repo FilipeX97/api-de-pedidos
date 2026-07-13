@@ -17,17 +17,21 @@ public class WebhookPagamentoRecebidoService {
 
     public WebhookPagamentoRecebidoService(
             WebhookPagamentoRecebidoRepository webhookPagamentoRecebidoRepository) {
-        this.webhookPagamentoRecebidoRepository = webhookPagamentoRecebidoRepository;
+        this.webhookPagamentoRecebidoRepository =
+                webhookPagamentoRecebidoRepository;
     }
 
     @Transactional(readOnly = true)
-    public Optional<WebhookPagamentoRecebido> buscarPorEventId(String eventId) {
+    public Optional<WebhookPagamentoRecebido> buscarPorEventId(
+            String eventId
+    ) {
         return webhookPagamentoRecebidoRepository.findByEventId(eventId);
     }
 
     public ResultadoRegistroWebhook registrarOuBuscarExistente(
             FakePagamentoWebhookDTO fakePagamentoWebhookDTO,
-            String payloadOriginal) {
+            String payloadOriginal
+    ) {
         Optional<WebhookPagamentoRecebido> existente =
                 webhookPagamentoRecebidoRepository.findByEventId(
                         fakePagamentoWebhookDTO.eventId()
@@ -41,12 +45,13 @@ public class WebhookPagamentoRecebidoService {
         }
 
         try {
-            WebhookPagamentoRecebido webhook = new WebhookPagamentoRecebido(
-                    fakePagamentoWebhookDTO.eventId(),
-                    fakePagamentoWebhookDTO.codigoTransacao(),
-                    fakePagamentoWebhookDTO.statusPagamento(),
-                    payloadOriginal
-            );
+            WebhookPagamentoRecebido webhook =
+                    new WebhookPagamentoRecebido(
+                            fakePagamentoWebhookDTO.eventId(),
+                            fakePagamentoWebhookDTO.codigoTransacao(),
+                            fakePagamentoWebhookDTO.statusPagamento(),
+                            payloadOriginal
+                    );
 
             WebhookPagamentoRecebido salvo =
                     webhookPagamentoRecebidoRepository.saveAndFlush(webhook);
@@ -59,7 +64,9 @@ public class WebhookPagamentoRecebidoService {
         } catch (DataIntegrityViolationException e) {
             WebhookPagamentoRecebido webhookExistente =
                     webhookPagamentoRecebidoRepository
-                            .findByEventId(fakePagamentoWebhookDTO.eventId())
+                            .findByEventId(
+                                    fakePagamentoWebhookDTO.eventId()
+                            )
                             .orElseThrow(() ->
                                     new IllegalStateException(
                                             "Evento de webhook duplicado, mas não foi possível recuperar o registro existente"
@@ -71,5 +78,51 @@ public class WebhookPagamentoRecebidoService {
                     false
             );
         }
+    }
+
+    @Transactional
+    public WebhookPagamentoRecebido marcarComoProcessado(
+            WebhookPagamentoRecebido webhook
+    ) {
+        validarWebhook(webhook);
+
+        webhook.marcarComoProcessado();
+
+        return webhookPagamentoRecebidoRepository.saveAndFlush(webhook);
+    }
+
+    @Transactional
+    public WebhookPagamentoRecebido marcarComoErro(
+            WebhookPagamentoRecebido webhook,
+            Exception exception
+    ) {
+        validarWebhook(webhook);
+
+        webhook.marcarComoErro(
+                extrairMensagemErro(exception)
+        );
+
+        return webhookPagamentoRecebidoRepository.saveAndFlush(webhook);
+    }
+
+    private void validarWebhook(WebhookPagamentoRecebido webhook) {
+        if (webhook == null) {
+            throw new IllegalArgumentException(
+                    "Webhook recebido é obrigatório"
+            );
+        }
+    }
+
+    private String extrairMensagemErro(Exception exception) {
+        if (exception == null) {
+            return "Erro não informado";
+        }
+
+        if (exception.getMessage() != null
+                && !exception.getMessage().isBlank()) {
+            return exception.getMessage();
+        }
+
+        return exception.getClass().getSimpleName();
     }
 }

@@ -8,6 +8,7 @@ import java.util.Objects;
 
 @Entity
 @Table(
+        name = "webhook_pagamento_recebido",
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_webhook_pagamento_event_id",
@@ -22,10 +23,16 @@ import java.util.Objects;
                 @Index(
                         name = "idx_webhook_pagamento_data_recebimento",
                         columnList = "data_recebimento"
+                ),
+                @Index(
+                        name = "idx_webhook_pagamento_status_processamento",
+                        columnList = "status_processamento"
                 )
         }
 )
 public class WebhookPagamentoRecebido {
+
+    private static final int TAMANHO_MAXIMO_MENSAGEM_ERRO = 2000;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -71,6 +78,23 @@ public class WebhookPagamentoRecebido {
     )
     private LocalDateTime dataRecebimento;
 
+    @Enumerated(EnumType.STRING)
+    @Column(
+            name = "status_processamento",
+            nullable = false,
+            length = 30
+    )
+    private StatusProcessamentoWebhook statusProcessamento;
+
+    @Column(
+            name = "mensagem_erro",
+            length = TAMANHO_MAXIMO_MENSAGEM_ERRO
+    )
+    private String mensagemErro;
+
+    @Column(name = "data_processamento")
+    private LocalDateTime dataProcessamento;
+
     protected WebhookPagamentoRecebido() {
     }
 
@@ -78,7 +102,8 @@ public class WebhookPagamentoRecebido {
             String eventId,
             String codigoTransacao,
             StatusPagamento statusRecebido,
-            String payload) {
+            String payload
+    ) {
         validarEventId(eventId);
         validarCodigoTransacao(codigoTransacao);
         validarStatusRecebido(statusRecebido);
@@ -89,6 +114,43 @@ public class WebhookPagamentoRecebido {
         this.statusRecebido = statusRecebido;
         this.payload = payload;
         this.dataRecebimento = LocalDateTime.now();
+        this.statusProcessamento = StatusProcessamentoWebhook.RECEBIDO;
+    }
+
+    public void marcarComoProcessado() {
+        this.statusProcessamento = StatusProcessamentoWebhook.PROCESSADO;
+        this.mensagemErro = null;
+        this.dataProcessamento = LocalDateTime.now();
+    }
+
+    public void marcarComoErro(String mensagemErro) {
+        this.statusProcessamento = StatusProcessamentoWebhook.ERRO;
+        this.mensagemErro = limitarMensagemErro(mensagemErro);
+        this.dataProcessamento = LocalDateTime.now();
+    }
+
+    public boolean estaRecebido() {
+        return statusProcessamento == StatusProcessamentoWebhook.RECEBIDO;
+    }
+
+    public boolean estaProcessado() {
+        return statusProcessamento == StatusProcessamentoWebhook.PROCESSADO;
+    }
+
+    public boolean estaComErro() {
+        return statusProcessamento == StatusProcessamentoWebhook.ERRO;
+    }
+
+    private String limitarMensagemErro(String mensagemErro) {
+        if (mensagemErro == null || mensagemErro.isBlank()) {
+            return "Erro não informado";
+        }
+
+        if (mensagemErro.length() <= TAMANHO_MAXIMO_MENSAGEM_ERRO) {
+            return mensagemErro;
+        }
+
+        return mensagemErro.substring(0, TAMANHO_MAXIMO_MENSAGEM_ERRO);
     }
 
     private void validarEventId(String eventId) {
@@ -137,6 +199,18 @@ public class WebhookPagamentoRecebido {
 
     public LocalDateTime getDataRecebimento() {
         return dataRecebimento;
+    }
+
+    public StatusProcessamentoWebhook getStatusProcessamento() {
+        return statusProcessamento;
+    }
+
+    public String getMensagemErro() {
+        return mensagemErro;
+    }
+
+    public LocalDateTime getDataProcessamento() {
+        return dataProcessamento;
     }
 
     @Override

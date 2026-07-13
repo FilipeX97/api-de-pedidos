@@ -43,6 +43,9 @@ class WebhookPagamentoRecebidoServiceTest {
 
         assertTrue(resultado.novo());
         assertFalse(resultado.duplicado());
+        assertTrue(resultado.evento().estaRecebido());
+        assertFalse(resultado.evento().estaProcessado());
+        assertFalse(resultado.evento().estaComErro());
         assertEquals("evt-1", resultado.evento().getEventId());
 
         verify(repository).saveAndFlush(any(WebhookPagamentoRecebido.class));
@@ -100,6 +103,60 @@ class WebhookPagamentoRecebidoServiceTest {
         assertFalse(resultado.novo());
         assertTrue(resultado.duplicado());
         assertEquals("PIX-123", resultado.evento().getCodigoTransacao());
+    }
+
+    @Test
+    void deveMarcarWebhookComoProcessado() {
+        WebhookPagamentoRecebido webhook =
+                new WebhookPagamentoRecebido(
+                        "evt-1",
+                        "PIX-123",
+                        StatusPagamento.APROVADO,
+                        "{}"
+                );
+
+        when(repository.saveAndFlush(webhook))
+                .thenReturn(webhook);
+
+        WebhookPagamentoRecebido resultado =
+                service.marcarComoProcessado(webhook);
+
+        assertTrue(resultado.estaProcessado());
+        assertFalse(resultado.estaComErro());
+        assertNull(resultado.getMensagemErro());
+        assertNotNull(resultado.getDataProcessamento());
+
+        verify(repository).saveAndFlush(webhook);
+    }
+
+    @Test
+    void deveMarcarWebhookComoErro() {
+        WebhookPagamentoRecebido webhook =
+                new WebhookPagamentoRecebido(
+                        "evt-1",
+                        "PIX-123",
+                        StatusPagamento.APROVADO,
+                        "{}"
+                );
+
+        IllegalStateException exception =
+                new IllegalStateException("Falha ao processar pagamento");
+
+        when(repository.saveAndFlush(webhook))
+                .thenReturn(webhook);
+
+        WebhookPagamentoRecebido resultado =
+                service.marcarComoErro(webhook, exception);
+
+        assertTrue(resultado.estaComErro());
+        assertFalse(resultado.estaProcessado());
+        assertEquals(
+                "Falha ao processar pagamento",
+                resultado.getMensagemErro()
+        );
+        assertNotNull(resultado.getDataProcessamento());
+
+        verify(repository).saveAndFlush(webhook);
     }
 
     private FakePagamentoWebhookDTO novoDto() {
