@@ -11,7 +11,7 @@ public final class PaginacaoUtils {
 
     private static final int TAMANHO_MAXIMO_PAGINA = 100;
 
-    public PaginacaoUtils() {
+    private PaginacaoUtils() {
     }
 
     public static Pageable normalizar(

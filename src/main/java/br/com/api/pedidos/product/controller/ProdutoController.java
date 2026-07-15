@@ -41,7 +41,7 @@ public class ProdutoController {
                     page = 0,
                     size = 20,
                     sort = "nome",
-                    direction = Sort.Direction.DESC
+                    direction = Sort.Direction.ASC
             )
             Pageable pageable
     ) {

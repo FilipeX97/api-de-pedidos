@@ -7,7 +7,6 @@ import br.com.api.pedidos.security.userdetails.UsuarioSecurity;
 import br.com.api.pedidos.security.util.RequestUtils;
 import br.com.api.pedidos.security.util.SecurityUtils;
 import br.com.api.pedidos.security.util.TokenUtils;
-import br.com.api.pedidos.user.entity.Usuario;
 import br.com.api.pedidos.user.service.UsuarioAutenticacaoService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;

@@ -10,8 +10,6 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/admin/usuarios")
 public class AdminUsuarioController {
@@ -23,7 +21,8 @@ public class AdminUsuarioController {
     }
 
     @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping public RespostaApi<PaginaResponseDTO<UsuarioResponseDTO>> listarUsuarios(
+    @GetMapping
+    public RespostaApi<PaginaResponseDTO<UsuarioResponseDTO>> listarUsuarios(
             @PageableDefault(
                     page = 0,
                     size = 20,
