@@ -1,18 +1,39 @@
 package br.com.api.pedidos.user.service;
 
+import br.com.api.pedidos.shared.pagination.dto.PaginaResponseDTO;
+import br.com.api.pedidos.shared.pagination.util.PaginacaoUtils;
 import br.com.api.pedidos.user.cache.UsuarioCacheService;
 import br.com.api.pedidos.user.dto.UsuarioRequestDTO;
 import br.com.api.pedidos.user.dto.UsuarioResponseDTO;
 import br.com.api.pedidos.user.entity.Perfil;
 import br.com.api.pedidos.user.entity.Usuario;
 import br.com.api.pedidos.user.repository.UsuarioRepository;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.Map;
 
 @Service
 public class UsuarioService {
+
+    private static final Map<String, String> CAMPOS_ORDENACAO =
+            Map.ofEntries(
+                    Map.entry("id", "id"),
+                    Map.entry("nome", "nome"),
+                    Map.entry("email", "email"),
+                    Map.entry("perfil", "perfil"),
+                    Map.entry("dataCriacao", "dataCriacao"),
+                    Map.entry("ativo", "ativo"),
+                    Map.entry("clienteVip", "clienteVip")
+            );
+
+    private static final Sort ORDENACAO_PADRAO =
+            Sort.by(
+                    Sort.Order.asc("nome")
+            );
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
@@ -44,12 +65,14 @@ public class UsuarioService {
         return UsuarioResponseDTO.from(usuario);
     }
 
+    @Transactional(readOnly = true)
     public UsuarioResponseDTO buscarUsuarioPorId(Long id) {
         return UsuarioResponseDTO.from(
                 buscarUsuarioOuFalhar(id)
         );
     }
 
+    @Transactional(readOnly = true)
     public UsuarioResponseDTO buscarUsuarioPorEmail(String email) {
         return usuarioRepository.findByEmail(email)
                 .map(UsuarioResponseDTO::from)
@@ -57,11 +80,22 @@ public class UsuarioService {
                         new IllegalArgumentException("Usuário não encontrado"));
     }
 
-    public List<UsuarioResponseDTO> listarUsuarios() {
-        return usuarioRepository.findAll()
-                .stream()
-                .map(UsuarioResponseDTO::from)
-                .toList();
+    @Transactional(readOnly = true)
+    public PaginaResponseDTO<UsuarioResponseDTO> listarUsuarios(
+            Pageable pageable
+    ) {
+        Pageable pageableValidado =
+                PaginacaoUtils.normalizar(
+                        pageable,
+                        CAMPOS_ORDENACAO,
+                        ORDENACAO_PADRAO
+                );
+
+        var pagina = usuarioRepository
+                .findAll(pageableValidado)
+                .map(UsuarioResponseDTO::from);
+
+        return PaginaResponseDTO.from(pagina);
     }
 
     public UsuarioResponseDTO atualizarUsuario(Long id, UsuarioRequestDTO usuarioRequestDTO) {

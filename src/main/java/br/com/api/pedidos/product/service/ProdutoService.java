@@ -4,13 +4,32 @@ import br.com.api.pedidos.product.dto.ProdutoRequestDTO;
 import br.com.api.pedidos.product.dto.ProdutoResponseDTO;
 import br.com.api.pedidos.product.entity.Produto;
 import br.com.api.pedidos.product.repository.ProdutoRepository;
+import br.com.api.pedidos.shared.pagination.dto.PaginaResponseDTO;
+import br.com.api.pedidos.shared.pagination.util.PaginacaoUtils;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.Map;
 
 @Service
 public class ProdutoService {
+
+    private static final Map<String, String> CAMPOS_ORDENACAO =
+            Map.ofEntries(
+                    Map.entry("id", "id"),
+                    Map.entry("nome", "nome"),
+                    Map.entry("descricao", "descricao"),
+                    Map.entry("preco", "preco"),
+                    Map.entry("estoque", "estoque"),
+                    Map.entry("ativo", "ativo")
+            );
+
+    private static final Sort ORDENACAO_PADRAO =
+            Sort.by(
+                    Sort.Order.asc("nome")
+            );
 
     private final ProdutoRepository produtoRepository;
 
@@ -18,15 +37,28 @@ public class ProdutoService {
         this.produtoRepository = produtoRepository;
     }
 
+    @Transactional(readOnly = true)
     public ProdutoResponseDTO buscarProdutoPorId(Long id) {
         return produtoRepository
                 .findById(id).map(ProdutoResponseDTO::from)
                 .orElseThrow(() -> new IllegalArgumentException("Produto não encontrado"));
     }
 
-    public List<ProdutoResponseDTO> listarProdutos() {
-        return produtoRepository.findAll().stream()
-                .map(ProdutoResponseDTO::from).toList();
+    @Transactional(readOnly = true)
+    public PaginaResponseDTO<ProdutoResponseDTO> listarProdutos(
+            Pageable pageable
+    ) {
+        Pageable pageableValidado = PaginacaoUtils.normalizar(
+                pageable,
+                CAMPOS_ORDENACAO,
+                ORDENACAO_PADRAO
+        );
+
+        var pagina = produtoRepository
+                .findAll(pageableValidado)
+                .map(ProdutoResponseDTO::from);
+
+        return PaginaResponseDTO.from(pagina);
     }
 
     @Transactional

@@ -4,9 +4,13 @@ import br.com.api.pedidos.coupon.dto.CupomRequestDTO;
 import br.com.api.pedidos.coupon.dto.CupomResponseDTO;
 import br.com.api.pedidos.coupon.service.CupomService;
 import br.com.api.pedidos.shared.idempotency.service.IdempotencyService;
+import br.com.api.pedidos.shared.pagination.dto.PaginaResponseDTO;
 import br.com.api.pedidos.shared.response.RespostaApi;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -45,9 +49,17 @@ public class CupomController {
     }
 
     @GetMapping
-    public RespostaApi<List<CupomResponseDTO>> listarCupons() {
+    public RespostaApi<PaginaResponseDTO<CupomResponseDTO>> listarCupons(
+            @PageableDefault(
+                    page = 0,
+                    size = 20,
+                    sort = "dataFim",
+                    direction = Sort.Direction.DESC
+            )
+            Pageable pageable
+    ) {
         return RespostaApi.sucesso(
-                cupomService.listarCupons(),
+                cupomService.listarCupons(pageable),
                 "Cupons encontrados"
         );
     }

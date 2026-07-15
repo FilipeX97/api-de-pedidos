@@ -3,7 +3,11 @@ package br.com.api.pedidos.notification.controller;
 import br.com.api.pedidos.notification.dto.NotificacaoResponseDTO;
 import br.com.api.pedidos.notification.service.NotificacaoService;
 import br.com.api.pedidos.security.service.UsuarioLogadoService;
+import br.com.api.pedidos.shared.pagination.dto.PaginaResponseDTO;
 import br.com.api.pedidos.shared.response.RespostaApi;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,11 +27,26 @@ public class NotificacaoController {
     }
 
     @GetMapping
-    public RespostaApi<List<NotificacaoResponseDTO>> listarMinhasNotificacoes() {
+    public RespostaApi<PaginaResponseDTO<NotificacaoResponseDTO>> listarMinhasNotificacoes(
+            @RequestParam(required = false)
+            Boolean lida,
+
+            @PageableDefault(
+                    page = 0,
+                    size = 20,
+                    sort = "dataCriacao",
+                    direction = Sort.Direction.DESC
+            )
+            Pageable pageable
+    ) {
         var usuario = usuarioLogadoService.getUsuarioLogado();
 
         return RespostaApi.sucesso(
-                notificacaoService.listarPorUsuario(usuario),
+                notificacaoService.listarPorUsuario(
+                        usuario,
+                        lida,
+                        pageable
+                ),
                 "Notificações encontradas"
         );
     }

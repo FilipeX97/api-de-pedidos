@@ -49,7 +49,7 @@ public class SegurancaConfig {
                                 .requestMatchers("/auth/**").permitAll()
                                 .requestMatchers("/h2-console/**").permitAll()
                                 .requestMatchers("/webhooks/**").permitAll()
-                                .requestMatchers("/admin/usuarios/**").hasAnyRole("ADMIN")
+                                .requestMatchers("/admin/**").hasRole("ADMIN")
                                 .anyRequest().authenticated()
                 )
                 .addFilterBefore(

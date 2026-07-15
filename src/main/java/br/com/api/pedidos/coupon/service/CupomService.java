@@ -4,13 +4,37 @@ import br.com.api.pedidos.coupon.dto.CupomRequestDTO;
 import br.com.api.pedidos.coupon.dto.CupomResponseDTO;
 import br.com.api.pedidos.coupon.entity.Cupom;
 import br.com.api.pedidos.coupon.repository.CupomRepository;
+import br.com.api.pedidos.shared.pagination.dto.PaginaResponseDTO;
+import br.com.api.pedidos.shared.pagination.util.PaginacaoUtils;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.Map;
 
 @Service
 public class CupomService {
+
+    private static final Map<String, String> CAMPOS_ORDENACAO =
+            Map.ofEntries(
+                    Map.entry("id", "id"),
+                    Map.entry("codigo", "codigo"),
+                    Map.entry("percentual", "percentual"),
+                    Map.entry("dataInicio", "dataInicio"),
+                    Map.entry("dataFim", "dataFim"),
+                    Map.entry("ativo", "ativo"),
+                    Map.entry("limiteUso", "limiteUso"),
+                    Map.entry(
+                            "quantidadeDeUso",
+                            "quantidadeDeUso"
+                    )
+            );
+
+    private static final Sort ORDENACAO_PADRAO =
+            Sort.by(
+                    Sort.Order.desc("dataFim")
+            );
 
     private final CupomRepository cupomRepository;
 
@@ -36,13 +60,25 @@ public class CupomService {
         return CupomResponseDTO.from(cupomSalvo);
     }
 
-    public List<CupomResponseDTO> listarCupons() {
-        return cupomRepository.findAll()
-                .stream()
-                .map(CupomResponseDTO::from)
-                .toList();
+    @Transactional(readOnly = true)
+    public PaginaResponseDTO<CupomResponseDTO> listarCupons(
+            Pageable pageable
+    ) {
+        Pageable pageableValidado =
+                PaginacaoUtils.normalizar(
+                        pageable,
+                        CAMPOS_ORDENACAO,
+                        ORDENACAO_PADRAO
+                );
+
+        var pagina = cupomRepository
+                .findAll(pageableValidado)
+                .map(CupomResponseDTO::from);
+
+        return PaginaResponseDTO.from(pagina);
     }
 
+    @Transactional(readOnly = true)
     public CupomResponseDTO buscarCupomPorId(Long id) {
         return CupomResponseDTO.from(buscarPorId(id));
     }

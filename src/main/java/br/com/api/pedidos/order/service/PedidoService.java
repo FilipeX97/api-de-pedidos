@@ -20,7 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 public class PedidoService {
@@ -49,13 +48,6 @@ public class PedidoService {
     @Transactional(readOnly = true)
     public PedidoResponseDTO buscarPedidoPorId(Long idPedido, Usuario usuario) {
         return PedidoResponseDTO.from(buscarPedidoDoUsuario(idPedido, usuario));
-    }
-
-    @Transactional(readOnly = true)
-    public List<PedidoResponseDTO> buscarTodosPedidos(Usuario usuario) {
-        return pedidoRepository.findAllByUsuario(usuario).stream()
-                .map(PedidoResponseDTO::from)
-                .toList();
     }
 
     @Transactional

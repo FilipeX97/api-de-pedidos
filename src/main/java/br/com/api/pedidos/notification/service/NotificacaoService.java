@@ -5,15 +5,34 @@ import br.com.api.pedidos.notification.entity.Notificacao;
 import br.com.api.pedidos.notification.entity.TipoNotificacao;
 import br.com.api.pedidos.notification.repository.NotificacaoRepository;
 import br.com.api.pedidos.order.repository.PedidoRepository;
+import br.com.api.pedidos.shared.pagination.dto.PaginaResponseDTO;
+import br.com.api.pedidos.shared.pagination.util.PaginacaoUtils;
 import br.com.api.pedidos.user.entity.Usuario;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.Map;
 
 @Service
 public class NotificacaoService {
+
+    private static final Map<String, String> CAMPOS_ORDENACAO =
+            Map.ofEntries(
+                    Map.entry("id", "id"),
+                    Map.entry("titulo", "titulo"),
+                    Map.entry("tipo", "tipo"),
+                    Map.entry("lida", "lida"),
+                    Map.entry("dataCriacao", "dataCriacao")
+            );
+
+    private static final Sort ORDENACAO_PADRAO =
+            Sort.by(
+                    Sort.Order.desc("dataCriacao")
+            );
 
     private final NotificacaoRepository notificacaoRepository;
     private final PedidoRepository pedidoRepository;
@@ -54,10 +73,41 @@ public class NotificacaoService {
     }
 
     @Transactional(readOnly = true)
-    public List<NotificacaoResponseDTO> listarPorUsuario(Usuario usuario) {
-        return notificacaoRepository
-                .findAllByUsuarioOrderByDataCriacaoDesc(usuario)
-                .stream().map(NotificacaoResponseDTO::from).toList();
+    public PaginaResponseDTO<NotificacaoResponseDTO> listarPorUsuario(
+            Usuario usuario,
+            Boolean lida,
+            Pageable pageable
+    ) {
+        if (usuario == null) {
+            throw new IllegalArgumentException("Usuário é obrigatório");
+        }
+
+        Pageable pageableValidado =
+                PaginacaoUtils.normalizar(
+                        pageable,
+                        CAMPOS_ORDENACAO,
+                        ORDENACAO_PADRAO
+                );
+
+        Page<Notificacao> pagina;
+
+        if (lida == null) {
+            pagina = notificacaoRepository.findAllByUsuario(
+                    usuario,
+                    pageableValidado
+            );
+        } else {
+            pagina = notificacaoRepository
+                    .findAllByUsuarioAndLida(
+                            usuario,
+                            lida,
+                            pageableValidado
+                    );
+        }
+
+        return PaginaResponseDTO.from(
+                pagina.map(NotificacaoResponseDTO::from)
+        );
     }
 
     @Transactional(readOnly = true)

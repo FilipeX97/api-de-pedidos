@@ -4,12 +4,18 @@ import br.com.api.pedidos.order.dto.AdicionarPedidoRequestDTO;
 import br.com.api.pedidos.order.dto.AlterarQuantidadeItemRequestDTO;
 import br.com.api.pedidos.order.dto.AplicarCupomRequestDTO;
 import br.com.api.pedidos.order.dto.PedidoResponseDTO;
+import br.com.api.pedidos.order.query.dto.PedidoUsuarioResumoResponseDTO;
+import br.com.api.pedidos.order.query.service.PedidoUsuarioConsultaService;
 import br.com.api.pedidos.order.service.PedidoService;
 import br.com.api.pedidos.security.service.UsuarioLogadoService;
 import br.com.api.pedidos.shared.idempotency.service.IdempotencyService;
+import br.com.api.pedidos.shared.pagination.dto.PaginaResponseDTO;
 import br.com.api.pedidos.shared.response.RespostaApi;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -23,23 +29,37 @@ public class PedidoController {
     private final PedidoService pedidoService;
     private final UsuarioLogadoService usuarioLogadoService;
     private final IdempotencyService idempotencyService;
+    private final PedidoUsuarioConsultaService pedidoUsuarioConsultaService;
 
     public PedidoController(
             PedidoService pedidoService,
             UsuarioLogadoService usuarioLogadoService,
-            IdempotencyService idempotencyService
+            IdempotencyService idempotencyService,
+            PedidoUsuarioConsultaService pedidoUsuarioConsultaService
     ) {
         this.pedidoService = pedidoService;
         this.usuarioLogadoService = usuarioLogadoService;
         this.idempotencyService = idempotencyService;
+        this.pedidoUsuarioConsultaService = pedidoUsuarioConsultaService;
     }
 
     @GetMapping
-    public RespostaApi<List<PedidoResponseDTO>> buscarTodosPedidos() {
+    public RespostaApi<PaginaResponseDTO<PedidoUsuarioResumoResponseDTO>> buscarTodosPedidos(
+            @PageableDefault(
+                    page = 0,
+                    size = 20,
+                    sort = "dataCriacao",
+                    direction = Sort.Direction.DESC
+            )
+            Pageable pageable
+    ) {
         var usuario = usuarioLogadoService.getUsuarioLogado();
 
         return RespostaApi.sucesso(
-                pedidoService.buscarTodosPedidos(usuario),
+                pedidoUsuarioConsultaService.listarPedidosDoUsuario(
+                        usuario,
+                        pageable
+                ),
                 "Pedidos encontrados"
         );
     }
