@@ -4,7 +4,7 @@ CREATE TABLE webhook_pagamento_recebido
     event_id          VARCHAR(150) NOT NULL,
     codigo_transacao  VARCHAR(150) NOT NULL,
     status_recebido   VARCHAR(30)  NOT NULL,
-    payload           CLOB         NOT NULL,
+    payload           TEXT         NOT NULL,
     data_recebimento  TIMESTAMP    NOT NULL,
 
     CONSTRAINT uk_webhook_pagamento_event_id

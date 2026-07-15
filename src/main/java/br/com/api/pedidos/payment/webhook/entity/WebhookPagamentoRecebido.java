@@ -63,11 +63,11 @@ public class WebhookPagamentoRecebido {
     )
     private StatusPagamento statusRecebido;
 
-    @Lob
     @Column(
             name = "payload",
             nullable = false,
-            updatable = false
+            updatable = false,
+            columnDefinition = "TEXT"
     )
     private String payload;
 

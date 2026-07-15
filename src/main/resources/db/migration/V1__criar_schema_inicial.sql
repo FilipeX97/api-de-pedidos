@@ -107,7 +107,7 @@ CREATE TABLE idempotency_key
     usuario_id    VARCHAR(255) NOT NULL,
     metodo_http   VARCHAR(20)  NOT NULL,
     request_hash  VARCHAR(255) NOT NULL,
-    resposta_json CLOB,
+    resposta_json TEXT,
     criada_em     TIMESTAMP    NOT NULL,
     expira_em     TIMESTAMP    NOT NULL,
 

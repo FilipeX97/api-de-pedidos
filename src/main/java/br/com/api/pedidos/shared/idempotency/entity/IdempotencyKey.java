@@ -33,7 +33,10 @@ public class IdempotencyKey {
     @Column(nullable = false)
     private String requestHash;
 
-    @Lob
+    @Column(
+            name = "resposta_json",
+            columnDefinition = "TEXT"
+    )
     private String respostaJson;
 
     @Column(nullable = false)
