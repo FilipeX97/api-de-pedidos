@@ -26,5 +26,38 @@ services:
       retries: 5
       start_period: 10s
 
+  api-de-pedidos:
+    profiles:
+      - full
+
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    image: api-de-pedidos:local
+    container_name: api-pedidos-api
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      SPRING_PROFILES_ACTIVE: homolog
+
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION}
+      JWT_RENEW_BEFORE_EXPIRATION: ${JWT_RENEW_BEFORE_EXPIRATION}
+
+      FAKE_WEBHOOK_SECRET: ${FAKE_WEBHOOK_SECRET}
+
+    ports:
+      - "${API_PORT:-8080}:8080"
+
 volumes:
   api_pedidos_postgres_data:

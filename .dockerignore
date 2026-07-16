@@ -1,0 +1,41 @@
+# Build Maven
+target/
+
+# Git
+.git/
+.gitignore
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Maven Wrapper não utilizado dentro da imagem
+.mvn/
+mvnw
+mvnw.cmd
+
+# Variáveis e segredos
+.env
+.env.*
+
+# Mantém somente exemplos públicos
+!.env.local.example
+!.env.*.example
+
+# Logs
+*.log
+
+# Arquivos temporários
+*.tmp
+*.bak
+*.swp
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Arquivos auxiliares
+README.html
