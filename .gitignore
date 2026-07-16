@@ -200,3 +200,8 @@ README.html
 .idea
 .exercism
 *.ps1
+.env
+.env.*
+
+!.env.local.example
+!.env.*.example
