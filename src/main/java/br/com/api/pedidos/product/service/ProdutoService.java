@@ -1,6 +1,7 @@
 package br.com.api.pedidos.product.service;
 
-import br.com.api.pedidos.product.dto.ProdutoRequestDTO;
+import br.com.api.pedidos.product.dto.ProdutoAtualizacaoRequest;
+import br.com.api.pedidos.product.dto.ProdutoCriacaoRequestDTO;
 import br.com.api.pedidos.product.dto.ProdutoResponseDTO;
 import br.com.api.pedidos.product.entity.Produto;
 import br.com.api.pedidos.product.repository.ProdutoRepository;
@@ -62,48 +63,54 @@ public class ProdutoService {
     }
 
     @Transactional
-    public ProdutoResponseDTO criarProduto(ProdutoRequestDTO produtoRequestDTO) {
+    public ProdutoResponseDTO criarProduto(ProdutoCriacaoRequestDTO produtoCriacaoRequestDTO) {
         Produto produto = new Produto(
-                produtoRequestDTO.nome(),
-                produtoRequestDTO.descricao(),
-                produtoRequestDTO.preco(),
-                produtoRequestDTO.estoque()
+                produtoCriacaoRequestDTO.nome(),
+                produtoCriacaoRequestDTO.descricao(),
+                produtoCriacaoRequestDTO.preco(),
+                produtoCriacaoRequestDTO.estoque()
         );
 
         Produto produtoSalvo = produtoRepository.saveAndFlush(produto);
         return ProdutoResponseDTO.from(produtoSalvo);
     }
 
-    public ProdutoResponseDTO atualizarProduto(Long id, ProdutoRequestDTO produtoRequestDTO) {
+    @Transactional
+    public ProdutoResponseDTO atualizarProduto(Long id, ProdutoAtualizacaoRequest produtoAtualizacaoRequest) {
         var produto = produtoRepository.findById(id).orElseThrow(
                 () -> new IllegalArgumentException("Produto não encontrado")
         );
 
-        if(produtoRequestDTO.nome() != null) {
-            produto.alterarNome(produtoRequestDTO.nome());
+        if(produtoAtualizacaoRequest.nome() != null) {
+            produto.alterarNome(produtoAtualizacaoRequest.nome());
         }
 
-        if(produtoRequestDTO.descricao() != null) {
-            produto.alterarDescricao(produtoRequestDTO.descricao());
+        if(produtoAtualizacaoRequest.descricao() != null) {
+            produto.alterarDescricao(produtoAtualizacaoRequest.descricao());
         }
 
-        if(produtoRequestDTO.preco() != null) {
-            produto.alterarPreco(produtoRequestDTO.preco());
+        if(produtoAtualizacaoRequest.preco() != null) {
+            produto.alterarPreco(produtoAtualizacaoRequest.preco());
         }
 
-        if(produtoRequestDTO.estoque() != null) {
-            produto.ajustarEstoque(produtoRequestDTO.estoque());
+        if(produtoAtualizacaoRequest.estoque() != null) {
+            produto.ajustarEstoque(produtoAtualizacaoRequest.estoque());
         }
 
         produtoRepository.save(produto);
         return ProdutoResponseDTO.from(produto);
     }
 
+    @Transactional
     public void removerProduto(Long id) {
-        produtoRepository.findById(id).ifPresentOrElse(
-                produtoRepository::delete,
-                () -> {throw new IllegalArgumentException("Produto não encontrado");}
-        );
+        Produto produto = produtoRepository
+                .findById(id)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Produto não encontrado")
+                );
+
+        produtoRepository.delete(produto);
+        produtoRepository.flush();
     }
 
 }

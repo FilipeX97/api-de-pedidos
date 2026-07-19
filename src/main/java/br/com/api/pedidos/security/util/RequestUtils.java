@@ -20,4 +20,16 @@ public final class RequestUtils {
         return request.getHeader("User-Agent");
     }
 
+    public static String extrairCaminho(HttpServletRequest request) {
+        String requestUri = request.getRequestURI();
+        String contextPath = request.getContextPath();
+
+        if (contextPath != null
+                && !contextPath.isBlank()
+                && requestUri.startsWith(contextPath)) {
+            return requestUri.substring(contextPath.length());
+        }
+
+        return requestUri;
+    }
 }

@@ -7,7 +7,9 @@ import br.com.api.pedidos.security.userdetails.UsuarioSecurity;
 import br.com.api.pedidos.security.util.RequestUtils;
 import br.com.api.pedidos.security.util.SecurityUtils;
 import br.com.api.pedidos.security.util.TokenUtils;
+import br.com.api.pedidos.shared.response.RespostaApi;
 import br.com.api.pedidos.user.service.UsuarioAutenticacaoService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -16,6 +18,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -23,6 +26,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Set;
 
 @Component
 public class JwtFiltroAutenticacao extends OncePerRequestFilter {
@@ -31,19 +36,41 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
     private final TokenBlacklistService tokenBlacklistService;
     private final UsuarioAutenticacaoService usuarioAutenticacaoService;
     private final TokenRenovacaoService tokenRenovacaoService;
+    private final ObjectMapper objectMapper;
 
     private static final Logger log =
             LoggerFactory.getLogger(JwtFiltroAutenticacao.class);
+
+    private static final Set<String> ROTAS_PUBLICAS_AUTH = Set.of(
+            "/auth/login",
+            "/auth/refresh",
+            "/auth/registrar"
+    );
 
     public JwtFiltroAutenticacao(
             JwtService jwtService,
             TokenBlacklistService tokenBlacklistService,
             UsuarioAutenticacaoService usuarioAutenticacaoService,
-            TokenRenovacaoService tokenRenovacaoService) {
+            TokenRenovacaoService tokenRenovacaoService,
+            ObjectMapper objectMapper) {
         this.jwtService = jwtService;
         this.tokenBlacklistService = tokenBlacklistService;
         this.usuarioAutenticacaoService = usuarioAutenticacaoService;
         this.tokenRenovacaoService = tokenRenovacaoService;
+        this.objectMapper = objectMapper;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String uri = RequestUtils.extrairCaminho(request);
+
+        return ROTAS_PUBLICAS_AUTH.contains(uri)
+                || uri.startsWith("/h2-console")
+                || uri.startsWith("/webhooks/")
+                || uri.equals("/swagger-ui.html")
+                || uri.startsWith("/swagger-ui/")
+                || uri.equals("/v3/api-docs")
+                || uri.startsWith("/v3/api-docs/");
     }
 
     @Override
@@ -55,12 +82,6 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
 
         String uri = request.getRequestURI();
         log.debug("Processando autenticação para URI: {}", uri);
-
-        if (uri.contains("/auth") || uri.contains("/h2-console")
-                || uri.contains("/webhooks")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
 
         String token = TokenUtils.extrairToken(request);
 
@@ -162,9 +183,9 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
             HttpServletResponse response,
             String mensagem) throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType("application/json");
-        response.getWriter().write(
-                "{\"erro\":\"" + mensagem + "\"}"
-        );
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+
+        objectMapper.writeValue(response.getWriter(), RespostaApi.erro(mensagem));
     }
 }

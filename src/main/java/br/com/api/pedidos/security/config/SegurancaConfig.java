@@ -5,6 +5,7 @@ import br.com.api.pedidos.security.filter.FiltroIntervaloRequisicao;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -19,6 +20,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SegurancaConfig {
+
+    private static final String[] ROTAS_SWAGGER = {
+            "/swagger-ui.html",
+            "/swagger-ui/**",
+            "/v3/api-docs",
+            "/v3/api-docs/**"
+    };
 
     private final JwtFiltroAutenticacao jwtFiltroAutenticacao;
     private final FiltroIntervaloRequisicao filtroIntervaloRequisicao;
@@ -45,7 +53,12 @@ public class SegurancaConfig {
                 )
                 .authorizeHttpRequests(
                         auth -> auth
-                                .requestMatchers("/auth/**").permitAll()
+                                .requestMatchers(ROTAS_SWAGGER).permitAll()
+                                .requestMatchers(
+                                        HttpMethod.POST,
+                                        "/auth/login",
+                                        "/auth/refresh",
+                                        "/auth/registrar").permitAll()
                                 .requestMatchers("/webhooks/**").permitAll()
                                 .requestMatchers("/admin/**").hasRole("ADMIN")
                                 .anyRequest().authenticated()

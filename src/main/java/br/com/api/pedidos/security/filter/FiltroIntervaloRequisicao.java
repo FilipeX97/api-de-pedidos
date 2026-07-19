@@ -4,23 +4,45 @@ import br.com.api.pedidos.security.ratelimit.RateLimitService;
 import br.com.api.pedidos.security.userdetails.UsuarioSecurity;
 import br.com.api.pedidos.security.util.RequestUtils;
 import br.com.api.pedidos.security.util.SecurityHashUtils;
+import br.com.api.pedidos.shared.response.RespostaApi;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 @Component
 public class FiltroIntervaloRequisicao extends OncePerRequestFilter {
 
     private final RateLimitService rateLimitService;
+    private final ObjectMapper objectMapper;
 
-    public FiltroIntervaloRequisicao(RateLimitService rateLimitService) {
+    public FiltroIntervaloRequisicao(
+            RateLimitService rateLimitService,
+            ObjectMapper objectMapper) {
         this.rateLimitService = rateLimitService;
+        this.objectMapper = objectMapper;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String uri = RequestUtils.extrairCaminho(request);
+
+        return uri.startsWith("/auth/")
+                || uri.startsWith("/h2-console")
+                || uri.startsWith("/webhooks/")
+                || uri.equals("/swagger-ui.html")
+                || uri.startsWith("/swagger-ui/")
+                || uri.equals("/v3/api-docs")
+                || uri.startsWith("/v3/api-docs/");
     }
 
     @Override
@@ -29,14 +51,6 @@ public class FiltroIntervaloRequisicao extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        String uri = request.getRequestURI();
-
-        if (uri.contains("/auth") || uri.contains("/h2-console")
-                || uri.contains("/webhooks")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
         String ip = RequestUtils.extrairIp(request);
         String userAgent = RequestUtils.extrairUserAgent(request);
         String userAgentHash = SecurityHashUtils.hashUserAgent(userAgent);
@@ -51,10 +65,13 @@ public class FiltroIntervaloRequisicao extends OncePerRequestFilter {
         }
 
         if (!rateLimitService.permitirRequisicao(chave)) {
-            response.setStatus(429);
-            response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write(
-                    "{\"erro\":\"Muitas requisições. Aguarde um momento.\"}"
+            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+
+            objectMapper.writeValue(
+                    response.getWriter(),
+                    RespostaApi.erro("Muitas requisições. Aguarde um momento.")
             );
 
             return;

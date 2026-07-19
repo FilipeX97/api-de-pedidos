@@ -3,7 +3,8 @@ package br.com.api.pedidos.user.service;
 import br.com.api.pedidos.shared.pagination.dto.PaginaResponseDTO;
 import br.com.api.pedidos.shared.pagination.util.PaginacaoUtils;
 import br.com.api.pedidos.user.cache.UsuarioCacheService;
-import br.com.api.pedidos.user.dto.UsuarioRequestDTO;
+import br.com.api.pedidos.user.dto.UsuarioAtualizacaoRequest;
+import br.com.api.pedidos.user.dto.UsuarioCriacaoRequestDTO;
 import br.com.api.pedidos.user.dto.UsuarioResponseDTO;
 import br.com.api.pedidos.user.entity.Perfil;
 import br.com.api.pedidos.user.entity.Usuario;
@@ -49,19 +50,20 @@ public class UsuarioService {
         this.usuarioCacheService = usuarioCacheService;
     }
 
-    public UsuarioResponseDTO cadastrarUsuario(UsuarioRequestDTO usuarioRequestDTO) {
-        if (usuarioRepository.findByEmail(usuarioRequestDTO.email()).isPresent()) {
+    @Transactional
+    public UsuarioResponseDTO cadastrarUsuario(UsuarioCriacaoRequestDTO usuarioCriacaoRequestDTO) {
+        if (usuarioRepository.findByEmail(usuarioCriacaoRequestDTO.email()).isPresent()) {
             throw new IllegalArgumentException("E-mail já cadastrado");
         }
 
         var usuario = new Usuario(
-                usuarioRequestDTO.nome(),
-                usuarioRequestDTO.email(),
-                passwordEncoder.encode(usuarioRequestDTO.senha()),
+                usuarioCriacaoRequestDTO.nome(),
+                usuarioCriacaoRequestDTO.email(),
+                passwordEncoder.encode(usuarioCriacaoRequestDTO.senha()),
                 Perfil.USER
         );
 
-        usuarioRepository.save(usuario);
+        usuarioRepository.saveAndFlush(usuario);
         return UsuarioResponseDTO.from(usuario);
     }
 
@@ -98,19 +100,20 @@ public class UsuarioService {
         return PaginaResponseDTO.from(pagina);
     }
 
-    public UsuarioResponseDTO atualizarUsuario(Long id, UsuarioRequestDTO usuarioRequestDTO) {
+    @Transactional
+    public UsuarioResponseDTO atualizarUsuario(Long id, UsuarioAtualizacaoRequest usuarioAtualizacaoRequest) {
         Usuario usuario = buscarUsuarioOuFalhar(id);
         String emailAntigo = usuario.getEmail();
         boolean alterouCredenciais = false;
 
-        if (usuarioRequestDTO.nome() != null) {
-            usuario.alterarNome(usuarioRequestDTO.nome());
+        if (usuarioAtualizacaoRequest.nome() != null) {
+            usuario.alterarNome(usuarioAtualizacaoRequest.nome());
         }
 
-        if (usuarioRequestDTO.email() != null &&
-                !usuarioRequestDTO.email().equalsIgnoreCase(usuario.getEmail())) {
+        if (usuarioAtualizacaoRequest.email() != null &&
+                !usuarioAtualizacaoRequest.email().equalsIgnoreCase(usuario.getEmail())) {
 
-            var existente = usuarioRepository.findByEmail(usuarioRequestDTO.email());
+            var existente = usuarioRepository.findByEmail(usuarioAtualizacaoRequest.email());
 
             if (existente.isPresent() &&
                     !existente.get().getId().equals(usuario.getId())) {
@@ -118,18 +121,18 @@ public class UsuarioService {
                 throw new IllegalArgumentException("E-mail já cadastrado");
             }
 
-            usuario.alterarEmail(usuarioRequestDTO.email());
+            usuario.alterarEmail(usuarioAtualizacaoRequest.email());
             alterouCredenciais = true;
         }
 
-        if (usuarioRequestDTO.senha() != null) {
+        if (usuarioAtualizacaoRequest.senha() != null) {
             usuario.alterarSenha(
-                    passwordEncoder.encode(usuarioRequestDTO.senha())
+                    passwordEncoder.encode(usuarioAtualizacaoRequest.senha())
             );
             alterouCredenciais = true;
         }
 
-        usuarioRepository.save(usuario);
+        usuarioRepository.saveAndFlush(usuario);
 
         if (alterouCredenciais) {
             usuarioCacheService.removerCacheUsuario(emailAntigo);
