@@ -29,7 +29,7 @@ public class Pagamento {
     @Column(nullable = false, length = 30)
     private StatusPagamento statusPagamento;
 
-    @Column(length = 100)
+    @Column(length = 100, unique = true)
     private String codigoTransacao;
 
     @Column(length = 1000)

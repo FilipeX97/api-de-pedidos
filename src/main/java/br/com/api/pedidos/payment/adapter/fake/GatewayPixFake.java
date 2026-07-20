@@ -8,15 +8,8 @@ import java.util.UUID;
 @Component
 public class GatewayPixFake {
 
-    private final GatewayPagamentoFakeConsulta gatewayPagamentoFakeConsulta;
-
-    public  GatewayPixFake(GatewayPagamentoFakeConsulta gatewayPagamentoFakeConsulta) {
-        this.gatewayPagamentoFakeConsulta = gatewayPagamentoFakeConsulta;
-    }
-
     public RespostaPixGateway cobrar(BigDecimal valor) {
         String txid = "PIX-" + UUID.randomUUID();
-        gatewayPagamentoFakeConsulta.registrarPagamentoPendente(txid);
 
         return new RespostaPixGateway(
                 txid,
@@ -25,7 +18,10 @@ public class GatewayPixFake {
         );
     }
 
-    private String gerarCodigoCopiaEColaFake(String txid, BigDecimal valor) {
+    private String gerarCodigoCopiaEColaFake(
+            String txid,
+            BigDecimal valor
+    ) {
         return "000201"
                 + "26360014BR.GOV.BCB.PIX"
                 + "52040000"

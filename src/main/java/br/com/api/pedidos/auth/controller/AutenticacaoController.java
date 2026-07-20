@@ -158,7 +158,7 @@ public class AutenticacaoController {
                             ),
                             examples = @ExampleObject(
                                     name = "usuarioNaoEncontrado",
-                                    summary = "Não existe usuário com o e-mail informado",
+                                    summary = "Usuário não encontrado",
                                     value = """
                                         {
                                           "sucesso": false,

@@ -11,16 +11,9 @@ import java.util.UUID;
 public class GatewayBoletoFake {
 
     private final Random random = new Random();
-    private final GatewayPagamentoFakeConsulta  gatewayPagamentoFakeConsulta;
-
-    public  GatewayBoletoFake(
-            GatewayPagamentoFakeConsulta gatewayPagamentoFakeConsulta) {
-        this.gatewayPagamentoFakeConsulta = gatewayPagamentoFakeConsulta;
-    }
 
     public RespostaBoletoGateway gerarBoleto(BigDecimal valor) {
         String codigoBoleto = "BOL-" + UUID.randomUUID();
-        gatewayPagamentoFakeConsulta.registrarPagamentoPendente(codigoBoleto);
 
         return new RespostaBoletoGateway(
                 codigoBoleto,
@@ -46,5 +39,4 @@ public class GatewayBoletoFake {
                 + " "
                 + random.nextInt(999999999);
     }
-
 }

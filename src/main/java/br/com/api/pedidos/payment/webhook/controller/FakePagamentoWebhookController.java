@@ -32,6 +32,10 @@ import org.springframework.web.bind.annotation.*;
 
                 O campo eventId torna o processamento do evento
                 idempotente.
+
+                As transações assíncronas de PIX e boleto são persistidas,
+                portanto seus estados não são perdidos quando a aplicação
+                é reiniciada.
                 """
 )
 @RestController
@@ -301,8 +305,7 @@ public class FakePagamentoWebhookController {
                                     @ExampleObject(
                                             name = "transacaoNaoEncontradaNoGateway",
                                             summary = """
-                                                    Transação não registrada
-                                                    no gateway fake
+                                                    Código nunca registrado no gateway fake
                                                     """,
                                             value = """
                                                     {

@@ -40,12 +40,13 @@ import org.springframework.web.bind.annotation.*;
         description = """
                 Criação e gerenciamento dos pedidos do usuário autenticado.
 
-                Usuários comuns podem criar pedidos, consultar os próprios
-                pedidos, gerenciar itens, aplicar cupons e solicitar
-                cancelamentos.
+                Usuários podem criar pedidos, consultar seus próprios
+                pedidos, adicionar ou remover itens, aplicar cupons
+                e solicitar cancelamentos.
 
-                O envio, a entrega e o estorno são operações exclusivas
-                para administradores.
+                Operações administrativas, como envio, entrega,
+                relatórios e gerenciamento global dos pedidos,
+                são disponibilizadas em endpoints específicos.
                 """
 )
 @ApiResponses({
