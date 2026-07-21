@@ -149,7 +149,16 @@ public class Cupom {
 
     @Override
     public boolean equals(Object o) {
-        if (!(o instanceof Cupom cupom)) return false;
+        if (this == o) {return true;}
+
+        if (!(o instanceof Cupom cupom)) {
+            return false;
+        }
+
+        if (id == null || cupom.id == null) {
+            return false;
+        }
+
         return Objects.equals(id, cupom.id);
     }
 
