@@ -1,0 +1,308 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: "21"
+  JAVA_DISTRIBUTION: "temurin"
+
+jobs:
+  validacao-segredos:
+    name: CI / Segredos
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Baixar o codigo do repositorio
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Impedir arquivos de ambiente reais versionados
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t arquivos_proibidos < <(
+            git ls-files |
+            grep -E '(^|/)\.env($|\.)' |
+            grep -Ev '\.example$' || true
+          )
+
+          if (( ${#arquivos_proibidos[@]} > 0 )); then
+            echo "Foram encontrados arquivos de ambiente reais versionados:"
+            printf ' - %s\n' "${arquivos_proibidos[@]}"
+            echo "Mantenha somente arquivos terminados em .example."
+            exit 1
+          fi
+
+          echo "Nenhum arquivo .env real esta versionado."
+
+      - name: Procurar segredos no historico Git
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+
+  testes-maven:
+    name: CI / Testes Maven
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    needs:
+      - validacao-segredos
+
+    steps:
+      - name: Baixar o codigo do repositorio
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Configurar Java 21 e cache Maven
+        uses: actions/setup-java@v5
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: "maven"
+          cache-dependency-path: "pom.xml"
+
+      - name: Exibir versoes utilizadas
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          java -version
+          mvn -version
+
+      - name: Executar testes automatizados
+        run: mvn -B -ntp -Dspring.profiles.active=test test
+
+  empacotamento-maven:
+    name: CI / Empacotamento Maven
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    needs:
+      - testes-maven
+
+    steps:
+      - name: Baixar o codigo do repositorio
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Configurar Java 21 e cache Maven
+        uses: actions/setup-java@v5
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: "maven"
+          cache-dependency-path: "pom.xml"
+
+      - name: Gerar o pacote da aplicacao
+        run: >
+          mvn -B -ntp
+          -Dspring.profiles.active=test
+          -DskipTests
+          clean package
+
+      - name: Confirmar a geracao do arquivo JAR
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          jar_path="$(
+            find target \
+              -maxdepth 1 \
+              -type f \
+              -name 'api-de-pedidos-*.jar' \
+              ! -name '*.original' \
+              -print \
+              -quit
+          )"
+
+          if [[ -z "$jar_path" ]]; then
+            echo "O JAR executavel nao foi encontrado dentro de target/."
+            exit 1
+          fi
+
+          if [[ ! -s "$jar_path" ]]; then
+            echo "O JAR foi encontrado, mas esta vazio: $jar_path"
+            exit 1
+          fi
+
+          echo "JAR gerado com sucesso: $jar_path"
+
+  validacao-compose:
+    name: CI / Docker Compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    needs:
+      - validacao-segredos
+
+    steps:
+      - name: Baixar o codigo do repositorio
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Gerar variaveis temporarias para o Docker Compose
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          sufixo_execucao="${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+
+          db_name="api_pedidos_ci_${sufixo_execucao}"
+          db_username="ci_user_${GITHUB_RUN_ID}"
+          db_password="$(openssl rand -hex 24)"
+          jwt_secret="$(openssl rand -hex 64)"
+          webhook_secret="$(openssl rand -hex 32)"
+
+          echo "::add-mask::$db_password"
+          echo "::add-mask::$jwt_secret"
+          echo "::add-mask::$webhook_secret"
+
+          {
+            echo "DB_NAME=$db_name"
+            echo "DB_USERNAME=$db_username"
+            echo "DB_PASSWORD=$db_password"
+
+            echo "JWT_SECRET=$jwt_secret"
+            echo "JWT_EXPIRATION=$((15 * 60 * 1000))"
+            echo "JWT_REFRESH_EXPIRATION=$((7 * 24 * 60 * 60 * 1000))"
+            echo "JWT_RENEW_BEFORE_EXPIRATION=$((5 * 60 * 1000))"
+
+            echo "FAKE_WEBHOOK_SECRET=$webhook_secret"
+          } >> "$GITHUB_ENV"
+
+          echo "Variaveis temporarias geradas para esta execucao."
+
+      - name: Exibir a versao do Docker Compose
+        run: docker compose version
+
+      - name: Validar a configuracao do Docker Compose
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          arquivo_resolvido="/tmp/docker-compose-resolvido.yml"
+
+          docker compose \
+            --profile full \
+            config \
+            > "$arquivo_resolvido"
+
+          if [[ ! -s "$arquivo_resolvido" ]]; then
+            echo "O Docker Compose nao gerou uma configuracao valida."
+            exit 1
+          fi
+
+          if grep -Fq '${' "$arquivo_resolvido"; then
+            echo "Ainda existem variaveis nao resolvidas no Docker Compose."
+            exit 1
+          fi
+
+          if ! grep -Fq "api-de-pedidos:" "$arquivo_resolvido"; then
+            echo "O servico api-de-pedidos nao foi encontrado."
+            exit 1
+          fi
+
+          if ! grep -Fq "postgres:" "$arquivo_resolvido"; then
+            echo "O servico postgres nao foi encontrado."
+            exit 1
+          fi
+
+          echo "docker-compose.yml validado com sucesso."
+
+  docker-build-seguranca:
+    name: CI / Docker e Segurança
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    needs:
+      - empacotamento-maven
+      - validacao-compose
+
+    steps:
+      - name: Baixar o codigo do repositorio
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Exibir a versao do Docker
+        run: docker version
+
+      - name: Construir a imagem Docker
+        run: >
+          docker build
+          --pull
+          --tag api-de-pedidos:ci
+          .
+
+      - name: Confirmar que a imagem foi criada
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          docker image inspect api-de-pedidos:ci > /dev/null
+
+          echo "Imagem api-de-pedidos:ci criada com sucesso."
+
+      - name: Confirmar que a aplicacao nao executa como root
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          usuario_imagem="$(
+            docker image inspect \
+              api-de-pedidos:ci \
+              --format '{{.Config.User}}'
+          )"
+
+          if [[ -z "$usuario_imagem" ]]; then
+            echo "A imagem nao declarou um usuario de execucao."
+            exit 1
+          fi
+
+          if [[ "$usuario_imagem" == "root" || "$usuario_imagem" == "0" ]]; then
+            echo "A imagem esta configurada para executar como root."
+            exit 1
+          fi
+
+          if [[ "$usuario_imagem" != "app" ]]; then
+            echo "Era esperado o usuario app, mas foi encontrado: $usuario_imagem"
+            exit 1
+          fi
+
+          echo "A imagem executa com usuario sem privilegios: $usuario_imagem"
+
+      - name: Verificar vulnerabilidades criticas da imagem
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: "api-de-pedidos:ci"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          severity: "CRITICAL"

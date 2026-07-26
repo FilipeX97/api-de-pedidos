@@ -6,10 +6,11 @@
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker\&logoColor=white)
 ![Actuator](https://img.shields.io/badge/Spring%20Boot-Actuator-6DB33F?logo=springboot\&logoColor=white)
 ![Tests](https://img.shields.io/badge/Testes-JUnit%205-25A162?logo=junit5\&logoColor=white)
+[![CI](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SEU_USUARIO/api-de-pedidos/actions/workflows/ci.yml)
 
 API REST para gerenciamento de usuários, produtos, cupons, pedidos, pagamentos e notificações, desenvolvida com **Java 21** e **Spring Boot**.
 
-Criei este projeto para ir além de um CRUD tradicional. A proposta foi simular problemas encontrados em aplicações reais: autenticação com access e refresh tokens, controle do ciclo de vida de pedidos, idempotência, integração com gateways de pagamento, processamento de webhooks, auditoria, paginação, filtros administrativos, migrations, testes automatizados e observabilidade.
+Criei este projeto para ir além de um CRUD tradicional. A proposta foi simular problemas encontrados em aplicações reais: autenticação com access e refresh tokens, controle do ciclo de vida de pedidos, idempotência, integração com gateways de pagamento, processamento de webhooks, auditoria, paginação, filtros administrativos, migrations, testes automatizados, observabilidade e integração contínua.
 
 > O projeto tem finalidade de estudo e portfólio, mas foi estruturado com práticas que poderiam ser levadas para uma aplicação de produção.
 
@@ -34,6 +35,10 @@ Criei este projeto para ir além de um CRUD tradicional. A proposta foi simular 
 * Correlação de logs por meio do header `X-Request-Id`.
 * Tratamento seguro de erros internos sem exposição de stacktrace.
 * Testes unitários e de integração com JUnit 5, Mockito e MockMvc.
+* Pipeline de integração contínua com GitHub Actions.
+* Detecção de segredos versionados com Gitleaks.
+* Análise de vulnerabilidades críticas da imagem Docker com Trivy.
+* Atualização automatizada de dependências com Dependabot.
 
 ## Fluxo principal da aplicação
 
@@ -49,6 +54,7 @@ Criei este projeto para ir além de um CRUD tradicional. A proposta foi simular 
 10. Administradores podem consultar pedidos por filtros e gerar relatórios.
 11. O Actuator disponibiliza informações de saúde, runtime e métricas.
 12. O Docker Compose verifica automaticamente se a aplicação está pronta.
+13. O GitHub Actions valida testes, build Maven, Docker, Compose e segurança.
 
 ```mermaid
 flowchart LR
@@ -72,8 +78,14 @@ flowchart LR
     Monitoring[Spring Boot Actuator] --> ApplicationHealth[Health da aplicação]
     Monitoring --> DatabaseHealth[Health do banco]
     Monitoring --> Metrics[Métricas]
+
     Docker[Docker Compose] --> Readiness[Readiness probe]
     Readiness --> Monitoring
+
+    GitHub[GitHub Actions] --> Tests[Testes Maven]
+    GitHub --> Package[Empacotamento]
+    GitHub --> DockerBuild[Docker build]
+    GitHub --> Security[Segurança]
 ```
 
 ## Funcionalidades
@@ -148,6 +160,21 @@ flowchart LR
 * Stacktrace completa apenas nos logs internos.
 * Resposta genérica para erros inesperados.
 
+### Integração contínua
+
+* Execução automática em pushes para `main` e `feature/**`.
+* Execução automática em pull requests destinados à `main`.
+* Validação de arquivos `.env` indevidamente versionados.
+* Detecção de segredos no histórico Git.
+* Execução dos testes Maven com Java 21.
+* Cache de dependências Maven.
+* Empacotamento da aplicação.
+* Validação da geração do JAR executável.
+* Validação sintática do Docker Compose.
+* Build da imagem Docker.
+* Verificação de execução com usuário sem privilégios.
+* Análise de vulnerabilidades críticas da imagem Docker.
+
 ## Tecnologias utilizadas
 
 | Tecnologia              | Uso no projeto                                     |
@@ -170,6 +197,10 @@ flowchart LR
 | Maven                   | Build e gerenciamento de dependências              |
 | Docker                  | Empacotamento da aplicação                         |
 | Docker Compose          | Orquestração e healthchecks da API e do PostgreSQL |
+| GitHub Actions          | Integração contínua e validação automatizada       |
+| Gitleaks                | Detecção de segredos no histórico Git              |
+| Trivy                   | Análise de vulnerabilidades da imagem Docker       |
+| Dependabot              | Atualização automatizada de dependências           |
 | JUnit 5                 | Testes automatizados                               |
 | Mockito                 | Testes unitários com mocks                         |
 | MockMvc                 | Testes de integração dos endpoints                 |
@@ -333,6 +364,15 @@ Dentro dos módulos, as classes são separadas conforme a responsabilidade:
 * `filter`: filtros HTTP, autenticação, rate limiting e correlação.
 * `info`: informações operacionais disponibilizadas pelo Actuator.
 
+A infraestrutura de integração contínua fica organizada da seguinte forma:
+
+```text
+.github
+├── dependabot.yml
+└── workflows
+    └── ci.yml
+```
+
 ## Resposta padronizada da API
 
 As respostas seguem um envelope comum:
@@ -392,6 +432,10 @@ Além do JWT, o projeto implementa outras proteções e controles:
 * Erros inesperados sem exposição de stacktrace ao cliente.
 * Correlação de logs com identificador único por requisição.
 * Proibição de registro de senhas, tokens JWT, refresh tokens e segredos HMAC.
+* Bloqueio de arquivos `.env` reais no pipeline.
+* Detecção de segredos no histórico Git com Gitleaks.
+* Execução da imagem Docker com usuário sem privilégios.
+* Verificação de vulnerabilidades críticas com Trivy.
 
 > O rate limiting atual é mantido em memória. Em uma aplicação distribuída, uma evolução natural seria utilizar Redis ou outro armazenamento compartilhado.
 
@@ -411,11 +455,11 @@ A chave fica vinculada ao usuário, endpoint, método HTTP e conteúdo da requis
 
 ## Perfis de ambiente
 
-| Perfil    | Banco                                                |      Swagger | Actuator exposto                 | Uso esperado                        |
-| --------- | ---------------------------------------------------- | -----------: | -------------------------------- | ----------------------------------- |
-| `dev`     | H2 em memória, em modo de compatibilidade PostgreSQL |   Habilitado | `health`, `info`, `metrics`      | Desenvolvimento rápido              |
-| `local`   | PostgreSQL iniciado pelo Docker Compose              |   Habilitado | `health`, `info`, `metrics`      | API executada pela IDE ou Maven     |
-| `homolog` | PostgreSQL                                           |   Habilitado | `health`, `info`, `metrics`      | Homologação e stack Docker completa |
+| Perfil    | Banco                                                | Swagger      | Actuator exposto                 | Uso esperado                        |
+| --------- | ---------------------------------------------------- | ------------ | -------------------------------- | ----------------------------------- |
+| `dev`     | H2 em memória, em modo de compatibilidade PostgreSQL | Habilitado   | `health`, `info`, `metrics`      | Desenvolvimento rápido              |
+| `local`   | PostgreSQL iniciado pelo Docker Compose              | Habilitado   | `health`, `info`, `metrics`      | API executada pela IDE ou Maven     |
+| `homolog` | PostgreSQL                                           | Habilitado   | `health`, `info`, `metrics`      | Homologação e stack Docker completa |
 | `prod`    | PostgreSQL                                           | Desabilitado | `health`, `info`                 | Produção                            |
 | `test`    | H2 em memória                                        | Desabilitado | Endpoints necessários aos testes | Testes automatizados                |
 
@@ -425,21 +469,23 @@ Nos perfis `dev` e `local`, os componentes internos do healthcheck são exibidos
 
 Nos perfis `homolog` e `prod`, os detalhes internos são ocultados. O endpoint informa apenas o estado geral da aplicação.
 
+O perfil `test` gera automaticamente uma chave JWT e um segredo de webhook temporários, evitando dependência de credenciais externas durante os testes automatizados.
+
 ## Variáveis de ambiente
 
-| Variável                      | Perfil/uso         | Descrição                                     |
-| ----------------------------- | ------------------ | --------------------------------------------- |
-| `DB_NAME`                     | local/Docker       | Nome do banco PostgreSQL                      |
-| `DB_PORT`                     | local/Docker       | Porta publicada do PostgreSQL. Padrão: `5432` |
-| `DB_URL`                      | homolog/prod       | URL JDBC completa do PostgreSQL               |
-| `DB_USERNAME`                 | PostgreSQL         | Usuário do banco                              |
-| `DB_PASSWORD`                 | PostgreSQL         | Senha do banco                                |
-| `API_PORT`                    | Docker             | Porta publicada da API. Padrão: `8080`        |
-| `JWT_SECRET`                  | todos, exceto test | Chave JWT com pelo menos 64 caracteres        |
-| `JWT_EXPIRATION`              | segurança          | Expiração do access token em milissegundos    |
-| `JWT_REFRESH_EXPIRATION`      | segurança          | Expiração do refresh token em milissegundos   |
-| `JWT_RENEW_BEFORE_EXPIRATION` | segurança          | Janela de renovação em milissegundos          |
-| `FAKE_WEBHOOK_SECRET`         | webhook            | Segredo HMAC com pelo menos 32 caracteres     |
+| Variável                      | Perfil/uso   | Descrição                                   |
+| ----------------------------- | ------------ | ------------------------------------------- |
+| `DB_NAME`                     | local/Docker | Nome do banco PostgreSQL                    |
+| `DB_PORT`                     | local/Docker | Porta publicada. Padrão: `5432`             |
+| `DB_URL`                      | homolog/prod | URL JDBC completa do PostgreSQL             |
+| `DB_USERNAME`                 | PostgreSQL   | Usuário do banco                            |
+| `DB_PASSWORD`                 | PostgreSQL   | Senha do banco                              |
+| `API_PORT`                    | Docker       | Porta publicada da API. Padrão: `8080`      |
+| `JWT_SECRET`                  | exceto test  | Chave JWT com pelo menos 64 caracteres      |
+| `JWT_EXPIRATION`              | segurança    | Expiração do access token em milissegundos  |
+| `JWT_REFRESH_EXPIRATION`      | segurança    | Expiração do refresh token em milissegundos |
+| `JWT_RENEW_BEFORE_EXPIRATION` | segurança    | Janela de renovação em milissegundos        |
+| `FAKE_WEBHOOK_SECRET`         | webhook      | Segredo HMAC com pelo menos 32 caracteres   |
 
 Os arquivos `.env.*.example` servem apenas como modelo. Arquivos com valores reais não devem ser versionados.
 
@@ -509,7 +555,7 @@ http://localhost:8080/actuator/info
 
 Neste modo, a API é executada pela IDE ou pelo Maven, enquanto o Spring Boot Docker Compose inicia somente o PostgreSQL.
 
-1. Copie o arquivo de exemplo:
+1. Copie o arquivo de exemplo.
 
 **Windows PowerShell:**
 
@@ -524,11 +570,11 @@ cp .env.local.example .env.local
 ```
 
 2. Preencha as variáveis no `.env.local`.
-3. Carregue esse arquivo na configuração de execução da IDE.
+3. Carregue o arquivo na configuração de execução da IDE.
 4. Ative o perfil `local`.
 5. Execute `ApiDePedidosApplication`.
 
-Pelo Maven, depois de exportar as variáveis no terminal:
+Pelo Maven, depois de exportar as variáveis:
 
 ```bash
 mvn spring-boot:run -Dspring-boot.run.profiles=local
@@ -559,7 +605,7 @@ O fluxo de inicialização é:
 9. O container da API passa para o estado `healthy`.
 10. A API fica disponível na porta configurada.
 
-Verificar o estado dos containers:
+Verificar o estado:
 
 ```bash
 docker compose --env-file .env.local --profile full ps
@@ -578,7 +624,7 @@ Acompanhar os logs:
 docker compose --env-file .env.local --profile full logs -f
 ```
 
-Acompanhar somente os logs da API:
+Acompanhar somente a API:
 
 ```bash
 docker compose --env-file .env.local --profile full logs -f api-de-pedidos
@@ -590,7 +636,7 @@ Parar os containers:
 docker compose --env-file .env.local --profile full down
 ```
 
-Parar e remover também o volume do banco:
+Parar e remover também o volume:
 
 ```bash
 docker compose --env-file .env.local --profile full down -v
@@ -598,7 +644,7 @@ docker compose --env-file .env.local --profile full down -v
 
 O `Dockerfile` utiliza build multi-stage. A aplicação é compilada em uma imagem Maven e executada em uma imagem menor com Java 21 JRE.
 
-A imagem final instala o `curl`, utilizado pelo healthcheck da aplicação, e o processo Java é executado com um usuário sem privilégios de root.
+A imagem final instala o `curl`, utilizado pelo healthcheck, e executa o processo Java com um usuário sem privilégios de root.
 
 ## Banco de dados e migrations
 
@@ -625,7 +671,7 @@ O Hibernate está configurado com:
 spring.jpa.hibernate.ddl-auto=validate
 ```
 
-Assim, o Flyway altera o banco e o Hibernate apenas verifica se o modelo Java está compatível com o schema.
+Assim, o Flyway altera o banco e o Hibernate verifica se o modelo Java está compatível com o schema.
 
 ## Autenticação JWT
 
@@ -654,7 +700,7 @@ Nos perfis `dev`, `local` e `homolog`, a interface fica disponível em:
 http://localhost:8080/swagger-ui.html
 ```
 
-Especificação OpenAPI em JSON:
+Especificação OpenAPI:
 
 ```text
 http://localhost:8080/v3/api-docs
@@ -672,20 +718,18 @@ O Swagger adiciona o prefixo automaticamente.
 
 ## Observabilidade
 
-A aplicação utiliza o Spring Boot Actuator para fornecer informações operacionais, indicadores de saúde e métricas.
-
 ### Endpoints de monitoramento
 
-| Método | Endpoint                     | Finalidade                                     | Acesso  |
-| ------ | ---------------------------- | ---------------------------------------------- | ------- |
-| `GET`  | `/actuator/health`           | Saúde geral da aplicação                       | Público |
-| `GET`  | `/actuator/health/liveness`  | Informa se a aplicação está viva               | Público |
-| `GET`  | `/actuator/health/readiness` | Informa se a aplicação e o banco estão prontos | Público |
-| `GET`  | `/actuator/info`             | Nome, versão, ambiente, Java e Spring Boot     | Público |
-| `GET`  | `/actuator/metrics`          | Lista as métricas disponíveis                  | ADMIN   |
-| `GET`  | `/actuator/metrics/{nome}`   | Consulta uma métrica específica                | ADMIN   |
+| Método | Endpoint                     | Finalidade                                 | Acesso  |
+| ------ | ---------------------------- | ------------------------------------------ | ------- |
+| `GET`  | `/actuator/health`           | Saúde geral da aplicação                   | Público |
+| `GET`  | `/actuator/health/liveness`  | Informa se o processo está vivo            | Público |
+| `GET`  | `/actuator/health/readiness` | Informa se aplicação e banco estão prontos | Público |
+| `GET`  | `/actuator/info`             | Nome, versão, ambiente, Java e Spring Boot | Público |
+| `GET`  | `/actuator/metrics`          | Lista as métricas disponíveis              | ADMIN   |
+| `GET`  | `/actuator/metrics/{nome}`   | Consulta uma métrica específica            | ADMIN   |
 
-No perfil `prod`, o endpoint de métricas não é exposto. Somente `health` e `info` ficam disponíveis.
+No perfil `prod`, o endpoint de métricas não é exposto.
 
 ### Healthcheck geral
 
@@ -715,7 +759,7 @@ Em desenvolvimento ou execução local, o retorno pode apresentar os componentes
 }
 ```
 
-Em homologação e produção, os detalhes dos componentes ficam ocultos:
+Em homologação e produção, os detalhes ficam ocultos:
 
 ```json
 {
@@ -731,15 +775,7 @@ GET /actuator/health/liveness
 
 O liveness responde se o processo da aplicação continua vivo.
 
-Ele não depende da conexão com o PostgreSQL. Dessa forma, uma indisponibilidade temporária do banco não provoca a interpretação de que o processo Java morreu.
-
-Exemplo:
-
-```json
-{
-  "status": "UP"
-}
-```
+Ele não depende da conexão com o PostgreSQL. Dessa forma, uma indisponibilidade temporária do banco não significa que o processo Java morreu.
 
 ### Readiness
 
@@ -749,12 +785,12 @@ GET /actuator/health/readiness
 
 O readiness responde se a aplicação está pronta para receber requisições.
 
-Neste projeto, o grupo de readiness inclui:
+O grupo inclui:
 
 * Estado de prontidão da aplicação.
 * Conexão com o banco de dados.
 
-Caso o PostgreSQL fique indisponível, o readiness pode responder:
+Caso o PostgreSQL fique indisponível:
 
 ```json
 {
@@ -770,7 +806,7 @@ O Docker Compose utiliza esse endpoint para determinar a saúde do container da 
 GET /actuator/info
 ```
 
-O endpoint apresenta informações públicas sobre a aplicação:
+Exemplo:
 
 ```json
 {
@@ -794,18 +830,18 @@ O endpoint apresenta informações públicas sobre a aplicação:
 }
 ```
 
-Nenhum segredo, token, senha ou informação sensível é publicado nesse endpoint.
+Nenhum segredo, token, senha ou informação sensível é publicado.
 
 ### Métricas
 
-Listar as métricas disponíveis:
+Listar métricas:
 
 ```http
 GET /actuator/metrics
 Authorization: Bearer <token-admin>
 ```
 
-Consultar métricas das requisições HTTP:
+Consultar métricas HTTP:
 
 ```http
 GET /actuator/metrics/http.server.requests
@@ -824,15 +860,6 @@ jdbc.connections.max
 http.server.requests
 ```
 
-A métrica `http.server.requests` permite analisar:
-
-* Quantidade de requisições.
-* Métodos HTTP utilizados.
-* Status HTTP retornados.
-* Endpoints acessados.
-* Tempo total das requisições.
-* Exceções registradas durante o processamento.
-
 ### Request ID
 
 Todas as requisições recebem o header:
@@ -843,17 +870,7 @@ X-Request-Id: <identificador>
 
 Quando o cliente envia um identificador válido, a API preserva o valor.
 
-Exemplo:
-
-```http
-X-Request-Id: pedido-cliente-123
-```
-
-Quando o header não é enviado ou possui formato inválido, a aplicação gera um UUID:
-
-```http
-X-Request-Id: 7f2c3a4e-5478-4bd3-9872-14dc90f0db20
-```
+Quando o header não é enviado ou é inválido, a aplicação gera um UUID.
 
 São aceitos identificadores com:
 
@@ -864,15 +881,13 @@ São aceitos identificadores com:
 * Underscore.
 * Até 100 caracteres.
 
-O identificador também é incluído automaticamente nos logs por meio do MDC:
+O identificador também é incluído nos logs por meio do MDC:
 
 ```text
 2026-07-26 18:30:42.154 INFO
 [requestId=7f2c3a4e-5478-4bd3-9872-14dc90f0db20]
 PagamentoService - Pagamento processado. pagamentoId=10 pedidoId=5 status=APROVADO
 ```
-
-Isso permite acompanhar toda a execução de uma requisição utilizando o mesmo identificador.
 
 ### Logs operacionais
 
@@ -901,36 +916,6 @@ Os logs nunca devem registrar:
 * Segredos HMAC.
 * Assinaturas completas.
 * Credenciais do banco.
-
-### Tratamento de erros inesperados
-
-Falhas esperadas são tratadas conforme o tipo:
-
-* `RegraNegocioException`: erro de regra de negócio.
-* `RecursoNaoEncontradoException`: recurso não encontrado.
-* `IllegalArgumentException`: argumento inválido.
-* `IllegalStateException`: operação incompatível com o estado atual.
-* `DataIntegrityViolationException`: conflito de integridade.
-* `AccessDeniedException`: acesso negado.
-
-Erros inesperados retornam HTTP `500` com uma mensagem segura:
-
-```json
-{
-  "sucesso": false,
-  "dados": null,
-  "mensagem": "Erro interno no servidor"
-}
-```
-
-Internamente, o log registra:
-
-* Request ID.
-* Método HTTP.
-* Endpoint.
-* Identificador do usuário autenticado, quando disponível.
-* Exceção completa.
-* Stacktrace.
 
 ## Endpoints principais
 
@@ -992,7 +977,7 @@ Internamente, o log registra:
 | `GET`  | `/orders/{idPedido}/payments` | Dono do pedido              |
 | `POST` | `/webhooks/payments/fake`     | Público com assinatura HMAC |
 
-O webhook recebe a assinatura no header:
+O webhook recebe a assinatura:
 
 ```http
 X-Fake-Gateway-Signature: <assinatura-hmac>
@@ -1022,8 +1007,6 @@ X-Fake-Gateway-Signature: <assinatura-hmac>
 | ------ | ------------------------------- | ------ |
 | `GET`  | `/admin/reports/orders/summary` | ADMIN  |
 
-A documentação do Swagger contém os parâmetros, exemplos de payload, paginação e respostas possíveis de cada operação.
-
 ## Testes
 
 Na versão atual, o projeto possui **44 classes de teste e mais de 340 métodos de teste**, cobrindo entidades, serviços, estados, strategies, adapters, listeners, segurança, consultas, relatórios, gateways, webhooks, endpoints e observabilidade.
@@ -1035,7 +1018,7 @@ Entre os cenários testados estão:
 * Validações de cupom, produto e pedido.
 * Regras de alteração dos itens.
 * Cálculo de descontos.
-* Transições de todos os estados do pedido.
+* Transições dos estados do pedido.
 * Seleção de estados pela factory.
 * Processamento das estratégias de pagamento.
 * Integração com adapters dos gateways fake.
@@ -1048,11 +1031,10 @@ Entre os cenários testados estão:
 * Rate limiting.
 * Relatórios administrativos.
 * Healthcheck sem token.
-* Liveness sem token.
-* Readiness sem token.
+* Liveness e readiness sem token.
 * Healthcheck do banco de dados.
 * Informações da aplicação sem token.
-* Proteção do endpoint de métricas.
+* Proteção dos endpoints de métricas.
 * Geração automática do `X-Request-Id`.
 * Preservação do `X-Request-Id` enviado pelo cliente.
 
@@ -1068,40 +1050,108 @@ Executar uma classe específica:
 mvn -Dtest=ObservabilidadeActuatorITTest test
 ```
 
-Gerar o pacote da aplicação:
+Gerar o pacote:
 
 ```bash
 mvn clean package
 ```
 
-Validar a configuração resolvida do Docker Compose:
+Validar o Docker Compose:
 
 ```bash
 docker compose --env-file .env.local --profile full config
 ```
 
-Validar o healthcheck dos containers:
+## Integração contínua com GitHub Actions
 
-```bash
-docker compose --env-file .env.local --profile full ps
+O workflow está localizado em:
+
+```text
+.github/workflows/ci.yml
+```
+
+Ele é executado em:
+
+* Push para a branch `main`.
+* Push para branches `feature/**`.
+* Pull request destinado à `main`.
+* Execução manual pela aba Actions.
+
+O pipeline executa:
+
+1. Verificação de arquivos `.env` reais versionados.
+2. Detecção de segredos no histórico Git com Gitleaks.
+3. Configuração do Java 21.
+4. Cache das dependências Maven.
+5. Execução dos testes com o perfil `test`.
+6. Empacotamento da aplicação.
+7. Confirmação da geração do JAR.
+8. Geração de variáveis temporárias e aleatórias para o Compose.
+9. Validação do `docker-compose.yml`.
+10. Build da imagem Docker.
+11. Verificação do usuário não root.
+12. Análise de vulnerabilidades críticas com Trivy.
+
+Os valores utilizados para validar o Docker Compose são gerados dentro do runner, mascarados nos logs e descartados ao final da execução.
+
+Nenhuma credencial real de desenvolvimento, homologação ou produção é utilizada pelo CI.
+
+O pipeline atual implementa **Continuous Integration**. Ele ainda não publica imagens nem executa deploy automático.
+
+## Dependabot
+
+O Dependabot está configurado em:
+
+```text
+.github/dependabot.yml
+```
+
+São monitorados:
+
+* Dependências Maven.
+* GitHub Actions.
+* Imagens do Dockerfile.
+* Imagens do Docker Compose.
+
+As verificações são executadas semanalmente e as atualizações são propostas por pull requests.
+
+## Proteção da branch principal
+
+Depois que o workflow executar com sucesso, a branch `main` deve ser protegida com:
+
+* Pull request obrigatório.
+* Status checks obrigatórios.
+* Branch atualizada antes do merge.
+* Conversas resolvidas antes do merge.
+* Bloqueio de force push.
+* Bloqueio de exclusão da branch.
+
+Checks recomendados:
+
+```text
+CI / Segredos
+CI / Testes Maven
+CI / Empacotamento Maven
+CI / Docker Compose
+CI / Docker e Segurança
 ```
 
 ## Próximas melhorias
 
 * Utilizar Testcontainers nos testes de integração com PostgreSQL.
-* Criar pipeline de CI/CD com GitHub Actions.
-* Publicar uma imagem versionada em um registry.
+* Publicar uma imagem versionada no GitHub Container Registry.
+* Realizar deploy automático em ambiente cloud.
 * Exportar métricas no formato Prometheus.
 * Criar dashboards de monitoramento com Grafana.
 * Adicionar tracing distribuído com OpenTelemetry.
-* Centralizar logs em uma ferramenta como Loki ou Elasticsearch.
+* Centralizar logs com Loki ou Elasticsearch.
 * Criar alertas para aumento de erros HTTP `500`.
 * Criar alertas para indisponibilidade do readiness.
-* Migrar cache e rate limiting para Redis em ambientes distribuídos.
+* Migrar cache e rate limiting para Redis.
 * Integrar um gateway de pagamento real em ambiente sandbox.
 * Aplicar Outbox Pattern para publicação confiável de eventos.
 * Criar testes automatizados do contrato OpenAPI.
-* Realizar deploy em ambiente cloud.
+* Assinar e gerar SBOM das imagens publicadas.
 
 ## O que este projeto demonstra
 
@@ -1124,6 +1174,10 @@ Este repositório demonstra conhecimentos em:
 * Tratamento seguro de falhas inesperadas.
 * Testes unitários e de integração.
 * Documentação técnica com OpenAPI.
+* Integração contínua com GitHub Actions.
+* Detecção automatizada de segredos.
+* Análise de vulnerabilidades em imagens.
+* Manutenção automatizada de dependências.
 
 ## Autor
 
