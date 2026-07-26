@@ -3,10 +3,12 @@ package br.com.api.pedidos.order.service;
 import br.com.api.pedidos.coupon.entity.Cupom;
 import br.com.api.pedidos.coupon.service.CupomService;
 import br.com.api.pedidos.order.dto.AdicionarPedidoRequestDTO;
+import br.com.api.pedidos.order.dto.AlterarQuantidadeItemRequestDTO;
 import br.com.api.pedidos.order.dto.PedidoResponseDTO;
 import br.com.api.pedidos.order.entity.Pedido;
 import br.com.api.pedidos.order.event.*;
 import br.com.api.pedidos.order.promotion.engine.MotorPromocao;
+import br.com.api.pedidos.order.promotion.strategy.DescontoClienteVip;
 import br.com.api.pedidos.order.promotion.strategy.DescontoCupom;
 import br.com.api.pedidos.order.promotion.strategy.DescontoQuantidade;
 import br.com.api.pedidos.order.repository.PedidoRepository;
@@ -16,6 +18,7 @@ import br.com.api.pedidos.product.repository.ProdutoRepository;
 import br.com.api.pedidos.user.entity.Perfil;
 import br.com.api.pedidos.user.entity.Usuario;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -29,14 +32,18 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class PedidoServiceTest {
+class PedidoServiceTest {
+
+    private static final Long ID_USUARIO = 1L;
+    private static final Long ID_PEDIDO = 10L;
+    private static final Long ID_PRODUTO = 20L;
+    private static final Long ID_ITEM = 30L;
 
     @Mock
     private PedidoRepository pedidoRepository;
@@ -56,6 +63,7 @@ public class PedidoServiceTest {
     void setUp() {
         MotorPromocao motorPromocao = new MotorPromocao(
                 List.of(
+                        new DescontoClienteVip(),
                         new DescontoQuantidade(),
                         new DescontoCupom()
                 )
@@ -84,241 +92,1117 @@ public class PedidoServiceTest {
         );
     }
 
-    @Test
-    void deveCriarPedido() {
-        Usuario usuario = novoUsuario();
+    @Nested
+    class CriacaoEConsulta {
 
-        when(pedidoRepository.saveAndFlush(any(Pedido.class)))
-                .thenAnswer(invocation -> {
-                    Pedido pedido = invocation.getArgument(0);
-                    definirId(pedido, 1L);
-                    return pedido;
-                });
+        @Test
+        void deveCriarPedidoEPublicarEvento() {
+            Usuario usuario = novoUsuario();
+            configurarSaveAndFlush();
 
-        PedidoResponseDTO response = pedidoService.criarPedido(usuario);
+            PedidoResponseDTO resposta =
+                    pedidoService.criarPedido(usuario);
 
-        assertEquals(StatusPedido.CRIADO, response.status());
-        assertEquals(BigDecimal.ZERO, response.valorBruto());
+            assertAll(
+                    () -> assertEquals(
+                            ID_PEDIDO,
+                            resposta.idPedido()
+                    ),
+                    () -> assertEquals(
+                            ID_USUARIO,
+                            resposta.idUsuario()
+                    ),
+                    () -> assertEquals(
+                            StatusPedido.CRIADO,
+                            resposta.status()
+                    ),
+                    () -> assertBigDecimal(
+                            "0.00",
+                            resposta.valorFinal()
+                    ),
+                    () -> assertTrue(
+                            resposta.itens().isEmpty()
+                    )
+            );
 
-        verify(pedidoRepository).saveAndFlush(any(Pedido.class));
-        verify(eventPublisher).publishEvent(any(PedidoCriadoEvent.class));
+            PedidoCriadoEvent evento =
+                    capturarEvento(PedidoCriadoEvent.class);
+
+            assertAll(
+                    () -> assertEquals(
+                            ID_PEDIDO,
+                            evento.idPedido()
+                    ),
+                    () -> assertEquals(
+                            ID_USUARIO,
+                            evento.idUsuario()
+                    ),
+                    () -> assertNotNull(
+                            evento.dataHora()
+                    )
+            );
+        }
+
+        @Test
+        void naoDeveCriarPedidoSemUsuario() {
+            IllegalArgumentException excecao = assertThrows(
+                    IllegalArgumentException.class,
+                    () -> pedidoService.criarPedido(null)
+            );
+
+            assertEquals(
+                    "Usuário é obrigatório",
+                    excecao.getMessage()
+            );
+
+            verifyNoInteractions(
+                    pedidoRepository,
+                    eventPublisher
+            );
+        }
+
+        @Test
+        void deveBuscarPedidoDoUsuario() {
+            Usuario usuario = novoUsuario();
+
+            Pedido pedido = novoPedidoComItem(
+                    usuario,
+                    2,
+                    20
+            ).pedido();
+
+            mockPedidoDoUsuario(
+                    usuario,
+                    pedido
+            );
+
+            PedidoResponseDTO resposta =
+                    pedidoService.buscarPedidoPorId(
+                            ID_PEDIDO,
+                            usuario
+                    );
+
+            assertAll(
+                    () -> assertEquals(
+                            ID_PEDIDO,
+                            resposta.idPedido()
+                    ),
+                    () -> assertEquals(
+                            StatusPedido.CRIADO,
+                            resposta.status()
+                    ),
+                    () -> assertBigDecimal(
+                            "200.00",
+                            resposta.valorBruto()
+                    ),
+                    () -> assertEquals(
+                            1,
+                            resposta.itens().size()
+                    )
+            );
+        }
+
+        @Test
+        void naoDeveBuscarPedidoInexistenteOuDeOutroUsuario() {
+            Usuario usuario = novoUsuario();
+
+            when(
+                    pedidoRepository.findByIdAndUsuario(
+                            ID_PEDIDO,
+                            usuario
+                    )
+            ).thenReturn(Optional.empty());
+
+            RuntimeException excecao = assertThrows(
+                    RuntimeException.class,
+                    () -> pedidoService.buscarPedidoPorId(
+                            ID_PEDIDO,
+                            usuario
+                    )
+            );
+
+            assertEquals(
+                    "Pedido não encontrado",
+                    excecao.getMessage()
+            );
+        }
     }
 
-    @Test
-    void deveAdicionarItemAoPedido() {
-        Usuario usuario = novoUsuario();
-        Pedido pedido = new Pedido(usuario);
-        Produto produto = novoProdutoComEstoque(10);
+    @Nested
+    class Itens {
 
-        when(pedidoRepository.findByIdAndUsuario(1L, usuario))
-                .thenReturn(Optional.of(pedido));
+        @Test
+        void deveAdicionarItemRecalcularValoresEReduzirEstoque() {
+            Usuario usuario = novoUsuario();
+            Pedido pedido = novoPedidoVazio(usuario);
+            Produto produto = novoProduto(10);
 
-        when(produtoRepository.findById(1L))
-                .thenReturn(Optional.of(produto));
+            mockPedidoDoUsuario(
+                    usuario,
+                    pedido
+            );
 
-        when(pedidoRepository.saveAndFlush(any(Pedido.class)))
-                .thenAnswer(invocation -> {
-                    Pedido pedidoSalvo = invocation.getArgument(0);
+            when(
+                    produtoRepository.findById(
+                            ID_PRODUTO
+                    )
+            ).thenReturn(Optional.of(produto));
 
-                    definirId(pedidoSalvo, 1L);
+            configurarSaveAndFlush();
 
-                    pedidoSalvo.getItens().forEach(item -> {
-                        if (item.getId() == null) {
-                            definirId(item, 1L);
-                        }
-                    });
+            PedidoResponseDTO resposta =
+                    pedidoService.adicionarItemPedido(
+                            ID_PEDIDO,
+                            new AdicionarPedidoRequestDTO(
+                                    ID_PRODUTO,
+                                    2
+                            ),
+                            usuario
+                    );
 
-                    return pedidoSalvo;
-                });
+            assertAll(
+                    () -> assertEquals(
+                            1,
+                            resposta.itens().size()
+                    ),
+                    () -> assertEquals(
+                            ID_ITEM,
+                            resposta.itens()
+                                    .getFirst()
+                                    .itemPedidoId()
+                    ),
+                    () -> assertEquals(
+                            2,
+                            resposta.itens()
+                                    .getFirst()
+                                    .quantidade()
+                    ),
+                    () -> assertBigDecimal(
+                            "200.00",
+                            resposta.valorFinal()
+                    ),
+                    () -> assertEquals(
+                            8,
+                            produto.getEstoque()
+                    )
+            );
 
-        AdicionarPedidoRequestDTO requestDTO =
-                new AdicionarPedidoRequestDTO(1L, 2);
+            verify(pedidoRepository).saveAndFlush(pedido);
+        }
 
-        PedidoResponseDTO responseDTO =
-                pedidoService.adicionarItemPedido(1L, requestDTO, usuario);
+        @Test
+        void naoDeveAdicionarItemQuandoPedidoNaoExiste() {
+            Usuario usuario = novoUsuario();
 
-        assertEquals(1, responseDTO.itens().size());
-        assertEquals(1L, responseDTO.itens().getFirst().itemPedidoId());
-        assertEquals(BigDecimal.valueOf(200), responseDTO.valorBruto());
-        assertEquals(8, produto.getEstoque());
+            when(
+                    pedidoRepository.findByIdAndUsuario(
+                            ID_PEDIDO,
+                            usuario
+                    )
+            ).thenReturn(Optional.empty());
 
-        verify(pedidoRepository).findByIdAndUsuario(1L, usuario);
-        verify(produtoRepository).findById(1L);
-        verify(pedidoRepository).saveAndFlush(any(Pedido.class));
+            RuntimeException excecao = assertThrows(
+                    RuntimeException.class,
+                    () -> pedidoService.adicionarItemPedido(
+                            ID_PEDIDO,
+                            new AdicionarPedidoRequestDTO(
+                                    ID_PRODUTO,
+                                    2
+                            ),
+                            usuario
+                    )
+            );
+
+            assertEquals(
+                    "Pedido não encontrado",
+                    excecao.getMessage()
+            );
+
+            verify(
+                    produtoRepository,
+                    never()
+            ).findById(anyLong());
+        }
+
+        @Test
+        void naoDeveAdicionarProdutoInexistente() {
+            Usuario usuario = novoUsuario();
+
+            mockPedidoDoUsuario(
+                    usuario,
+                    novoPedidoVazio(usuario)
+            );
+
+            when(
+                    produtoRepository.findById(
+                            ID_PRODUTO
+                    )
+            ).thenReturn(Optional.empty());
+
+            RuntimeException excecao = assertThrows(
+                    RuntimeException.class,
+                    () -> pedidoService.adicionarItemPedido(
+                            ID_PEDIDO,
+                            new AdicionarPedidoRequestDTO(
+                                    ID_PRODUTO,
+                                    2
+                            ),
+                            usuario
+                    )
+            );
+
+            assertEquals(
+                    "Produto não encontrado",
+                    excecao.getMessage()
+            );
+
+            verify(
+                    pedidoRepository,
+                    never()
+            ).saveAndFlush(any());
+        }
+
+        @Test
+        void naoDeveAlterarItensQuandoPedidoEstaPago() {
+            Usuario usuario = novoUsuario();
+            Pedido pedido = novoPedidoPago(usuario);
+
+            mockPedidoDoUsuario(
+                    usuario,
+                    pedido
+            );
+
+            IllegalStateException excecao = assertThrows(
+                    IllegalStateException.class,
+                    () -> pedidoService.adicionarItemPedido(
+                            ID_PEDIDO,
+                            new AdicionarPedidoRequestDTO(
+                                    ID_PRODUTO,
+                                    1
+                            ),
+                            usuario
+                    )
+            );
+
+            assertEquals(
+                    "Pedido com status PAGO não permite alterar itens.",
+                    excecao.getMessage()
+            );
+
+            verifyNoInteractions(produtoRepository);
+        }
+
+        @Test
+        void deveAlterarQuantidadeEAplicarDescontoPorQuantidade() {
+            Usuario usuario = novoUsuario();
+
+            PedidoComProduto fixture = novoPedidoComItem(
+                    usuario,
+                    2,
+                    20
+            );
+
+            mockPedidoDoUsuario(
+                    usuario,
+                    fixture.pedido()
+            );
+
+            PedidoResponseDTO resposta =
+                    pedidoService.alterarQuantidadeItemPedido(
+                            ID_PEDIDO,
+                            ID_ITEM,
+                            new AlterarQuantidadeItemRequestDTO(10),
+                            usuario
+                    );
+
+            assertAll(
+                    () -> assertEquals(
+                            10,
+                            resposta.itens()
+                                    .getFirst()
+                                    .quantidade()
+                    ),
+                    () -> assertBigDecimal(
+                            "1000.00",
+                            resposta.valorBruto()
+                    ),
+                    () -> assertBigDecimal(
+                            "100.00",
+                            resposta.valorDesconto()
+                    ),
+                    () -> assertBigDecimal(
+                            "900.00",
+                            resposta.valorFinal()
+                    ),
+                    () -> assertEquals(
+                            10,
+                            fixture.produto().getEstoque()
+                    )
+            );
+        }
+
+        @Test
+        void deveRemoverItemDevolverEstoqueERecalcularValores() {
+            Usuario usuario = novoUsuario();
+
+            PedidoComProduto fixture = novoPedidoComItem(
+                    usuario,
+                    2,
+                    20
+            );
+
+            mockPedidoDoUsuario(
+                    usuario,
+                    fixture.pedido()
+            );
+
+            PedidoResponseDTO resposta =
+                    pedidoService.removerItemPedido(
+                            ID_PEDIDO,
+                            ID_ITEM,
+                            usuario
+                    );
+
+            assertAll(
+                    () -> assertTrue(
+                            resposta.itens().isEmpty()
+                    ),
+                    () -> assertBigDecimal(
+                            "0.00",
+                            resposta.valorFinal()
+                    ),
+                    () -> assertEquals(
+                            20,
+                            fixture.produto().getEstoque()
+                    )
+            );
+        }
     }
 
-    @Test
-    void naoDeveAdicionarItemQuandoPedidoNaoExiste() {
-        Usuario usuario = novoUsuario();
+    @Nested
+    class CupomEPagamento {
 
-        when(pedidoRepository.findByIdAndUsuario(1L, usuario))
-                .thenReturn(Optional.empty());
+        @Test
+        void deveAplicarCupomRecalcularValoresEPublicarEvento() {
+            Usuario usuario = novoUsuario();
 
-        AdicionarPedidoRequestDTO dto =
-                new AdicionarPedidoRequestDTO(1L, 2);
+            Pedido pedido = novoPedidoComItem(
+                    usuario,
+                    2,
+                    20
+            ).pedido();
 
-        assertThrows(
-                RuntimeException.class,
-                () -> pedidoService.adicionarItemPedido(1L, dto, usuario)
-        );
+            Cupom cupom = novoCupom(
+                    "DESC10",
+                    "0.10"
+            );
 
-        verify(produtoRepository, never()).findById(anyLong());
+            definirId(
+                    cupom,
+                    40L
+            );
+
+            mockPedidoDoUsuario(
+                    usuario,
+                    pedido
+            );
+
+            when(
+                    cupomService.buscarCupomValido(
+                            "DESC10"
+                    )
+            ).thenReturn(cupom);
+
+            PedidoResponseDTO resposta =
+                    pedidoService.aplicarCupom(
+                            ID_PEDIDO,
+                            usuario,
+                            "DESC10"
+                    );
+
+            assertAll(
+                    () -> assertEquals(
+                            "DESC10",
+                            resposta.codigoCupom()
+                    ),
+                    () -> assertBigDecimal(
+                            "20.00",
+                            resposta.valorDesconto()
+                    ),
+                    () -> assertBigDecimal(
+                            "180.00",
+                            resposta.valorFinal()
+                    )
+            );
+
+            CupomAplicadoEvent evento =
+                    capturarEvento(CupomAplicadoEvent.class);
+
+            assertAll(
+                    () -> assertEquals(
+                            ID_PEDIDO,
+                            evento.idPedido()
+                    ),
+                    () -> assertEquals(
+                            ID_USUARIO,
+                            evento.idUsuario()
+                    ),
+                    () -> assertEquals(
+                            "DESC10",
+                            evento.codigoCupom()
+                    ),
+                    () -> assertEquals(
+                            StatusPedido.CRIADO,
+                            evento.statusPedido()
+                    )
+            );
+        }
+
+        @Test
+        void naoDeveAplicarCupomQuandoPedidoEstaPago() {
+            Usuario usuario = novoUsuario();
+            Pedido pedido = novoPedidoPago(usuario);
+
+            mockPedidoDoUsuario(
+                    usuario,
+                    pedido
+            );
+
+            IllegalStateException excecao = assertThrows(
+                    IllegalStateException.class,
+                    () -> pedidoService.aplicarCupom(
+                            ID_PEDIDO,
+                            usuario,
+                            "DESC10"
+                    )
+            );
+
+            assertEquals(
+                    "Pedido com status PAGO não permite aplicar cupom.",
+                    excecao.getMessage()
+            );
+
+            verifyNoInteractions(
+                    cupomService,
+                    eventPublisher
+            );
+        }
+
+        @Test
+        void devePagarPedidoRegistrarCupomEPublicarEvento() {
+            Usuario usuario = novoUsuario();
+
+            Pedido pedido = novoPedidoComItem(
+                    usuario,
+                    2,
+                    20
+            ).pedido();
+
+            Cupom cupom = novoCupom(
+                    "DESC10",
+                    "0.10"
+            );
+
+            pedido.aplicarCupom(cupom);
+
+            mockPedidoDoUsuario(
+                    usuario,
+                    pedido
+            );
+
+            PedidoResponseDTO resposta =
+                    pedidoService.pagarPedido(
+                            ID_PEDIDO,
+                            usuario
+                    );
+
+            assertAll(
+                    () -> assertEquals(
+                            StatusPedido.PAGO,
+                            resposta.status()
+                    ),
+                    () -> assertBigDecimal(
+                            "180.00",
+                            resposta.valorFinal()
+                    ),
+                    () -> assertEquals(
+                            1,
+                            cupom.getQuantidadeDeUso()
+                    )
+            );
+
+            PedidoPagoEvent evento =
+                    capturarEvento(PedidoPagoEvent.class);
+
+            assertAll(
+                    () -> assertEquals(
+                            ID_PEDIDO,
+                            evento.idPedido()
+                    ),
+                    () -> assertEquals(
+                            ID_USUARIO,
+                            evento.idUsuario()
+                    ),
+                    () -> assertBigDecimal(
+                            "180.00",
+                            evento.valorFinal()
+                    )
+            );
+        }
+
+        @Test
+        void naoDevePagarPedidoVazio() {
+            Usuario usuario = novoUsuario();
+
+            mockPedidoDoUsuario(
+                    usuario,
+                    novoPedidoVazio(usuario)
+            );
+
+            IllegalStateException excecao = assertThrows(
+                    IllegalStateException.class,
+                    () -> pedidoService.pagarPedido(
+                            ID_PEDIDO,
+                            usuario
+                    )
+            );
+
+            assertEquals(
+                    "Não é possível iniciar pagamento de um pedido sem itens.",
+                    excecao.getMessage()
+            );
+
+            verifyNoInteractions(eventPublisher);
+        }
     }
 
-    @Test
-    void devePublicarEventoAoPagarPedido() {
-        Usuario usuario = novoUsuarioComId(1L);
-        Pedido pedido = novoPedidoComItem(usuario);
-        definirId(pedido, 10L);
+    @Nested
+    class TransicoesAdministrativas {
 
-        when(pedidoRepository.findByIdAndUsuario(10L, usuario))
-                .thenReturn(Optional.of(pedido));
+        @Test
+        void deveEnviarPedidoPagoEPublicarEvento() {
+            Pedido pedido = novoPedidoPago(
+                    novoUsuario()
+            );
 
-        PedidoResponseDTO response = pedidoService.pagarPedido(10L, usuario);
-        assertEquals(StatusPedido.PAGO, response.status());
+            mockPedidoAdministrativo(pedido);
 
-        ArgumentCaptor<PedidoPagoEvent> captor =
-                ArgumentCaptor.forClass(PedidoPagoEvent.class);
+            PedidoResponseDTO resposta =
+                    pedidoService.enviarPedido(ID_PEDIDO);
 
-        verify(eventPublisher).publishEvent(captor.capture());
-        PedidoPagoEvent event = captor.getValue();
+            assertEquals(
+                    StatusPedido.ENVIADO,
+                    resposta.status()
+            );
 
-        assertEquals(10L, event.idPedido());
-        assertEquals(1L, event.idUsuario());
-        assertEquals(BigDecimal.valueOf(100), event.valorFinal());
+            PedidoEnviadoEvent evento =
+                    capturarEvento(PedidoEnviadoEvent.class);
+
+            assertAll(
+                    () -> assertEquals(
+                            ID_PEDIDO,
+                            evento.idPedido()
+                    ),
+                    () -> assertEquals(
+                            ID_USUARIO,
+                            evento.idUsuario()
+                    ),
+                    () -> assertEquals(
+                            StatusPedido.ENVIADO,
+                            evento.statusNovo()
+                    )
+            );
+        }
+
+        @Test
+        void deveEntregarPedidoEnviadoEPublicarEvento() {
+            Pedido pedido = novoPedidoPago(
+                    novoUsuario()
+            );
+
+            pedido.enviar(new EstadoPago());
+
+            mockPedidoAdministrativo(pedido);
+
+            PedidoResponseDTO resposta =
+                    pedidoService.entregarPedido(ID_PEDIDO);
+
+            assertEquals(
+                    StatusPedido.ENTREGUE,
+                    resposta.status()
+            );
+
+            PedidoEntregueEvent evento =
+                    capturarEvento(PedidoEntregueEvent.class);
+
+            assertAll(
+                    () -> assertEquals(
+                            ID_PEDIDO,
+                            evento.idPedido()
+                    ),
+                    () -> assertEquals(
+                            ID_USUARIO,
+                            evento.idUsuario()
+                    ),
+                    () -> assertBigDecimal(
+                            "200.00",
+                            evento.valorFinal()
+                    )
+            );
+        }
+
+        @Test
+        void naoDeveEnviarPedidoCriado() {
+            Usuario usuario = novoUsuario();
+
+            Pedido pedido = novoPedidoComItem(
+                    usuario,
+                    2,
+                    20
+            ).pedido();
+
+            mockPedidoAdministrativo(pedido);
+
+            IllegalStateException excecao = assertThrows(
+                    IllegalStateException.class,
+                    () -> pedidoService.enviarPedido(
+                            ID_PEDIDO
+                    )
+            );
+
+            assertEquals(
+                    "Pedido com status CRIADO não pode ser enviado.",
+                    excecao.getMessage()
+            );
+
+            verifyNoInteractions(eventPublisher);
+        }
     }
 
-    @Test
-    void devePublicarEventoAoAplicarCupom() {
-        Usuario usuario = novoUsuarioComId(1L);
-        Pedido pedido = novoPedidoComItem(usuario);
-        definirId(pedido, 10L);
-        Cupom cupom = novoCupomValido();
-        definirId(cupom, 5L);
+    @Nested
+    class CancelamentoEEstorno {
 
-        when(pedidoRepository.findByIdAndUsuario(10L, usuario))
-                .thenReturn(Optional.of(pedido));
+        @Test
+        void deveCancelarPedidoCriadoDevolverEstoqueEPublicarEvento() {
+            Usuario usuario = novoUsuario();
 
-        when(cupomService.buscarCupomValido("DESC10"))
-                .thenReturn(cupom);
+            PedidoComProduto fixture = novoPedidoComItem(
+                    usuario,
+                    2,
+                    20
+            );
 
-        PedidoResponseDTO response = pedidoService.aplicarCupom(
-                10L,
-                usuario,
-                "DESC10"
-        );
+            mockPedidoDoUsuario(
+                    usuario,
+                    fixture.pedido()
+            );
 
-        assertEquals("DESC10", response.codigoCupom());
+            PedidoResponseDTO resposta =
+                    pedidoService.cancelarPedido(
+                            ID_PEDIDO,
+                            usuario
+                    );
 
-        ArgumentCaptor<CupomAplicadoEvent> captor =
-                ArgumentCaptor.forClass(CupomAplicadoEvent.class);
+            assertAll(
+                    () -> assertEquals(
+                            StatusPedido.CANCELADO,
+                            resposta.status()
+                    ),
+                    () -> assertEquals(
+                            20,
+                            fixture.produto().getEstoque()
+                    )
+            );
 
-        verify(eventPublisher).publishEvent(captor.capture());
+            PedidoCanceladoEvent evento =
+                    capturarEvento(PedidoCanceladoEvent.class);
 
-        CupomAplicadoEvent event = captor.getValue();
+            assertAll(
+                    () -> assertEquals(
+                            StatusPedido.CRIADO,
+                            evento.statusAnterior()
+                    ),
+                    () -> assertEquals(
+                            StatusPedido.CANCELADO,
+                            evento.statusNovo()
+                    )
+            );
+        }
 
-        assertEquals(10L, event.idPedido());
-        assertEquals(1L, event.idUsuario());
-        assertEquals("DESC10", event.codigoCupom());
-        assertEquals(StatusPedido.CRIADO, event.statusPedido());
+        @Test
+        void deveSolicitarCancelamentoDePedidoPagoSemDevolverEstoque() {
+            Usuario usuario = novoUsuario();
+
+            PedidoComProduto fixture = novoPedidoComItem(
+                    usuario,
+                    2,
+                    20
+            );
+
+            fixture.pedido().pagar(new EstadoCriado());
+
+            mockPedidoDoUsuario(
+                    usuario,
+                    fixture.pedido()
+            );
+
+            PedidoResponseDTO resposta =
+                    pedidoService.cancelarPedido(
+                            ID_PEDIDO,
+                            usuario
+                    );
+
+            assertAll(
+                    () -> assertEquals(
+                            StatusPedido.CANCELAMENTO_SOLICITADO,
+                            resposta.status()
+                    ),
+                    () -> assertEquals(
+                            18,
+                            fixture.produto().getEstoque()
+                    )
+            );
+
+            PedidoCanceladoEvent evento =
+                    capturarEvento(PedidoCanceladoEvent.class);
+
+            assertAll(
+                    () -> assertEquals(
+                            StatusPedido.PAGO,
+                            evento.statusAnterior()
+                    ),
+                    () -> assertEquals(
+                            StatusPedido.CANCELAMENTO_SOLICITADO,
+                            evento.statusNovo()
+                    )
+            );
+        }
+
+        @Test
+        void deveEstornarPedidoDevolverEstoqueEPublicarEvento() {
+            Usuario usuario = novoUsuario();
+
+            PedidoComProduto fixture = novoPedidoComItem(
+                    usuario,
+                    2,
+                    20
+            );
+
+            fixture.pedido().pagar(new EstadoCriado());
+            fixture.pedido().cancelar(new EstadoPago());
+
+            mockPedidoAdministrativo(fixture.pedido());
+
+            PedidoResponseDTO resposta =
+                    pedidoService.estornarPedido(
+                            ID_PEDIDO
+                    );
+
+            assertAll(
+                    () -> assertEquals(
+                            StatusPedido.ESTORNADO,
+                            resposta.status()
+                    ),
+                    () -> assertEquals(
+                            20,
+                            fixture.produto().getEstoque()
+                    )
+            );
+
+            PedidoEstornadoEvent evento =
+                    capturarEvento(PedidoEstornadoEvent.class);
+
+            assertAll(
+                    () -> assertEquals(
+                            ID_PEDIDO,
+                            evento.idPedido()
+                    ),
+                    () -> assertEquals(
+                            ID_USUARIO,
+                            evento.idUsuario()
+                    ),
+                    () -> assertBigDecimal(
+                            "200.00",
+                            evento.valorFinal()
+                    )
+            );
+        }
     }
 
-    @Test
-    void devePublicarEventoAoCancelarPedido() {
-        Usuario usuario = novoUsuarioComId(1L);
-        Pedido pedido = new Pedido(usuario);
-        definirId(pedido, 10L);
+    @Nested
+    class Checkout {
 
-        when(pedidoRepository.findByIdAndUsuario(10L, usuario))
-                .thenReturn(Optional.of(pedido));
+        @Test
+        void deveMarcarPedidoCriadoComoPago() {
+            Pedido pedido = novoPedidoComItem(
+                    novoUsuario(),
+                    2,
+                    20
+            ).pedido();
 
-        PedidoResponseDTO response = pedidoService.cancelarPedido(10L, usuario);
+            pedidoService.marcarPedidoComoPagoAposPagamento(
+                    pedido
+            );
 
-        assertEquals(StatusPedido.CANCELADO, response.status());
+            assertEquals(
+                    StatusPedido.PAGO,
+                    pedido.getStatus()
+            );
 
-        ArgumentCaptor<PedidoCanceladoEvent> captor =
-                ArgumentCaptor.forClass(PedidoCanceladoEvent.class);
+            verify(eventPublisher)
+                    .publishEvent(
+                            any(PedidoPagoEvent.class)
+                    );
+        }
 
-        verify(eventPublisher).publishEvent(captor.capture());
+        @Test
+        void deveConfirmarPedidoAguardandoPagamentoComoPago() {
+            Pedido pedido = novoPedidoComItem(
+                    novoUsuario(),
+                    2,
+                    20
+            ).pedido();
 
-        PedidoCanceladoEvent event = captor.getValue();
+            pedido.aguardarPagamento(
+                    new EstadoCriado()
+            );
 
-        assertEquals(10L, event.idPedido());
-        assertEquals(1L, event.idUsuario());
-        assertEquals(StatusPedido.CRIADO, event.statusAnterior());
-        assertEquals(StatusPedido.CANCELADO, event.statusNovo());
+            pedidoService.marcarPedidoComoPagoAposPagamento(
+                    pedido
+            );
+
+            assertEquals(
+                    StatusPedido.PAGO,
+                    pedido.getStatus()
+            );
+
+            verify(eventPublisher)
+                    .publishEvent(
+                            any(PedidoPagoEvent.class)
+                    );
+        }
+
+        @Test
+        void naoDeveMarcarPedidoPagoNovamente() {
+            Pedido pedido = novoPedidoPago(
+                    novoUsuario()
+            );
+
+            IllegalStateException excecao = assertThrows(
+                    IllegalStateException.class,
+                    () -> pedidoService
+                            .marcarPedidoComoPagoAposPagamento(
+                                    pedido
+                            )
+            );
+
+            assertEquals(
+                    "Pedido com status PAGO não pode ser marcado como pago.",
+                    excecao.getMessage()
+            );
+
+            verifyNoInteractions(eventPublisher);
+        }
+
+        @Test
+        void deveMarcarPedidoCriadoComoAguardandoPagamento() {
+            Pedido pedido = novoPedidoComItem(
+                    novoUsuario(),
+                    2,
+                    20
+            ).pedido();
+
+            pedidoService.marcarPedidoComoAguardandoPagamento(
+                    pedido
+            );
+
+            assertEquals(
+                    StatusPedido.AGUARDANDO_PAGAMENTO,
+                    pedido.getStatus()
+            );
+
+            verifyNoInteractions(eventPublisher);
+        }
     }
 
-    @Test
-    void devePublicarEventoAoEstornarPedido() {
-        Usuario usuario = novoUsuarioComId(1L);
-        Pedido pedido = novoPedidoComItem(usuario);
-        definirId(pedido, 10L);
-        pedido.pagar(new EstadoCriado());
-        pedido.cancelar(new EstadoPago());
-
-        when(pedidoRepository.findById(10L))
-                .thenReturn(Optional.of(pedido));
-
-        PedidoResponseDTO response = pedidoService.estornarPedido(10L);
-
-        assertEquals(StatusPedido.ESTORNADO, response.status());
-
-        ArgumentCaptor<PedidoEstornadoEvent> captor =
-                ArgumentCaptor.forClass(PedidoEstornadoEvent.class);
-
-        verify(eventPublisher).publishEvent(captor.capture());
-
-        PedidoEstornadoEvent event = captor.getValue();
-
-        assertEquals(10L, event.idPedido());
-        assertEquals(1L, event.idUsuario());
-        assertEquals(BigDecimal.valueOf(100), event.valorFinal());
+    private void mockPedidoDoUsuario(
+            Usuario usuario,
+            Pedido pedido) {
+        when(
+                pedidoRepository.findByIdAndUsuario(
+                        ID_PEDIDO,
+                        usuario
+                )
+        ).thenReturn(Optional.of(pedido));
     }
 
-    private Usuario novoUsuarioComId(Long id) {
-        Usuario usuario = novoUsuario();
-        definirId(usuario, id);
-        return usuario;
+    private void mockPedidoAdministrativo(
+            Pedido pedido) {
+        when(
+                pedidoRepository.findById(
+                        ID_PEDIDO
+                )
+        ).thenReturn(Optional.of(pedido));
     }
 
-    private Pedido novoPedidoComItem(Usuario usuario) {
-        Pedido pedido = new Pedido(usuario);
-        Produto produto = novoProdutoComEstoque(10);
-        definirId(produto, 1L);
-        pedido.adicionarItem(produto, 1);
-        return pedido;
-    }
+    private void configurarSaveAndFlush() {
+        when(
+                pedidoRepository.saveAndFlush(
+                        any(Pedido.class)
+                )
+        ).thenAnswer(invocation -> {
+            Pedido pedido =
+                    invocation.getArgument(0);
 
-    private Cupom novoCupomValido() {
-        return new Cupom(
-                "DESC10",
-                BigDecimal.valueOf(0.10),
-                LocalDateTime.now().minusDays(1),
-                LocalDateTime.now().plusDays(1),
-                100
-        );
-    }
+            if (pedido.getId() == null) {
+                definirId(
+                        pedido,
+                        ID_PEDIDO
+                );
+            }
 
-    private void definirId(Object objeto, Long id) {
-        ReflectionTestUtils.setField(objeto, "id", id);
+            pedido.getItens().forEach(item -> {
+                if (item.getId() == null) {
+                    definirId(
+                            item,
+                            ID_ITEM
+                    );
+                }
+            });
+
+            return pedido;
+        });
     }
 
     private Usuario novoUsuario() {
-        return new Usuario(
+        Usuario usuario = new Usuario(
                 "Filipe",
                 "filipe@teste.com",
                 "123456",
                 Perfil.USER
         );
+
+        definirId(
+                usuario,
+                ID_USUARIO
+        );
+
+        return usuario;
     }
 
-    private Produto novoProdutoComEstoque(Integer estoque) {
-        return new Produto(
+    private Pedido novoPedidoVazio(
+            Usuario usuario) {
+        Pedido pedido = new Pedido(usuario);
+
+        definirId(
+                pedido,
+                ID_PEDIDO
+        );
+
+        return pedido;
+    }
+
+    private PedidoComProduto novoPedidoComItem(
+            Usuario usuario,
+            int quantidade,
+            int estoqueInicial) {
+        Produto produto = novoProduto(
+                estoqueInicial
+        );
+
+        Pedido pedido = novoPedidoVazio(
+                usuario
+        );
+
+        pedido.adicionarItem(
+                produto,
+                quantidade
+        );
+
+        definirId(
+                pedido.getItens().getFirst(),
+                ID_ITEM
+        );
+
+        return new PedidoComProduto(
+                pedido,
+                produto
+        );
+    }
+
+    private Pedido novoPedidoPago(
+            Usuario usuario) {
+        Pedido pedido = novoPedidoComItem(
+                usuario,
+                2,
+                20
+        ).pedido();
+
+        pedido.pagar(
+                new EstadoCriado()
+        );
+
+        return pedido;
+    }
+
+    private Produto novoProduto(
+            int estoque) {
+        Produto produto = new Produto(
                 "Mouse",
                 "Mouse sem fio",
-                BigDecimal.valueOf(100),
+                new BigDecimal("100.00"),
                 estoque
         );
+
+        definirId(
+                produto,
+                ID_PRODUTO
+        );
+
+        return produto;
+    }
+
+    private Cupom novoCupom(
+            String codigo,
+            String percentual) {
+        return new Cupom(
+                codigo,
+                new BigDecimal(percentual),
+                LocalDateTime.now().minusDays(1),
+                LocalDateTime.now().plusDays(10),
+                100
+        );
+    }
+
+    private <T> T capturarEvento(
+            Class<T> tipoEvento) {
+        ArgumentCaptor<T> captor = ArgumentCaptor.forClass(tipoEvento);
+        verify(eventPublisher).publishEvent(captor.capture());
+        return captor.getValue();
+    }
+
+    private void definirId(
+            Object objeto,
+            Long id) {
+        ReflectionTestUtils.setField(
+                objeto,
+                "id",
+                id
+        );
+    }
+
+    private void assertBigDecimal(
+            String esperado,
+            BigDecimal atual) {
+        assertEquals(
+                0,
+                new BigDecimal(esperado)
+                        .compareTo(atual)
+        );
+    }
+
+    private record PedidoComProduto(
+            Pedido pedido,
+            Produto produto) {
     }
 }

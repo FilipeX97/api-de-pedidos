@@ -1,5 +1,6 @@
 package br.com.api.pedidos.user.service;
 
+import br.com.api.pedidos.shared.exception.RecursoNaoEncontradoException;
 import br.com.api.pedidos.shared.pagination.dto.PaginaResponseDTO;
 import br.com.api.pedidos.shared.pagination.util.PaginacaoUtils;
 import br.com.api.pedidos.user.cache.UsuarioCacheService;
@@ -79,7 +80,7 @@ public class UsuarioService {
         return usuarioRepository.findByEmail(email)
                 .map(UsuarioResponseDTO::from)
                 .orElseThrow(() ->
-                        new IllegalArgumentException("Usuário não encontrado"));
+                        new RecursoNaoEncontradoException("Usuário não encontrado"));
     }
 
     @Transactional(readOnly = true)
@@ -165,6 +166,6 @@ public class UsuarioService {
     private Usuario buscarUsuarioOuFalhar(Long id) {
         return usuarioRepository.findById(id)
                 .orElseThrow(() ->
-                        new IllegalArgumentException("Usuário não encontrado"));
+                        new RecursoNaoEncontradoException("Usuário não encontrado"));
     }
 }

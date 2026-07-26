@@ -1,6 +1,7 @@
 package br.com.api.pedidos.auth.service;
 
 import br.com.api.pedidos.auth.dto.RegistraRequestDTO;
+import br.com.api.pedidos.shared.exception.RegraNegocioException;
 import br.com.api.pedidos.user.entity.Perfil;
 import br.com.api.pedidos.user.entity.Usuario;
 import br.com.api.pedidos.user.repository.UsuarioRepository;
@@ -24,7 +25,7 @@ public class RegistroUsuarioService {
     @Transactional
     public void registrar(RegistraRequestDTO registraRequestDTO) {
         if (usuarioRepository.findByEmail(registraRequestDTO.email()).isPresent()) {
-            throw new RuntimeException("Usuário já existe");
+            throw new RegraNegocioException("Usuário já existe");
         }
 
         Usuario usuario = new Usuario(

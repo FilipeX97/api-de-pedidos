@@ -4,6 +4,7 @@ import br.com.api.pedidos.audit.entity.Auditoria;
 import br.com.api.pedidos.audit.entity.TipoAcao;
 import br.com.api.pedidos.audit.repository.AuditoriaRepository;
 import br.com.api.pedidos.order.repository.PedidoRepository;
+import br.com.api.pedidos.shared.exception.RecursoNaoEncontradoException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +34,7 @@ public class AuditoriaService {
         }
 
         var pedido = pedidoRepository.findById(idPedido)
-                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Pedido não encontrado"));
 
         var usuarioDonoDoPedido = pedido.getUsuario();
 

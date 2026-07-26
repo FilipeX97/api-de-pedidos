@@ -5,6 +5,7 @@ import br.com.api.pedidos.product.dto.ProdutoCriacaoRequestDTO;
 import br.com.api.pedidos.product.dto.ProdutoResponseDTO;
 import br.com.api.pedidos.product.entity.Produto;
 import br.com.api.pedidos.product.repository.ProdutoRepository;
+import br.com.api.pedidos.shared.exception.RecursoNaoEncontradoException;
 import br.com.api.pedidos.shared.pagination.dto.PaginaResponseDTO;
 import br.com.api.pedidos.shared.pagination.util.PaginacaoUtils;
 import org.springframework.data.domain.Pageable;
@@ -42,7 +43,7 @@ public class ProdutoService {
     public ProdutoResponseDTO buscarProdutoPorId(Long id) {
         return produtoRepository
                 .findById(id).map(ProdutoResponseDTO::from)
-                .orElseThrow(() -> new IllegalArgumentException("Produto não encontrado"));
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Produto não encontrado"));
     }
 
     @Transactional(readOnly = true)
@@ -78,7 +79,7 @@ public class ProdutoService {
     @Transactional
     public ProdutoResponseDTO atualizarProduto(Long id, ProdutoAtualizacaoRequest produtoAtualizacaoRequest) {
         var produto = produtoRepository.findById(id).orElseThrow(
-                () -> new IllegalArgumentException("Produto não encontrado")
+                () -> new RecursoNaoEncontradoException("Produto não encontrado")
         );
 
         if(produtoAtualizacaoRequest.nome() != null) {
@@ -106,7 +107,7 @@ public class ProdutoService {
         Produto produto = produtoRepository
                 .findById(id)
                 .orElseThrow(() ->
-                        new IllegalArgumentException("Produto não encontrado")
+                        new RecursoNaoEncontradoException("Produto não encontrado")
                 );
 
         produtoRepository.delete(produto);

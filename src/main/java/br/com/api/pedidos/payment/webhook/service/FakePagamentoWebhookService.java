@@ -8,10 +8,15 @@ import br.com.api.pedidos.payment.webhook.dto.FakePagamentoWebhookDTO;
 import br.com.api.pedidos.payment.webhook.entity.WebhookPagamentoRecebido;
 import br.com.api.pedidos.payment.webhook.service.result.ResultadoRegistroWebhook;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class FakePagamentoWebhookService {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(FakePagamentoWebhookService.class);
 
     private static final String TIPO_PAYMENT_UPDATED = "PAYMENT_UPDATED";
 
@@ -47,21 +52,36 @@ public class FakePagamentoWebhookService {
         FakePagamentoWebhookDTO dto = converter(corpoOriginal);
         validarWebhook(dto);
 
+        log.info(
+                "Webhook recebido. eventId={} status={}",
+                dto.eventId(),
+                dto.statusPagamento()
+        );
+
         ResultadoRegistroWebhook resultadoRegistro =
-                webhookPagamentoRecebidoService.registrarOuBuscarExistente(
-                        dto,
-                        corpoOriginal
-                );
+                webhookPagamentoRecebidoService
+                        .registrarOuBuscarExistente(
+                                dto,
+                                corpoOriginal
+                        );
 
         if (!resultadoRegistro.deveProcessar()) {
-            return checkoutFacade.buscarPagamentoPorCodigoTransacao(
-                    resultadoRegistro.evento().getCodigoTransacao()
+            log.info(
+                    "Webhook duplicado ignorado. eventId={}",
+                    resultadoRegistro
+                            .evento()
+                            .getEventId()
             );
+
+            return checkoutFacade
+                    .buscarPagamentoPorCodigoTransacao(
+                            resultadoRegistro
+                                    .evento()
+                                    .getCodigoTransacao()
+                    );
         }
 
-        return processarEventoRecebido(
-                resultadoRegistro.evento()
-        );
+        return processarEventoRecebido(resultadoRegistro.evento());
     }
 
     private PagamentoResponseDTO processarEventoRecebido(
@@ -83,9 +103,21 @@ public class FakePagamentoWebhookService {
                     evento
             );
 
+            log.info(
+                    "Webhook processado. eventId={} status={}",
+                    evento.getEventId(),
+                    evento.getStatusRecebido()
+            );
+
             return pagamentoResponseDTO;
 
         } catch (Exception exception) {
+            log.error(
+                    "Erro ao processar webhook. eventId={}",
+                    evento.getEventId(),
+                    exception
+            );
+
             webhookPagamentoRecebidoService.marcarComoErro(
                     evento,
                     exception

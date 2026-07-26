@@ -6,6 +6,7 @@ import br.com.api.pedidos.order.history.entity.HistoricoPedido;
 import br.com.api.pedidos.order.history.repository.HistoricoPedidoRepository;
 import br.com.api.pedidos.order.repository.PedidoRepository;
 import br.com.api.pedidos.order.state.StatusPedido;
+import br.com.api.pedidos.shared.exception.RecursoNaoEncontradoException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +50,6 @@ public class HistoricoPedidoService {
         }
 
         return pedidoRepository.findById(idPedido)
-                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Pedido não encontrado"));
     }
 }

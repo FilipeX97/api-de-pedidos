@@ -4,6 +4,8 @@ import br.com.api.pedidos.coupon.dto.CupomRequestDTO;
 import br.com.api.pedidos.coupon.dto.CupomResponseDTO;
 import br.com.api.pedidos.coupon.entity.Cupom;
 import br.com.api.pedidos.coupon.repository.CupomRepository;
+import br.com.api.pedidos.shared.exception.RecursoNaoEncontradoException;
+import br.com.api.pedidos.shared.exception.RegraNegocioException;
 import br.com.api.pedidos.shared.pagination.dto.PaginaResponseDTO;
 import br.com.api.pedidos.shared.pagination.util.PaginacaoUtils;
 import org.springframework.data.domain.Pageable;
@@ -45,7 +47,7 @@ public class CupomService {
     @Transactional
     public CupomResponseDTO criarCupom(CupomRequestDTO cupomRequestDTO) {
         if (cupomRepository.findByCodigoIgnoreCase(cupomRequestDTO.codigo()).isPresent()) {
-            throw new RuntimeException("Código de cupom já existe");
+            throw new RegraNegocioException("Código de cupom já existe");
         }
 
         Cupom cupom = new Cupom(
@@ -101,11 +103,11 @@ public class CupomService {
         Cupom cupom = cupomRepository
                 .findByCodigoIgnoreCase(codigo)
                 .orElseThrow(() ->
-                        new RuntimeException("Cupom inválido")
+                        new RegraNegocioException("Cupom inválido")
                 );
 
         if (!cupom.podeSerUtilizado()) {
-            throw new RuntimeException("Cupom expirado");
+            throw new RegraNegocioException("Cupom expirado");
         }
 
         return cupom;
@@ -113,6 +115,6 @@ public class CupomService {
 
     private Cupom buscarPorId(Long id) {
         return cupomRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Cupom não encontrado"));
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Cupom não encontrado"));
     }
 }

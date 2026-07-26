@@ -5,6 +5,7 @@ import br.com.api.pedidos.notification.entity.Notificacao;
 import br.com.api.pedidos.notification.entity.TipoNotificacao;
 import br.com.api.pedidos.notification.repository.NotificacaoRepository;
 import br.com.api.pedidos.order.repository.PedidoRepository;
+import br.com.api.pedidos.shared.exception.RecursoNaoEncontradoException;
 import br.com.api.pedidos.shared.pagination.dto.PaginaResponseDTO;
 import br.com.api.pedidos.shared.pagination.util.PaginacaoUtils;
 import br.com.api.pedidos.user.entity.Usuario;
@@ -56,7 +57,7 @@ public class NotificacaoService {
 
         var pedido = pedidoRepository.findById(idPedido)
                 .orElseThrow(() ->
-                        new RuntimeException("Pedido não encontrado")
+                        new RecursoNaoEncontradoException("Pedido não encontrado")
                 );
 
         var usuarioDonoDoPedido = pedido.getUsuario();
@@ -119,7 +120,7 @@ public class NotificacaoService {
     public NotificacaoResponseDTO marcarComoLida(Long idNotificacao, Usuario usuario) {
         var notificacao = notificacaoRepository
                 .findByIdAndUsuario(idNotificacao, usuario)
-                .orElseThrow(() -> new RuntimeException("Notificação não encontrada"));
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Notificação não encontrada"));
 
         notificacao.marcarComoLida();
         return NotificacaoResponseDTO.from(notificacao);

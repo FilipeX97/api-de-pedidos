@@ -9,6 +9,9 @@ import br.com.api.pedidos.payment.entity.Pagamento;
 import br.com.api.pedidos.payment.entity.StatusPagamento;
 import br.com.api.pedidos.payment.repository.PagamentoRepository;
 import br.com.api.pedidos.payment.strategy.EstrategiaPagamentoFactory;
+import br.com.api.pedidos.shared.exception.RecursoNaoEncontradoException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +20,9 @@ import java.util.UUID;
 
 @Service
 public class PagamentoService {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(PagamentoService.class);
 
     private final PagamentoRepository pagamentoRepository;
     private final EstrategiaPagamentoFactory estrategiaPagamentoFactory;
@@ -46,9 +52,27 @@ public class PagamentoService {
 
         pagamentoRepository.saveAndFlush(pagamento);
         var estrategia = estrategiaPagamentoFactory.obter(formaPagamento);
+
+        log.info(
+                "Pagamento iniciado. pagamentoId={} pedidoId={} forma={} valor={}",
+                pagamento.getId(),
+                pedido.getId(),
+                formaPagamento,
+                pagamento.getValor()
+        );
+
         var resultado = estrategia.processar(pagamento);
         aplicarResultado(pagamento, resultado);
-        return pagamentoRepository.saveAndFlush(pagamento);
+        var pagamentoSalvo = pagamentoRepository.saveAndFlush(pagamento);
+
+        log.info(
+                "Pagamento processado. pagamentoId={} pedidoId={} status={}",
+                pagamentoSalvo.getId(),
+                pagamentoSalvo.getIdPedido(),
+                pagamentoSalvo.getStatusPagamento()
+        );
+
+        return pagamentoSalvo;
     }
 
     @Transactional(readOnly = true)
@@ -68,7 +92,7 @@ public class PagamentoService {
         return pagamentoRepository
                 .findByIdAndPedidoId(idPagamento, idPedido)
                 .orElseThrow(() ->
-                        new RuntimeException("Pagamento não encontrado para este pedido")
+                        new RecursoNaoEncontradoException("Pagamento não encontrado para este pedido")
                 );
     }
 
@@ -97,7 +121,7 @@ public class PagamentoService {
         var pagamento = pagamentoRepository
                 .findByCodigoTransacao(codigoTransacao)
                 .orElseThrow(() ->
-                        new RuntimeException("Pagamento não encontrado pela transação")
+                        new RecursoNaoEncontradoException("Pagamento não encontrado pela transação")
                 );
 
         StatusPagamento statusConfirmado =
@@ -160,7 +184,7 @@ public class PagamentoService {
         return pagamentoRepository
                 .findByCodigoTransacao(codigoTransacao)
                 .orElseThrow(() ->
-                        new RuntimeException("Pagamento não encontrado pela transação")
+                        new RecursoNaoEncontradoException("Pagamento não encontrado pela transação")
                 );
     }
 
@@ -188,6 +212,11 @@ public class PagamentoService {
                     resultado.codigoTransacao(),
                     resultado.mensagem()
             );
+
+            gatewayPagamentoFakeConsulta.registrarPagamentoPendente(
+                    resultado.codigoTransacao()
+            );
+
             return;
         }
 

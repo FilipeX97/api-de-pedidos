@@ -14,7 +14,10 @@ import br.com.api.pedidos.order.state.StatusPedido;
 import br.com.api.pedidos.order.valueobject.ItemPedidoId;
 import br.com.api.pedidos.product.entity.Produto;
 import br.com.api.pedidos.product.repository.ProdutoRepository;
+import br.com.api.pedidos.shared.exception.RecursoNaoEncontradoException;
 import br.com.api.pedidos.user.entity.Usuario;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +26,9 @@ import java.time.LocalDateTime;
 
 @Service
 public class PedidoService {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(PedidoService.class);
 
     private final PedidoRepository pedidoRepository;
     private final ProdutoRepository produtoRepository;
@@ -61,6 +67,12 @@ public class PedidoService {
                         usuario.getId(),
                         LocalDateTime.now()
                 )
+        );
+
+        log.info(
+                "Pedido criado. pedidoId={} usuarioId={}",
+                pedidoSalvo.getId(),
+                usuario.getId()
         );
 
         return PedidoResponseDTO.from(pedidoSalvo);
@@ -217,6 +229,14 @@ public class PedidoService {
                 )
         );
 
+        log.info(
+                "Pedido cancelado. pedidoId={} usuarioId={} statusAnterior={} statusAtual={}",
+                pedido.getId(),
+                pedido.getUsuario().getId(),
+                statusAnterior,
+                pedido.getStatus()
+        );
+
         return PedidoResponseDTO.from(pedido);
     }
 
@@ -328,19 +348,19 @@ public class PedidoService {
     private Pedido buscarPedidoDoUsuario(Long idPedido, Usuario usuario) {
         return pedidoRepository.findByIdAndUsuario(idPedido, usuario)
                 .orElseThrow(() ->
-                        new RuntimeException("Pedido não encontrado")
+                        new RecursoNaoEncontradoException("Pedido não encontrado")
                 );
     }
 
     private Pedido buscarPedidoParaAdministracao(Long idPedido) {
         return pedidoRepository.findById(idPedido)
-                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Pedido não encontrado"));
     }
 
     private Produto buscarProduto(Long idProduto) {
         return produtoRepository.findById(idProduto)
                 .orElseThrow(() ->
-                        new RuntimeException("Produto não encontrado")
+                        new RecursoNaoEncontradoException("Produto não encontrado")
                 );
     }
 }

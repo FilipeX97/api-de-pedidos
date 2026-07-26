@@ -3,6 +3,7 @@ package br.com.api.pedidos.auth.service;
 import br.com.api.pedidos.auth.entity.RefreshToken;
 import br.com.api.pedidos.auth.repository.RefreshTokenRepository;
 import br.com.api.pedidos.config.TokenProperties;
+import br.com.api.pedidos.shared.exception.RegraNegocioException;
 import br.com.api.pedidos.user.entity.Usuario;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,7 +43,7 @@ public class RefreshTokenService {
     public RefreshToken buscar(String token) {
         return refreshTokenRepository
                 .findByToken(token)
-                .orElseThrow(() -> new RuntimeException("Token inválido"));
+                .orElseThrow(() -> new RegraNegocioException("Token inválido"));
     }
 
     @Transactional
@@ -56,7 +57,7 @@ public class RefreshTokenService {
             Usuario usuario = token.getUsuario();
             revogarTodosTokensUsuario(usuario);
 
-            throw new RuntimeException(
+            throw new RegraNegocioException(
                     "Possível roubo de refresh token detectado. Faça login novamente."
             );
         }
@@ -69,7 +70,7 @@ public class RefreshTokenService {
 
     public void validarExpiracao(RefreshToken token) {
         if (token.getExpiration().isBefore(Instant.now())) {
-            throw new RuntimeException("Refresh token expirado");
+            throw new RegraNegocioException("Refresh token expirado");
         }
     }
 
