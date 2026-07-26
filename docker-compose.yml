@@ -59,5 +59,21 @@ services:
     ports:
       - "${API_PORT:-8080}:8080"
 
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "--fail",
+          "--silent",
+          "--output",
+          "/dev/null",
+          "http://localhost:8080/actuator/health/readiness"
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
 volumes:
   api_pedidos_postgres_data:

@@ -1,32 +1,39 @@
 # API de Pedidos
 
-![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.4-6DB33F?logo=springboot&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
-![Tests](https://img.shields.io/badge/Testes-JUnit%205-25A162?logo=junit5&logoColor=white)
+![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk\&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.4-6DB33F?logo=springboot\&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql\&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker\&logoColor=white)
+![Actuator](https://img.shields.io/badge/Spring%20Boot-Actuator-6DB33F?logo=springboot\&logoColor=white)
+![Tests](https://img.shields.io/badge/Testes-JUnit%205-25A162?logo=junit5\&logoColor=white)
 
 API REST para gerenciamento de usuários, produtos, cupons, pedidos, pagamentos e notificações, desenvolvida com **Java 21** e **Spring Boot**.
 
-Criei este projeto para ir além de um CRUD tradicional. A proposta foi simular problemas encontrados em aplicações reais: autenticação com access e refresh tokens, controle do ciclo de vida de pedidos, idempotência, integração com gateways de pagamento, processamento de webhooks, auditoria, paginação, filtros administrativos, migrations e testes automatizados.
+Criei este projeto para ir além de um CRUD tradicional. A proposta foi simular problemas encontrados em aplicações reais: autenticação com access e refresh tokens, controle do ciclo de vida de pedidos, idempotência, integração com gateways de pagamento, processamento de webhooks, auditoria, paginação, filtros administrativos, migrations, testes automatizados e observabilidade.
 
 > O projeto tem finalidade de estudo e portfólio, mas foi estruturado com práticas que poderiam ser levadas para uma aplicação de produção.
 
 ## Principais destaques
 
-- Autenticação stateless com JWT, refresh token, rotação e revogação.
-- Autorização por perfil `USER` e `ADMIN`.
-- Ciclo de vida do pedido controlado pelo padrão State.
-- Descontos e formas de pagamento implementados com Strategy.
-- Gateways de cartão, PIX e boleto isolados por Adapters.
-- Checkout centralizado por uma Facade.
-- Eventos de domínio com histórico, notificações e auditoria.
-- Idempotência em operações sensíveis.
-- Webhook fake protegido por assinatura HMAC-SHA256.
-- Consultas administrativas com paginação, ordenação e Specifications.
-- PostgreSQL, H2, Flyway, Docker e Docker Compose.
-- Documentação interativa com Swagger/OpenAPI.
-- Testes unitários e de integração com JUnit 5, Mockito e MockMvc.
+* Autenticação stateless com JWT, refresh token, rotação e revogação.
+* Autorização por perfil `USER` e `ADMIN`.
+* Ciclo de vida do pedido controlado pelo padrão State.
+* Descontos e formas de pagamento implementados com Strategy.
+* Gateways de cartão, PIX e boleto isolados por Adapters.
+* Checkout centralizado por uma Facade.
+* Eventos de domínio com histórico, notificações e auditoria.
+* Idempotência em operações sensíveis.
+* Webhook fake protegido por assinatura HMAC-SHA256.
+* Consultas administrativas com paginação, ordenação e Specifications.
+* PostgreSQL, H2, Flyway, Docker e Docker Compose.
+* Documentação interativa com Swagger/OpenAPI.
+* Observabilidade com Spring Boot Actuator.
+* Healthchecks da aplicação e do PostgreSQL.
+* Probes de liveness e readiness.
+* Métricas de requisições HTTP, JVM e conexões.
+* Correlação de logs por meio do header `X-Request-Id`.
+* Tratamento seguro de erros internos sem exposição de stacktrace.
+* Testes unitários e de integração com JUnit 5, Mockito e MockMvc.
 
 ## Fluxo principal da aplicação
 
@@ -40,6 +47,8 @@ Criei este projeto para ir além de um CRUD tradicional. A proposta foi simular 
 8. O pedido muda de estado conforme as regras permitidas.
 9. Eventos geram histórico, notificações e registros de auditoria.
 10. Administradores podem consultar pedidos por filtros e gerar relatórios.
+11. O Actuator disponibiliza informações de saúde, runtime e métricas.
+12. O Docker Compose verifica automaticamente se a aplicação está pronta.
 
 ```mermaid
 flowchart LR
@@ -59,82 +68,111 @@ flowchart LR
     PaymentStrategy --> Adapter[Gateway Adapter]
     Adapter --> FakeGateway[Gateway fake]
     FakeGateway --> Webhook[Webhook HMAC]
+
+    Monitoring[Spring Boot Actuator] --> ApplicationHealth[Health da aplicação]
+    Monitoring --> DatabaseHealth[Health do banco]
+    Monitoring --> Metrics[Métricas]
+    Docker[Docker Compose] --> Readiness[Readiness probe]
+    Readiness --> Monitoring
 ```
 
 ## Funcionalidades
 
 ### Autenticação e segurança
 
-- Registro de usuários com senha armazenada utilizando BCrypt.
-- Login com access token e refresh token.
-- Renovação com rotação de refresh tokens.
-- Detecção de reutilização de refresh token revogado.
-- Logout com blacklist do access token.
-- Revogação dos refresh tokens do usuário durante o logout.
-- Validação do IP e do User-Agent associados ao JWT.
-- Bloqueio temporário após tentativas de login inválidas.
-- Rate limiting para endpoints protegidos.
-- Autorização por perfil e por proprietário do recurso.
+* Registro de usuários com senha armazenada utilizando BCrypt.
+* Login com access token e refresh token.
+* Renovação com rotação de refresh tokens.
+* Detecção de reutilização de refresh token revogado.
+* Logout com blacklist do access token.
+* Revogação dos refresh tokens do usuário durante o logout.
+* Validação do IP e do User-Agent associados ao JWT.
+* Bloqueio temporário após tentativas de login inválidas.
+* Rate limiting para endpoints protegidos.
+* Autorização por perfil e por proprietário do recurso.
+* Respostas padronizadas para falhas de autenticação e autorização.
+* Tratamento seguro de erros internos.
 
 ### Usuários e produtos
 
-- Cadastro e atualização de usuários.
-- Consulta por ID e e-mail.
-- Paginação da listagem administrativa.
-- Ativação, desativação e remoção de usuários.
-- Cadastro, consulta, atualização e remoção de produtos.
-- Controle de preço, estoque e situação do produto.
+* Cadastro e atualização de usuários.
+* Consulta por ID e e-mail.
+* Paginação da listagem administrativa.
+* Ativação, desativação e remoção de usuários.
+* Cadastro, consulta, atualização e remoção de produtos.
+* Controle de preço, estoque e situação do produto.
 
 ### Pedidos e promoções
 
-- Criação e consulta de pedidos do usuário autenticado.
-- Inclusão, alteração e remoção de itens.
-- Recálculo de subtotal, descontos e valor final.
-- Aplicação de cupons promocionais.
-- Estratégias de desconto por quantidade, cupom e cliente VIP.
-- Cancelamento, envio, entrega e estorno conforme o estado atual.
-- Histórico completo das alterações do pedido.
+* Criação e consulta de pedidos do usuário autenticado.
+* Inclusão, alteração e remoção de itens.
+* Recálculo de subtotal, descontos e valor final.
+* Aplicação de cupons promocionais.
+* Estratégias de desconto por quantidade, cupom e cliente VIP.
+* Cancelamento, envio, entrega e estorno conforme o estado atual.
+* Histórico completo das alterações do pedido.
 
 ### Pagamentos e webhooks
 
-- Pagamentos por cartão de crédito, PIX e boleto.
-- Gateways fake independentes para cada forma de pagamento.
-- Persistência das transações simuladas do gateway.
-- Consulta de pagamentos vinculados ao pedido.
-- Processamento de confirmação por webhook.
-- Validação de assinatura HMAC-SHA256.
-- Controle contra processamento duplicado de webhooks.
+* Pagamentos por cartão de crédito, PIX e boleto.
+* Gateways fake independentes para cada forma de pagamento.
+* Persistência das transações simuladas do gateway.
+* Consulta de pagamentos vinculados ao pedido.
+* Processamento de confirmação por webhook.
+* Validação de assinatura HMAC-SHA256.
+* Controle contra processamento duplicado de webhooks.
+* Logs de início e resultado do processamento dos pagamentos.
+* Logs de webhooks recebidos, processados, duplicados ou com erro.
 
 ### Administração e acompanhamento
 
-- Notificações do usuário com controle de leitura.
-- Auditoria de eventos importantes do pedido.
-- Consulta administrativa com filtros combináveis.
-- Paginação e ordenação dos resultados.
-- Relatório consolidado de pedidos por período.
+* Notificações do usuário com controle de leitura.
+* Auditoria de eventos importantes do pedido.
+* Consulta administrativa com filtros combináveis.
+* Paginação e ordenação dos resultados.
+* Relatório consolidado de pedidos por período.
+
+### Observabilidade e monitoramento
+
+* Healthcheck geral da aplicação.
+* Healthcheck da conexão com o banco de dados.
+* Probes independentes de liveness e readiness.
+* Informações sobre nome, versão, ambiente e runtime.
+* Métricas de requisições HTTP.
+* Métricas da JVM, memória, threads e CPU.
+* Métricas de conexões JDBC.
+* Healthcheck automático da API pelo Docker Compose.
+* Identificação de cada requisição pelo header `X-Request-Id`.
+* Inclusão automática do Request ID nos logs.
+* Logs operacionais de autenticação, pedidos, pagamentos e webhooks.
+* Stacktrace completa apenas nos logs internos.
+* Resposta genérica para erros inesperados.
 
 ## Tecnologias utilizadas
 
-| Tecnologia | Uso no projeto |
-|---|---|
-| Java 21 | Linguagem principal |
-| Spring Boot 3.3.4 | Configuração e execução da aplicação |
-| Spring Web | API REST |
-| Spring Security | Autenticação e autorização |
-| Spring Data JPA | Persistência e consultas |
-| Bean Validation | Validação dos dados de entrada |
-| PostgreSQL 16 | Banco dos ambientes local, homologação e produção |
-| H2 | Desenvolvimento rápido e testes automatizados |
-| Flyway | Versionamento e evolução do banco de dados |
-| JJWT 0.11.5 | Geração e validação de tokens JWT |
-| Caffeine | Cache local de usuários e blacklist |
-| Springdoc OpenAPI 2.6.0 | Swagger e especificação OpenAPI |
-| Maven | Build e gerenciamento de dependências |
-| Docker | Empacotamento da aplicação |
-| Docker Compose | Orquestração da API e do PostgreSQL |
-| JUnit 5 | Testes automatizados |
-| Mockito | Testes unitários com mocks |
-| MockMvc | Testes de integração dos endpoints |
+| Tecnologia              | Uso no projeto                                     |
+| ----------------------- | -------------------------------------------------- |
+| Java 21                 | Linguagem principal                                |
+| Spring Boot 3.3.4       | Configuração e execução da aplicação               |
+| Spring Web              | API REST                                           |
+| Spring Security         | Autenticação e autorização                         |
+| Spring Data JPA         | Persistência e consultas                           |
+| Spring Boot Actuator    | Healthchecks, informações operacionais e métricas  |
+| Micrometer              | Coleta e padronização das métricas do Actuator     |
+| Bean Validation         | Validação dos dados de entrada                     |
+| PostgreSQL 16           | Banco dos ambientes local, homologação e produção  |
+| H2                      | Desenvolvimento rápido e testes automatizados      |
+| Flyway                  | Versionamento e evolução do banco de dados         |
+| JJWT 0.11.5             | Geração e validação de tokens JWT                  |
+| Caffeine                | Cache local de usuários e blacklist                |
+| SLF4J e MDC             | Logs e correlação por Request ID                   |
+| Springdoc OpenAPI 2.6.0 | Swagger e especificação OpenAPI                    |
+| Maven                   | Build e gerenciamento de dependências              |
+| Docker                  | Empacotamento da aplicação                         |
+| Docker Compose          | Orquestração e healthchecks da API e do PostgreSQL |
+| JUnit 5                 | Testes automatizados                               |
+| Mockito                 | Testes unitários com mocks                         |
+| MockMvc                 | Testes de integração dos endpoints                 |
 
 ## Padrões de projeto aplicados
 
@@ -146,18 +184,18 @@ Permite adicionar novas regras sem concentrar condicionais no fluxo principal.
 
 **Descontos:**
 
-- `EstrategiaDesconto`
-- `DescontoClienteVip`
-- `DescontoCupom`
-- `DescontoQuantidade`
-- `MotorPromocao`
+* `EstrategiaDesconto`
+* `DescontoClienteVip`
+* `DescontoCupom`
+* `DescontoQuantidade`
+* `MotorPromocao`
 
 **Pagamentos:**
 
-- `EstrategiaPagamento`
-- `PagamentoCartaoCredito`
-- `PagamentoPix`
-- `PagamentoBoleto`
+* `EstrategiaPagamento`
+* `PagamentoCartaoCredito`
+* `PagamentoPix`
+* `PagamentoBoleto`
 
 Uma nova forma de pagamento pode ser criada implementando a interface, sem alterar o serviço que processa os pagamentos.
 
@@ -167,16 +205,16 @@ Cada estado do pedido define quais transições são permitidas. Isso evita que 
 
 Principais classes:
 
-- `EstadoPedido`
-- `EstadoCriado`
-- `EstadoAguardandoPagamento`
-- `EstadoPago`
-- `EstadoEnviado`
-- `EstadoEntregue`
-- `EstadoCancelamentoSolicitado`
-- `EstadoCancelado`
-- `EstadoEstornado`
-- `EstadoPedidoFactory`
+* `EstadoPedido`
+* `EstadoCriado`
+* `EstadoAguardandoPagamento`
+* `EstadoPago`
+* `EstadoEnviado`
+* `EstadoEntregue`
+* `EstadoCancelamentoSolicitado`
+* `EstadoCancelado`
+* `EstadoEstornado`
+* `EstadoPedidoFactory`
 
 ### Observer
 
@@ -184,36 +222,36 @@ Eventos e listeners do Spring desacoplam a operação principal de efeitos secun
 
 Quando um pedido é criado, pago, enviado, entregue, cancelado ou estornado, listeners independentes podem registrar:
 
-- Histórico.
-- Notificações.
-- Auditoria.
+* Histórico.
+* Notificações.
+* Auditoria.
 
 Principais classes:
 
-- Eventos em `order/event`.
-- `HistoricoPedidoListener`.
-- `NotificacaoPedidoListener`.
-- `AuditoriaPedidoListener`.
+* Eventos em `order/event`.
+* `HistoricoPedidoListener`.
+* `NotificacaoPedidoListener`.
+* `AuditoriaPedidoListener`.
 
 ### Adapter
 
 Os adapters escondem os detalhes de integração de cada gateway. O domínio trabalha com uma resposta padronizada, independentemente do formato retornado pelo cartão, PIX ou boleto.
 
-- `GatewayPagamentoAdapter`
-- `GatewayCartaoAdapter`
-- `GatewayPixAdapter`
-- `GatewayBoletoAdapter`
+* `GatewayPagamentoAdapter`
+* `GatewayCartaoAdapter`
+* `GatewayPixAdapter`
+* `GatewayBoletoAdapter`
 
 ### Facade
 
 A `CheckoutFacade` concentra a coordenação do checkout:
 
-- Busca e valida o pedido.
-- Recalcula os valores.
-- Inicia o pagamento.
-- Interpreta o resultado.
-- Atualiza o estado do pedido.
-- Processa confirmações recebidas por webhook.
+* Busca e valida o pedido.
+* Recalcula os valores.
+* Inicia o pagamento.
+* Interpreta o resultado.
+* Atualiza o estado do pedido.
+* Processa confirmações recebidas por webhook.
 
 O controller não precisa conhecer todos esses detalhes.
 
@@ -225,8 +263,8 @@ A classe `PedidoSpecifications` monta filtros combináveis para consultas admini
 
 As factories selecionam a implementação correta em tempo de execução:
 
-- `EstrategiaPagamentoFactory` seleciona a estratégia pela forma de pagamento.
-- `EstadoPedidoFactory` seleciona o comportamento pelo status atual do pedido.
+* `EstrategiaPagamentoFactory` seleciona a estratégia pela forma de pagamento.
+* `EstadoPedidoFactory` seleciona o comportamento pelo status atual do pedido.
 
 ## Princípios SOLID
 
@@ -234,19 +272,21 @@ As factories selecionam a implementação correta em tempo de execução:
 
 As responsabilidades foram separadas em serviços específicos, por exemplo:
 
-- `PedidoService`: regras e alterações do pedido.
-- `PagamentoService`: processamento e persistência dos pagamentos.
-- `CupomService`: gerenciamento dos cupons.
-- `NotificacaoService`: notificações do usuário.
-- `AuditoriaService`: registros de auditoria.
-- `PedidoConsultaService`: consultas administrativas.
-- `PedidoUsuarioConsultaService`: consultas do próprio usuário.
-- `RelatorioPedidoService`: relatórios consolidados.
-- `AutenticacaoService`: login, refresh e logout.
+* `PedidoService`: regras e alterações do pedido.
+* `PagamentoService`: processamento e persistência dos pagamentos.
+* `CupomService`: gerenciamento dos cupons.
+* `NotificacaoService`: notificações do usuário.
+* `AuditoriaService`: registros de auditoria.
+* `PedidoConsultaService`: consultas administrativas.
+* `PedidoUsuarioConsultaService`: consultas do próprio usuário.
+* `RelatorioPedidoService`: relatórios consolidados.
+* `AutenticacaoService`: login, refresh e logout.
+* `RequestIdFilter`: geração e propagação do identificador da requisição.
+* `InformacoesAplicacaoContributor`: informações operacionais da aplicação.
 
 ### Open/Closed Principle
 
-O projeto pode receber novas estratégias de desconto, meios de pagamento, estados, listeners e filtros sem alterar o núcleo dos fluxos já existentes.
+O projeto pode receber novas estratégias de desconto, meios de pagamento, estados, listeners, filtros, métricas e indicadores de saúde sem alterar o núcleo dos fluxos existentes.
 
 ### Liskov Substitution Principle
 
@@ -254,7 +294,7 @@ As implementações de `EstrategiaPagamento`, `EstrategiaDesconto`, `GatewayPaga
 
 ### Interface Segregation Principle
 
-As interfaces representam comportamentos específicos do domínio. Uma estratégia de pagamento, por exemplo, não precisa implementar operações que pertencem a notificações, pedidos ou relatórios.
+As interfaces representam comportamentos específicos do domínio. Uma estratégia de pagamento, por exemplo, não precisa implementar operações que pertencem a notificações, pedidos, relatórios ou monitoramento.
 
 ### Dependency Inversion Principle
 
@@ -266,29 +306,32 @@ A aplicação é organizada por domínio. Cada módulo mantém próximas as clas
 
 ```text
 src/main/java/br/com/api/pedidos
-├── audit          # Auditoria de eventos do pedido
-├── auth           # Registro, login, refresh token e logout
-├── cache          # Nomes e configurações de cache
-├── config         # Configurações gerais, tokens e OpenAPI
-├── coupon         # Cupons promocionais
-├── notification   # Notificações do usuário
-├── order          # Pedidos, itens, estados, eventos e consultas
-├── payment        # Pagamentos, strategies, adapters e webhooks
-├── product        # Produtos
-├── report         # Relatórios administrativos
-├── security       # JWT, filtros, rate limit e autenticação
-├── shared         # Respostas, exceções, paginação e idempotência
-└── user           # Usuários e administração de usuários
+├── audit           # Auditoria de eventos do pedido
+├── auth            # Registro, login, refresh token e logout
+├── cache           # Nomes e configurações de cache
+├── config          # Configurações gerais, tokens e OpenAPI
+├── coupon          # Cupons promocionais
+├── notification    # Notificações do usuário
+├── observability   # Request ID e informações operacionais
+├── order           # Pedidos, itens, estados, eventos e consultas
+├── payment         # Pagamentos, strategies, adapters e webhooks
+├── product         # Produtos
+├── report          # Relatórios administrativos
+├── security        # JWT, filtros, rate limit e autenticação
+├── shared          # Respostas, exceções, paginação e idempotência
+└── user            # Usuários e administração de usuários
 ```
 
 Dentro dos módulos, as classes são separadas conforme a responsabilidade:
 
-- `controller`: contrato HTTP e documentação OpenAPI.
-- `service`: casos de uso e regras de aplicação.
-- `entity`: entidades e invariantes do domínio.
-- `repository`: persistência e consultas.
-- `dto`: entrada e saída de dados.
-- `strategy`, `state`, `adapter`, `listener` e `specification`: comportamentos específicos.
+* `controller`: contrato HTTP e documentação OpenAPI.
+* `service`: casos de uso e regras de aplicação.
+* `entity`: entidades e invariantes do domínio.
+* `repository`: persistência e consultas.
+* `dto`: entrada e saída de dados.
+* `strategy`, `state`, `adapter`, `listener` e `specification`: comportamentos específicos.
+* `filter`: filtros HTTP, autenticação, rate limiting e correlação.
+* `info`: informações operacionais disponibilizadas pelo Actuator.
 
 ## Resposta padronizada da API
 
@@ -304,22 +347,51 @@ As respostas seguem um envelope comum:
 
 Erros de validação utilizam o mesmo contrato, colocando os campos inválidos em `dados` e uma mensagem geral em `mensagem`.
 
+Os principais status utilizados são:
+
+| Status | Situação                                        |
+| -----: | ----------------------------------------------- |
+|  `400` | Dados inválidos ou violação de regra de negócio |
+|  `401` | Usuário não autenticado ou token inválido       |
+|  `403` | Usuário autenticado sem permissão               |
+|  `404` | Recurso não encontrado                          |
+|  `409` | Conflito de integridade ou idempotência         |
+|  `500` | Erro interno inesperado                         |
+
+Em um erro inesperado, o cliente recebe uma mensagem genérica:
+
+```json
+{
+  "sucesso": false,
+  "dados": null,
+  "mensagem": "Erro interno no servidor"
+}
+```
+
+A exceção e a stacktrace completa ficam disponíveis somente nos logs internos.
+
 ## Segurança e confiabilidade
 
 Além do JWT, o projeto implementa outras proteções e controles:
 
-- Senhas protegidas com BCrypt.
-- API stateless, sem sessão HTTP no servidor.
-- Access token associado ao IP e ao User-Agent.
-- Refresh tokens persistidos e rotacionados.
-- Blacklist de access tokens após logout.
-- Limpeza agendada de tokens e chaves expiradas.
-- Bloqueio temporário por tentativas de login.
-- Rate limiting de uma requisição protegida por segundo por usuário.
-- Autorização por perfil e propriedade do recurso.
-- Assinatura HMAC-SHA256 para o webhook fake.
-- Comparação segura da assinatura do webhook.
-- Idempotência associada à chave, usuário, endpoint, método e hash do payload.
+* Senhas protegidas com BCrypt.
+* API stateless, sem sessão HTTP no servidor.
+* Access token associado ao IP e ao User-Agent.
+* Refresh tokens persistidos e rotacionados.
+* Blacklist de access tokens após logout.
+* Limpeza agendada de tokens e chaves expiradas.
+* Bloqueio temporário por tentativas de login.
+* Rate limiting de uma requisição protegida por segundo por usuário.
+* Autorização por perfil e propriedade do recurso.
+* Assinatura HMAC-SHA256 para o webhook fake.
+* Comparação segura da assinatura do webhook.
+* Idempotência associada à chave, usuário, endpoint, método e hash do payload.
+* Endpoints de métricas protegidos por perfil `ADMIN`.
+* Métricas não expostas no perfil de produção.
+* Detalhes internos do healthcheck ocultos em homologação e produção.
+* Erros inesperados sem exposição de stacktrace ao cliente.
+* Correlação de logs com identificador único por requisição.
+* Proibição de registro de senhas, tokens JWT, refresh tokens e segredos HMAC.
 
 > O rate limiting atual é mantido em memória. Em uma aplicação distribuída, uma evolução natural seria utilizar Redis ou outro armazenamento compartilhado.
 
@@ -333,37 +405,41 @@ Idempotency-Key: <valor-unico>
 
 A chave fica vinculada ao usuário, endpoint, método HTTP e conteúdo da requisição por 24 horas.
 
-- A mesma chave com o mesmo payload retorna a resposta já processada.
-- A mesma chave com outro payload é rejeitada.
-- O controle reduz o risco de pedidos, pagamentos ou alterações duplicadas.
+* A mesma chave com o mesmo payload retorna a resposta já processada.
+* A mesma chave com outro payload é rejeitada.
+* O controle reduz o risco de pedidos, pagamentos ou alterações duplicadas.
 
 ## Perfis de ambiente
 
-| Perfil | Banco | Swagger | Uso esperado |
-|---|---|---:|---|
-| `dev` | H2 em memória, em modo de compatibilidade PostgreSQL | Habilitado | Desenvolvimento rápido |
-| `local` | PostgreSQL iniciado pelo Docker Compose | Habilitado | API executada pela IDE ou Maven |
-| `homolog` | PostgreSQL | Habilitado | Homologação e stack Docker completa |
-| `prod` | PostgreSQL | Desabilitado | Produção |
-| `test` | H2 em memória | Desabilitado | Testes automatizados |
+| Perfil    | Banco                                                |      Swagger | Actuator exposto                 | Uso esperado                        |
+| --------- | ---------------------------------------------------- | -----------: | -------------------------------- | ----------------------------------- |
+| `dev`     | H2 em memória, em modo de compatibilidade PostgreSQL |   Habilitado | `health`, `info`, `metrics`      | Desenvolvimento rápido              |
+| `local`   | PostgreSQL iniciado pelo Docker Compose              |   Habilitado | `health`, `info`, `metrics`      | API executada pela IDE ou Maven     |
+| `homolog` | PostgreSQL                                           |   Habilitado | `health`, `info`, `metrics`      | Homologação e stack Docker completa |
+| `prod`    | PostgreSQL                                           | Desabilitado | `health`, `info`                 | Produção                            |
+| `test`    | H2 em memória                                        | Desabilitado | Endpoints necessários aos testes | Testes automatizados                |
 
 O perfil padrão é `dev`.
 
+Nos perfis `dev` e `local`, os componentes internos do healthcheck são exibidos para facilitar o desenvolvimento.
+
+Nos perfis `homolog` e `prod`, os detalhes internos são ocultados. O endpoint informa apenas o estado geral da aplicação.
+
 ## Variáveis de ambiente
 
-| Variável | Perfil/uso | Descrição |
-|---|---|---|
-| `DB_NAME` | local/Docker | Nome do banco PostgreSQL |
-| `DB_PORT` | local/Docker | Porta publicada do PostgreSQL. Padrão: `5432` |
-| `DB_URL` | homolog/prod | URL JDBC completa do PostgreSQL |
-| `DB_USERNAME` | PostgreSQL | Usuário do banco |
-| `DB_PASSWORD` | PostgreSQL | Senha do banco |
-| `API_PORT` | Docker | Porta publicada da API. Padrão: `8080` |
-| `JWT_SECRET` | todos, exceto test | Chave JWT com pelo menos 64 caracteres |
-| `JWT_EXPIRATION` | segurança | Expiração do access token em milissegundos |
-| `JWT_REFRESH_EXPIRATION` | segurança | Expiração do refresh token em milissegundos |
-| `JWT_RENEW_BEFORE_EXPIRATION` | segurança | Janela de renovação em milissegundos |
-| `FAKE_WEBHOOK_SECRET` | webhook | Segredo HMAC com pelo menos 32 caracteres |
+| Variável                      | Perfil/uso         | Descrição                                     |
+| ----------------------------- | ------------------ | --------------------------------------------- |
+| `DB_NAME`                     | local/Docker       | Nome do banco PostgreSQL                      |
+| `DB_PORT`                     | local/Docker       | Porta publicada do PostgreSQL. Padrão: `5432` |
+| `DB_URL`                      | homolog/prod       | URL JDBC completa do PostgreSQL               |
+| `DB_USERNAME`                 | PostgreSQL         | Usuário do banco                              |
+| `DB_PASSWORD`                 | PostgreSQL         | Senha do banco                                |
+| `API_PORT`                    | Docker             | Porta publicada da API. Padrão: `8080`        |
+| `JWT_SECRET`                  | todos, exceto test | Chave JWT com pelo menos 64 caracteres        |
+| `JWT_EXPIRATION`              | segurança          | Expiração do access token em milissegundos    |
+| `JWT_REFRESH_EXPIRATION`      | segurança          | Expiração do refresh token em milissegundos   |
+| `JWT_RENEW_BEFORE_EXPIRATION` | segurança          | Janela de renovação em milissegundos          |
+| `FAKE_WEBHOOK_SECRET`         | webhook            | Segredo HMAC com pelo menos 32 caracteres     |
 
 Os arquivos `.env.*.example` servem apenas como modelo. Arquivos com valores reais não devem ser versionados.
 
@@ -373,13 +449,13 @@ Os arquivos `.env.*.example` servem apenas como modelo. Arquivos com valores rea
 
 Para executar sem Docker:
 
-- Java 21.
-- Maven 3.9 ou superior.
+* Java 21.
+* Maven 3.9 ou superior.
 
 Para executar a stack completa:
 
-- Docker.
-- Docker Compose.
+* Docker.
+* Docker Compose.
 
 ## Como executar com H2
 
@@ -418,6 +494,15 @@ Usuário administrador criado somente nos perfis de desenvolvimento e teste:
 ```text
 E-mail: admin@api.com
 Senha: 123456
+```
+
+Endpoints de observabilidade:
+
+```text
+http://localhost:8080/actuator/health
+http://localhost:8080/actuator/health/liveness
+http://localhost:8080/actuator/health/readiness
+http://localhost:8080/actuator/info
 ```
 
 ## Como executar localmente com PostgreSQL
@@ -464,16 +549,39 @@ docker compose --env-file .env.local --profile full up --build
 O fluxo de inicialização é:
 
 1. O PostgreSQL é iniciado.
-2. O healthcheck aguarda o banco ficar disponível.
+2. O healthcheck aguarda o PostgreSQL ficar saudável.
 3. A API é iniciada com o perfil `homolog`.
 4. O Flyway executa as migrations pendentes.
 5. O Hibernate valida o schema.
-6. A API fica disponível na porta configurada.
+6. O Actuator inicializa os indicadores de saúde.
+7. O Docker consulta `/actuator/health/readiness`.
+8. A conexão com o banco é validada pelo readiness.
+9. O container da API passa para o estado `healthy`.
+10. A API fica disponível na porta configurada.
+
+Verificar o estado dos containers:
+
+```bash
+docker compose --env-file .env.local --profile full ps
+```
+
+Resultado esperado:
+
+```text
+api-pedidos-postgres   healthy
+api-pedidos-api        healthy
+```
 
 Acompanhar os logs:
 
 ```bash
 docker compose --env-file .env.local --profile full logs -f
+```
+
+Acompanhar somente os logs da API:
+
+```bash
+docker compose --env-file .env.local --profile full logs -f api-de-pedidos
 ```
 
 Parar os containers:
@@ -488,7 +596,9 @@ Parar e remover também o volume do banco:
 docker compose --env-file .env.local --profile full down -v
 ```
 
-O `Dockerfile` utiliza build multi-stage. A aplicação é compilada em uma imagem Maven e executada em uma imagem menor com Java 21 JRE. O processo final roda com um usuário sem privilégios de root.
+O `Dockerfile` utiliza build multi-stage. A aplicação é compilada em uma imagem Maven e executada em uma imagem menor com Java 21 JRE.
+
+A imagem final instala o `curl`, utilizado pelo healthcheck da aplicação, e o processo Java é executado com um usuário sem privilégios de root.
 
 ## Banco de dados e migrations
 
@@ -502,12 +612,12 @@ src/main/resources/db/migration
 
 Na versão atual existem migrations para:
 
-- Schema inicial de usuários, produtos, pedidos, tokens e idempotência.
-- Histórico, notificações e auditoria.
-- Pagamentos.
-- Recebimento e processamento de webhooks.
-- Índices para consultas administrativas e paginação.
-- Persistência das transações do gateway fake.
+* Schema inicial de usuários, produtos, pedidos, tokens e idempotência.
+* Histórico, notificações e auditoria.
+* Pagamentos.
+* Recebimento e processamento de webhooks.
+* Índices para consultas administrativas e paginação.
+* Persistência das transações do gateway fake.
 
 O Hibernate está configurado com:
 
@@ -560,65 +670,327 @@ Para testar endpoints protegidos:
 
 O Swagger adiciona o prefixo automaticamente.
 
+## Observabilidade
+
+A aplicação utiliza o Spring Boot Actuator para fornecer informações operacionais, indicadores de saúde e métricas.
+
+### Endpoints de monitoramento
+
+| Método | Endpoint                     | Finalidade                                     | Acesso  |
+| ------ | ---------------------------- | ---------------------------------------------- | ------- |
+| `GET`  | `/actuator/health`           | Saúde geral da aplicação                       | Público |
+| `GET`  | `/actuator/health/liveness`  | Informa se a aplicação está viva               | Público |
+| `GET`  | `/actuator/health/readiness` | Informa se a aplicação e o banco estão prontos | Público |
+| `GET`  | `/actuator/info`             | Nome, versão, ambiente, Java e Spring Boot     | Público |
+| `GET`  | `/actuator/metrics`          | Lista as métricas disponíveis                  | ADMIN   |
+| `GET`  | `/actuator/metrics/{nome}`   | Consulta uma métrica específica                | ADMIN   |
+
+No perfil `prod`, o endpoint de métricas não é exposto. Somente `health` e `info` ficam disponíveis.
+
+### Healthcheck geral
+
+```http
+GET /actuator/health
+```
+
+Em desenvolvimento ou execução local, o retorno pode apresentar os componentes:
+
+```json
+{
+  "status": "UP",
+  "components": {
+    "db": {
+      "status": "UP"
+    },
+    "diskSpace": {
+      "status": "UP"
+    },
+    "livenessState": {
+      "status": "UP"
+    },
+    "readinessState": {
+      "status": "UP"
+    }
+  }
+}
+```
+
+Em homologação e produção, os detalhes dos componentes ficam ocultos:
+
+```json
+{
+  "status": "UP"
+}
+```
+
+### Liveness
+
+```http
+GET /actuator/health/liveness
+```
+
+O liveness responde se o processo da aplicação continua vivo.
+
+Ele não depende da conexão com o PostgreSQL. Dessa forma, uma indisponibilidade temporária do banco não provoca a interpretação de que o processo Java morreu.
+
+Exemplo:
+
+```json
+{
+  "status": "UP"
+}
+```
+
+### Readiness
+
+```http
+GET /actuator/health/readiness
+```
+
+O readiness responde se a aplicação está pronta para receber requisições.
+
+Neste projeto, o grupo de readiness inclui:
+
+* Estado de prontidão da aplicação.
+* Conexão com o banco de dados.
+
+Caso o PostgreSQL fique indisponível, o readiness pode responder:
+
+```json
+{
+  "status": "DOWN"
+}
+```
+
+O Docker Compose utiliza esse endpoint para determinar a saúde do container da API.
+
+### Informações da aplicação
+
+```http
+GET /actuator/info
+```
+
+O endpoint apresenta informações públicas sobre a aplicação:
+
+```json
+{
+  "app": {
+    "name": "api-de-pedidos",
+    "description": "API REST para gerenciamento de pedidos e pagamentos"
+  },
+  "build": {
+    "artifact": "api-de-pedidos",
+    "name": "api-de-pedidos",
+    "version": "0.0.1-SNAPSHOT",
+    "group": "br.com.dio"
+  },
+  "runtime": {
+    "ambiente": [
+      "homolog"
+    ],
+    "java": "21.0.5",
+    "springBoot": "3.3.4"
+  }
+}
+```
+
+Nenhum segredo, token, senha ou informação sensível é publicado nesse endpoint.
+
+### Métricas
+
+Listar as métricas disponíveis:
+
+```http
+GET /actuator/metrics
+Authorization: Bearer <token-admin>
+```
+
+Consultar métricas das requisições HTTP:
+
+```http
+GET /actuator/metrics/http.server.requests
+Authorization: Bearer <token-admin>
+```
+
+Outras métricas úteis:
+
+```text
+jvm.memory.used
+jvm.threads.live
+process.uptime
+system.cpu.usage
+jdbc.connections.active
+jdbc.connections.max
+http.server.requests
+```
+
+A métrica `http.server.requests` permite analisar:
+
+* Quantidade de requisições.
+* Métodos HTTP utilizados.
+* Status HTTP retornados.
+* Endpoints acessados.
+* Tempo total das requisições.
+* Exceções registradas durante o processamento.
+
+### Request ID
+
+Todas as requisições recebem o header:
+
+```http
+X-Request-Id: <identificador>
+```
+
+Quando o cliente envia um identificador válido, a API preserva o valor.
+
+Exemplo:
+
+```http
+X-Request-Id: pedido-cliente-123
+```
+
+Quando o header não é enviado ou possui formato inválido, a aplicação gera um UUID:
+
+```http
+X-Request-Id: 7f2c3a4e-5478-4bd3-9872-14dc90f0db20
+```
+
+São aceitos identificadores com:
+
+* Letras.
+* Números.
+* Ponto.
+* Hífen.
+* Underscore.
+* Até 100 caracteres.
+
+O identificador também é incluído automaticamente nos logs por meio do MDC:
+
+```text
+2026-07-26 18:30:42.154 INFO
+[requestId=7f2c3a4e-5478-4bd3-9872-14dc90f0db20]
+PagamentoService - Pagamento processado. pagamentoId=10 pedidoId=5 status=APROVADO
+```
+
+Isso permite acompanhar toda a execução de uma requisição utilizando o mesmo identificador.
+
+### Logs operacionais
+
+A aplicação registra eventos importantes, como:
+
+* Login realizado.
+* Falha de login.
+* Usuário bloqueado ou desativado.
+* Pedido criado.
+* Pedido cancelado.
+* Pagamento iniciado.
+* Pagamento processado.
+* Webhook recebido.
+* Webhook processado.
+* Webhook duplicado.
+* Erro durante o processamento do webhook.
+* Erro em tarefas agendadas.
+* Erro inesperado da aplicação.
+
+Os logs nunca devem registrar:
+
+* Senhas.
+* Access tokens.
+* Refresh tokens.
+* Segredos JWT.
+* Segredos HMAC.
+* Assinaturas completas.
+* Credenciais do banco.
+
+### Tratamento de erros inesperados
+
+Falhas esperadas são tratadas conforme o tipo:
+
+* `RegraNegocioException`: erro de regra de negócio.
+* `RecursoNaoEncontradoException`: recurso não encontrado.
+* `IllegalArgumentException`: argumento inválido.
+* `IllegalStateException`: operação incompatível com o estado atual.
+* `DataIntegrityViolationException`: conflito de integridade.
+* `AccessDeniedException`: acesso negado.
+
+Erros inesperados retornam HTTP `500` com uma mensagem segura:
+
+```json
+{
+  "sucesso": false,
+  "dados": null,
+  "mensagem": "Erro interno no servidor"
+}
+```
+
+Internamente, o log registra:
+
+* Request ID.
+* Método HTTP.
+* Endpoint.
+* Identificador do usuário autenticado, quando disponível.
+* Exceção completa.
+* Stacktrace.
+
 ## Endpoints principais
 
 ### Autenticação
 
-| Método | Endpoint | Acesso |
-|---|---|---|
-| `POST` | `/auth/registrar` | Público |
-| `POST` | `/auth/login` | Público |
-| `POST` | `/auth/refresh` | Público |
-| `POST` | `/auth/logout` | Autenticado |
+| Método | Endpoint          | Acesso      |
+| ------ | ----------------- | ----------- |
+| `POST` | `/auth/registrar` | Público     |
+| `POST` | `/auth/login`     | Público     |
+| `POST` | `/auth/refresh`   | Público     |
+| `POST` | `/auth/logout`    | Autenticado |
 
 ### Usuários
 
-| Método | Endpoint | Acesso |
-|---|---|---|
-| `POST` | `/usuarios` | ADMIN |
-| `GET` | `/usuarios/{id}` | Próprio usuário ou ADMIN |
-| `GET` | `/usuarios/email` | ADMIN |
-| `PATCH` | `/usuarios/{id}` | Próprio usuário ou ADMIN |
-| `GET` | `/admin/usuarios` | ADMIN |
-| `POST` | `/admin/usuarios/{id}/ativar` | ADMIN |
-| `POST` | `/admin/usuarios/{id}/desativar` | ADMIN |
-| `DELETE` | `/admin/usuarios/{id}` | ADMIN |
+| Método   | Endpoint                         | Acesso                   |
+| -------- | -------------------------------- | ------------------------ |
+| `POST`   | `/usuarios`                      | ADMIN                    |
+| `GET`    | `/usuarios/{id}`                 | Próprio usuário ou ADMIN |
+| `GET`    | `/usuarios/email`                | ADMIN                    |
+| `PATCH`  | `/usuarios/{id}`                 | Próprio usuário ou ADMIN |
+| `GET`    | `/admin/usuarios`                | ADMIN                    |
+| `POST`   | `/admin/usuarios/{id}/ativar`    | ADMIN                    |
+| `POST`   | `/admin/usuarios/{id}/desativar` | ADMIN                    |
+| `DELETE` | `/admin/usuarios/{id}`           | ADMIN                    |
 
 ### Produtos
 
-| Método | Endpoint | Acesso |
-|---|---|---|
-| `GET` | `/produtos` | Autenticado |
-| `GET` | `/produtos/{id}` | Autenticado |
-| `POST` | `/produtos` | ADMIN |
-| `PATCH` | `/produtos/{id}` | ADMIN |
-| `DELETE` | `/produtos/{id}` | ADMIN |
+| Método   | Endpoint         | Acesso      |
+| -------- | ---------------- | ----------- |
+| `GET`    | `/produtos`      | Autenticado |
+| `GET`    | `/produtos/{id}` | Autenticado |
+| `POST`   | `/produtos`      | ADMIN       |
+| `PATCH`  | `/produtos/{id}` | ADMIN       |
+| `DELETE` | `/produtos/{id}` | ADMIN       |
 
 ### Pedidos
 
-| Método | Endpoint | Acesso |
-|---|---|---|
-| `GET` | `/orders` | Autenticado |
-| `GET` | `/orders/{id}` | Dono do pedido |
-| `POST` | `/orders` | Autenticado |
-| `POST` | `/orders/{idPedido}/items` | Dono do pedido |
-| `PATCH` | `/orders/{idPedido}/items/{itemId}` | Dono do pedido |
+| Método   | Endpoint                            | Acesso         |
+| -------- | ----------------------------------- | -------------- |
+| `GET`    | `/orders`                           | Autenticado    |
+| `GET`    | `/orders/{id}`                      | Dono do pedido |
+| `POST`   | `/orders`                           | Autenticado    |
+| `POST`   | `/orders/{idPedido}/items`          | Dono do pedido |
+| `PATCH`  | `/orders/{idPedido}/items/{itemId}` | Dono do pedido |
 | `DELETE` | `/orders/{idPedido}/items/{itemId}` | Dono do pedido |
-| `POST` | `/orders/{idPedido}/coupon` | Dono do pedido |
-| `POST` | `/orders/{idPedido}/cancel` | Dono do pedido |
-| `POST` | `/orders/{idPedido}/ship` | ADMIN |
-| `POST` | `/orders/{idPedido}/deliver` | ADMIN |
-| `POST` | `/orders/{idPedido}/refund` | ADMIN |
-| `GET` | `/orders/{idPedido}/history` | Dono do pedido |
-| `GET` | `/admin/orders` | ADMIN |
+| `POST`   | `/orders/{idPedido}/coupon`         | Dono do pedido |
+| `POST`   | `/orders/{idPedido}/cancel`         | Dono do pedido |
+| `POST`   | `/orders/{idPedido}/ship`           | ADMIN          |
+| `POST`   | `/orders/{idPedido}/deliver`        | ADMIN          |
+| `POST`   | `/orders/{idPedido}/refund`         | ADMIN          |
+| `GET`    | `/orders/{idPedido}/history`        | Dono do pedido |
+| `GET`    | `/admin/orders`                     | ADMIN          |
 
 ### Pagamentos
 
-| Método | Endpoint | Acesso |
-|---|---|---|
-| `POST` | `/orders/{idPedido}/payments` | Dono do pedido |
-| `GET` | `/orders/{idPedido}/payments` | Dono do pedido |
-| `POST` | `/webhooks/payments/fake` | Público com assinatura HMAC |
+| Método | Endpoint                      | Acesso                      |
+| ------ | ----------------------------- | --------------------------- |
+| `POST` | `/orders/{idPedido}/payments` | Dono do pedido              |
+| `GET`  | `/orders/{idPedido}/payments` | Dono do pedido              |
+| `POST` | `/webhooks/payments/fake`     | Público com assinatura HMAC |
 
 O webhook recebe a assinatura no header:
 
@@ -628,53 +1000,72 @@ X-Fake-Gateway-Signature: <assinatura-hmac>
 
 ### Cupons
 
-| Método | Endpoint | Acesso |
-|---|---|---|
-| `POST` | `/cupons` | ADMIN |
-| `GET` | `/cupons` | ADMIN |
-| `GET` | `/cupons/{id}` | ADMIN |
-| `POST` | `/cupons/{id}/ativar` | ADMIN |
-| `POST` | `/cupons/{id}/desativar` | ADMIN |
+| Método | Endpoint                 | Acesso |
+| ------ | ------------------------ | ------ |
+| `POST` | `/cupons`                | ADMIN  |
+| `GET`  | `/cupons`                | ADMIN  |
+| `GET`  | `/cupons/{id}`           | ADMIN  |
+| `POST` | `/cupons/{id}/ativar`    | ADMIN  |
+| `POST` | `/cupons/{id}/desativar` | ADMIN  |
 
 ### Notificações
 
-| Método | Endpoint | Acesso |
-|---|---|---|
-| `GET` | `/notifications` | Autenticado |
-| `GET` | `/notifications/unread-count` | Autenticado |
+| Método  | Endpoint                              | Acesso              |
+| ------- | ------------------------------------- | ------------------- |
+| `GET`   | `/notifications`                      | Autenticado         |
+| `GET`   | `/notifications/unread-count`         | Autenticado         |
 | `PATCH` | `/notifications/{idNotificacao}/read` | Dono da notificação |
 
 ### Relatórios
 
-| Método | Endpoint | Acesso |
-|---|---|---|
-| `GET` | `/admin/reports/orders/summary` | ADMIN |
+| Método | Endpoint                        | Acesso |
+| ------ | ------------------------------- | ------ |
+| `GET`  | `/admin/reports/orders/summary` | ADMIN  |
 
 A documentação do Swagger contém os parâmetros, exemplos de payload, paginação e respostas possíveis de cada operação.
 
 ## Testes
 
-Na versão atual, o projeto possui **19 classes de teste e 72 cenários automatizados**, cobrindo entidades, serviços, listeners, segurança, consultas, relatórios, gateways, webhooks e endpoints.
+Na versão atual, o projeto possui **44 classes de teste e mais de 340 métodos de teste**, cobrindo entidades, serviços, estados, strategies, adapters, listeners, segurança, consultas, relatórios, gateways, webhooks, endpoints e observabilidade.
 
 Entre os cenários testados estão:
 
-- Login e emissão de tokens.
-- Validações de cupom, produto e pedido.
-- Regras de alteração dos itens.
-- Cálculo de descontos.
-- Idempotência de pagamentos.
-- Permissões de usuário e administrador.
-- Filtros e paginação de pedidos.
-- Histórico e notificações por eventos.
-- Processamento e duplicidade de webhooks.
-- Consulta de transações do gateway fake.
-- Rate limiting.
-- Relatórios administrativos.
+* Inicialização do contexto Spring.
+* Login e emissão de tokens.
+* Validações de cupom, produto e pedido.
+* Regras de alteração dos itens.
+* Cálculo de descontos.
+* Transições de todos os estados do pedido.
+* Seleção de estados pela factory.
+* Processamento das estratégias de pagamento.
+* Integração com adapters dos gateways fake.
+* Idempotência de pagamentos.
+* Permissões de usuário e administrador.
+* Filtros e paginação de pedidos.
+* Histórico e notificações por eventos.
+* Processamento e duplicidade de webhooks.
+* Consulta de transações do gateway fake.
+* Rate limiting.
+* Relatórios administrativos.
+* Healthcheck sem token.
+* Liveness sem token.
+* Readiness sem token.
+* Healthcheck do banco de dados.
+* Informações da aplicação sem token.
+* Proteção do endpoint de métricas.
+* Geração automática do `X-Request-Id`.
+* Preservação do `X-Request-Id` enviado pelo cliente.
 
 Executar todos os testes:
 
 ```bash
 mvn test
+```
+
+Executar uma classe específica:
+
+```bash
+mvn -Dtest=ObservabilidadeActuatorITTest test
 ```
 
 Gerar o pacote da aplicação:
@@ -689,37 +1080,53 @@ Validar a configuração resolvida do Docker Compose:
 docker compose --env-file .env.local --profile full config
 ```
 
+Validar o healthcheck dos containers:
+
+```bash
+docker compose --env-file .env.local --profile full ps
+```
+
 ## Próximas melhorias
 
-- Utilizar Testcontainers nos testes de integração com PostgreSQL.
-- Adicionar Spring Boot Actuator e healthcheck da API.
-- Criar pipeline de CI/CD com GitHub Actions.
-- Publicar uma imagem versionada em um registry.
-- Adicionar logs estruturados, métricas e tracing distribuído.
-- Migrar cache e rate limiting para Redis em ambientes distribuídos.
-- Integrar um gateway de pagamento real em ambiente sandbox.
-- Aplicar Outbox Pattern para publicação confiável de eventos.
-- Criar testes automatizados do contrato OpenAPI.
-- Realizar deploy em ambiente cloud.
+* Utilizar Testcontainers nos testes de integração com PostgreSQL.
+* Criar pipeline de CI/CD com GitHub Actions.
+* Publicar uma imagem versionada em um registry.
+* Exportar métricas no formato Prometheus.
+* Criar dashboards de monitoramento com Grafana.
+* Adicionar tracing distribuído com OpenTelemetry.
+* Centralizar logs em uma ferramenta como Loki ou Elasticsearch.
+* Criar alertas para aumento de erros HTTP `500`.
+* Criar alertas para indisponibilidade do readiness.
+* Migrar cache e rate limiting para Redis em ambientes distribuídos.
+* Integrar um gateway de pagamento real em ambiente sandbox.
+* Aplicar Outbox Pattern para publicação confiável de eventos.
+* Criar testes automatizados do contrato OpenAPI.
+* Realizar deploy em ambiente cloud.
 
 ## O que este projeto demonstra
 
 Este repositório demonstra conhecimentos em:
 
-- Desenvolvimento de APIs REST com Spring Boot.
-- Modelagem de regras de negócio e estados.
-- Segurança com Spring Security e JWT.
-- Arquitetura modular e separação de responsabilidades.
-- Padrões de projeto aplicados a problemas reais.
-- Princípios SOLID.
-- Persistência com JPA e versionamento com Flyway.
-- Integração por adapters e webhooks.
-- Dockerização e configuração por ambiente.
-- Testes unitários e de integração.
-- Documentação técnica com OpenAPI.
+* Desenvolvimento de APIs REST com Spring Boot.
+* Modelagem de regras de negócio e estados.
+* Segurança com Spring Security e JWT.
+* Arquitetura modular e separação de responsabilidades.
+* Padrões de projeto aplicados a problemas reais.
+* Princípios SOLID.
+* Persistência com JPA e versionamento com Flyway.
+* Integração por adapters e webhooks.
+* Dockerização e configuração por ambiente.
+* Healthchecks de aplicação e banco de dados.
+* Probes de liveness e readiness.
+* Monitoramento com Spring Boot Actuator.
+* Coleta de métricas com Micrometer.
+* Correlação de logs utilizando MDC e Request ID.
+* Tratamento seguro de falhas inesperadas.
+* Testes unitários e de integração.
+* Documentação técnica com OpenAPI.
 
 ## Autor
 
 Desenvolvido por **Filipe Xavier** como projeto de estudo e portfólio.
 
-- [LinkedIn](https://www.linkedin.com/in/filipex97)
+* [LinkedIn](https://www.linkedin.com/in/filipex97)

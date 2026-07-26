@@ -28,6 +28,12 @@ public class SegurancaConfig {
             "/v3/api-docs/**"
     };
 
+    private static final String[] ROTAS_ACTUATOR_PUBLICAS = {
+            "/actuator/health",
+            "/actuator/health/**",
+            "/actuator/info"
+    };
+
     private final JwtFiltroAutenticacao jwtFiltroAutenticacao;
     private final FiltroIntervaloRequisicao filtroIntervaloRequisicao;
 
@@ -54,6 +60,11 @@ public class SegurancaConfig {
                 .authorizeHttpRequests(
                         auth -> auth
                                 .requestMatchers(ROTAS_SWAGGER).permitAll()
+                                .requestMatchers(ROTAS_ACTUATOR_PUBLICAS).permitAll()
+                                .requestMatchers(
+                                        "/actuator/metrics",
+                                        "/actuator/metrics/**"
+                                ).hasRole("ADMIN")
                                 .requestMatchers(
                                         HttpMethod.POST,
                                         "/auth/login",

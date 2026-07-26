@@ -70,7 +70,10 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
                 || uri.equals("/swagger-ui.html")
                 || uri.startsWith("/swagger-ui/")
                 || uri.equals("/v3/api-docs")
-                || uri.startsWith("/v3/api-docs/");
+                || uri.startsWith("/v3/api-docs/")
+                || uri.equals("/actuator/health")
+                || uri.startsWith("/actuator/health/")
+                || uri.equals("/actuator/info");
     }
 
     @Override

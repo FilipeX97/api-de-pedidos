@@ -42,7 +42,9 @@ public class FiltroIntervaloRequisicao extends OncePerRequestFilter {
                 || uri.equals("/swagger-ui.html")
                 || uri.startsWith("/swagger-ui/")
                 || uri.equals("/v3/api-docs")
-                || uri.startsWith("/v3/api-docs/");
+                || uri.startsWith("/v3/api-docs/")
+                || uri.equals("/actuator")
+                || uri.startsWith("/actuator/");
     }
 
     @Override
