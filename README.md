@@ -6,7 +6,7 @@
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker\&logoColor=white)
 ![Actuator](https://img.shields.io/badge/Spring%20Boot-Actuator-6DB33F?logo=springboot\&logoColor=white)
 ![Tests](https://img.shields.io/badge/Testes-JUnit%205-25A162?logo=junit5\&logoColor=white)
-[![CI](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SEU_USUARIO/api-de-pedidos/actions/workflows/ci.yml)
+[![CI](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/ci.yml)
 
 API REST para gerenciamento de usuários, produtos, cupons, pedidos, pagamentos e notificações, desenvolvida com **Java 21** e **Spring Boot**.
 
