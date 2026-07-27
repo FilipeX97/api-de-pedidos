@@ -6,7 +6,7 @@
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker\&logoColor=white)
 ![Actuator](https://img.shields.io/badge/Spring%20Boot-Actuator-6DB33F?logo=springboot\&logoColor=white)
 ![Tests](https://img.shields.io/badge/Testes-JUnit%205-25A162?logo=junit5\&logoColor=white)
-[![CI](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SEU_USUARIO/api-de-pedidos/actions/workflows/ci.yml)
+[![CI](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/ci.yml)
 
 API REST para gerenciamento de usuários, produtos, cupons, pedidos, pagamentos e notificações, desenvolvida com **Java 21** e **Spring Boot**.
 
@@ -1064,39 +1064,50 @@ docker compose --env-file .env.local --profile full config
 
 ## Integração contínua com GitHub Actions
 
-O workflow está localizado em:
-
-```text
-.github/workflows/ci.yml
-```
-
-Ele é executado em:
-
-* Push para a branch `main`.
-* Push para branches `feature/**`.
-* Pull request destinado à `main`.
-* Execução manual pela aba Actions.
+O projeto utiliza GitHub Actions para validar automaticamente cada push na
+branch `main`, cada push em branches `feature/**` e cada pull request destinado
+à `main`.
 
 O pipeline executa:
 
-1. Verificação de arquivos `.env` reais versionados.
-2. Detecção de segredos no histórico Git com Gitleaks.
-3. Configuração do Java 21.
-4. Cache das dependências Maven.
-5. Execução dos testes com o perfil `test`.
-6. Empacotamento da aplicação.
-7. Confirmação da geração do JAR.
-8. Geração de variáveis temporárias e aleatórias para o Compose.
-9. Validação do `docker-compose.yml`.
+1. Validação dos Secrets e Repository Variables obrigatórios.
+2. Verificação de arquivos `.env` reais versionados.
+3. Detecção de segredos no histórico Git com Gitleaks.
+4. Configuração do Java 21.
+5. Cache das dependências Maven.
+6. Execução dos testes com o perfil `test` e banco H2.
+7. Empacotamento da aplicação.
+8. Confirmação da geração do JAR executável.
+9. Validação silenciosa do `docker-compose.yml`.
 10. Build da imagem Docker.
-11. Verificação do usuário não root.
+11. Verificação de execução com usuário não root.
 12. Análise de vulnerabilidades críticas com Trivy.
 
-Os valores utilizados para validar o Docker Compose são gerados dentro do runner, mascarados nos logs e descartados ao final da execução.
+As informações sensíveis utilizadas pelo pipeline são armazenadas como
+GitHub Actions Secrets:
 
-Nenhuma credencial real de desenvolvimento, homologação ou produção é utilizada pelo CI.
+- `CI_JWT_SECRET`
+- `CI_FAKE_WEBHOOK_SECRET`
+- `CI_DB_PASSWORD`
 
-O pipeline atual implementa **Continuous Integration**. Ele ainda não publica imagens nem executa deploy automático.
+As configurações não sensíveis são armazenadas como Repository Variables:
+
+- `CI_DB_NAME`
+- `CI_DB_USERNAME`
+- `CI_DB_PORT`
+- `CI_API_PORT`
+- `CI_JWT_EXPIRATION`
+- `CI_JWT_REFRESH_EXPIRATION`
+- `CI_JWT_RENEW_BEFORE_EXPIRATION`
+
+Nenhum valor sensível é escrito no workflow, criado em arquivo `.env` ou
+impresso intencionalmente nos logs.
+
+A validação do Docker Compose utiliza o modo `config --quiet`, que verifica a
+configuração sem imprimir o conteúdo resolvido.
+
+O pipeline atual implementa integração contínua. Ele ainda não publica imagens
+nem executa deploy automático.
 
 ## Dependabot
 
