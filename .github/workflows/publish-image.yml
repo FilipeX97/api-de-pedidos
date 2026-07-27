@@ -1,0 +1,223 @@
+name: Publish Docker Image
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - main
+
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-image-${{ github.event.workflow_run.head_sha || github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  publicar-imagem:
+    name: Publish / GHCR
+
+    if: >-
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_repository.full_name == github.repository
+      ) ||
+      (
+        github.event_name == 'push' &&
+        startsWith(github.ref, 'refs/tags/v')
+      )
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    permissions:
+      actions: read
+      contents: read
+      packages: write
+
+    steps:
+      - name: Baixar o código validado
+        uses: actions/checkout@v6
+        with:
+          ref: >-
+            ${{
+              github.event_name == 'workflow_run' &&
+              github.event.workflow_run.head_sha ||
+              github.ref
+            }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Identificar origem da publicação
+        id: origem
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          commit_sha="$(git rev-parse 'HEAD^{commit}')"
+          short_sha="$(git rev-parse --short=7 "$commit_sha")"
+
+          is_main="false"
+          is_tag="false"
+          tag_name=""
+
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_run" ]]; then
+            is_main="true"
+          fi
+
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]] &&
+             [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+
+            is_tag="true"
+            tag_name="$GITHUB_REF_NAME"
+
+            if [[ ! "$tag_name" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "A tag deve seguir o formato vMAJOR.MINOR.PATCH."
+              echo "Exemplo válido: v1.0.0"
+              exit 1
+            fi
+
+            if ! git show-ref \
+              --verify \
+              --quiet \
+              refs/remotes/origin/main; then
+
+              echo "A referência origin/main não foi encontrada."
+              exit 1
+            fi
+
+            if ! git merge-base \
+              --is-ancestor \
+              "$commit_sha" \
+              origin/main; then
+
+              echo "A tag não aponta para um commit pertencente à main."
+              exit 1
+            fi
+          fi
+
+          {
+            echo "commit_sha=$commit_sha"
+            echo "short_sha=$short_sha"
+            echo "is_main=$is_main"
+            echo "is_tag=$is_tag"
+            echo "tag_name=$tag_name"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Origem da publicação validada."
+
+      - name: Confirmar CI aprovado para a tag
+        if: steps.origem.outputs.is_tag == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT_SHA: ${{ steps.origem.outputs.commit_sha }}
+        run: |
+          set -euo pipefail
+
+          quantidade_execucoes="$(
+            gh api \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${COMMIT_SHA}&status=completed&per_page=100" \
+              --jq '
+                [
+                  .workflow_runs[]
+                  | select(
+                      .conclusion == "success"
+                      and .event == "push"
+                      and .head_branch == "main"
+                    )
+                ]
+                | length
+              '
+          )"
+
+          if [[ "$quantidade_execucoes" -lt 1 ]]; then
+            echo "Nenhuma execução bem-sucedida do CI foi encontrada."
+            echo "A tag não será publicada."
+            exit 1
+          fi
+
+          echo "O commit da tag possui CI aprovado na branch main."
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Autenticar no GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Gerar tags e labels da imagem
+        id: metadata
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+          flavor: |
+            latest=false
+
+          tags: |
+            type=raw,value=latest,enable=${{ steps.origem.outputs.is_main == 'true' }}
+            type=raw,value=main,enable=${{ steps.origem.outputs.is_main == 'true' }}
+            type=raw,value=sha-${{ steps.origem.outputs.short_sha }}
+            type=semver,pattern={{raw}},value=${{ steps.origem.outputs.tag_name }},enable=${{ steps.origem.outputs.is_tag == 'true' }}
+            type=semver,pattern={{version}},value=${{ steps.origem.outputs.tag_name }},enable=${{ steps.origem.outputs.is_tag == 'true' }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.origem.outputs.tag_name }},enable=${{ steps.origem.outputs.is_tag == 'true' }}
+
+          labels: |
+            org.opencontainers.image.title=API de Pedidos
+            org.opencontainers.image.description=API REST para gerenciamento de pedidos e pagamentos com Spring Boot
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.origem.outputs.commit_sha }}
+
+      - name: Build e publicação da imagem
+        id: publicar
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          pull: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          cache-from: type=gha,scope=api-de-pedidos-ghcr
+          cache-to: type=gha,mode=max,scope=api-de-pedidos-ghcr
+
+      - name: Registrar resumo da publicação
+        shell: bash
+        env:
+          IMAGE_TAGS: ${{ steps.metadata.outputs.tags }}
+          IMAGE_DIGEST: ${{ steps.publicar.outputs.digest }}
+        run: |
+          set -euo pipefail
+
+          {
+            echo "## Imagem Docker publicada"
+            echo
+            echo '```text'
+            echo "$IMAGE_TAGS"
+            echo '```'
+            echo
+            echo "Digest:"
+            echo
+            echo '```text'
+            echo "$IMAGE_DIGEST"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -21,6 +21,10 @@ RUN mvn -B -ntp clean package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine
 
+LABEL org.opencontainers.image.title="API de Pedidos" \
+      org.opencontainers.image.description="API REST para gerenciamento de pedidos e pagamentos com Spring Boot" \
+      org.opencontainers.image.source="https://github.com/FilipeX97/api-de-pedidos"
+
 WORKDIR /app
 
 RUN apk add --no-cache curl \
