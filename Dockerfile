@@ -2,7 +2,7 @@
 # ETAPA 1 — Compilação da aplicação
 # =========================================================
 
-FROM maven:3.9.16-eclipse-temurin-21-alpine AS build
+FROM maven:3-eclipse-temurin-26-alpine AS build
 
 WORKDIR /app
 
