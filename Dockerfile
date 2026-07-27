@@ -19,7 +19,7 @@ RUN mvn -B -ntp clean package -DskipTests
 # ETAPA 2 — Execução da aplicação
 # =========================================================
 
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 
 LABEL org.opencontainers.image.title="API de Pedidos" \
       org.opencontainers.image.description="API REST para gerenciamento de pedidos e pagamentos com Spring Boot" \
