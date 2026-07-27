@@ -277,8 +277,11 @@ jobs:
       - name: Exibir versão do Docker Compose
         run: docker compose version
 
-      - name: Validar Docker Compose sem imprimir configuração
+      - name: Validar arquivos Docker Compose sem imprimir configuração
         shell: bash
+        env:
+          IMAGE_TAG: "latest"
+          SPRING_PROFILES_ACTIVE: "homolog"
         run: |
           set -euo pipefail
 
@@ -288,6 +291,13 @@ jobs:
             --quiet
 
           echo "docker-compose.yml validado com sucesso."
+
+          docker compose \
+            --file docker-compose.release.yml \
+            config \
+            --quiet
+
+          echo "docker-compose.release.yml validado com sucesso."
 
   docker-build-seguranca:
     name: CI / Docker e Segurança
