@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: api-pedidos-release-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+
+    ports:
+      - "${DB_PORT:-5432}:5432"
+
+    volumes:
+      - api_pedidos_release_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  api-de-pedidos:
+    image: ghcr.io/filipex97/api-de-pedidos:${IMAGE_TAG:-latest}
+    container_name: api-pedidos-release-api
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-homolog}
+
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION}
+      JWT_RENEW_BEFORE_EXPIRATION: ${JWT_RENEW_BEFORE_EXPIRATION}
+
+      FAKE_WEBHOOK_SECRET: ${FAKE_WEBHOOK_SECRET}
+
+    ports:
+      - "${API_PORT:-8080}:8080"
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "--fail",
+          "--silent",
+          "--output",
+          "/dev/null",
+          "http://localhost:8080/actuator/health/readiness"
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+volumes:
+  api_pedidos_release_postgres_data:
+  

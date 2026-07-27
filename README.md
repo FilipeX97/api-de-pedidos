@@ -1,16 +1,17 @@
 # API de Pedidos
 
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk\&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.4-6DB33F?logo=springboot\&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.16-6DB33F?logo=springboot\&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql\&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker\&logoColor=white)
 ![Actuator](https://img.shields.io/badge/Spring%20Boot-Actuator-6DB33F?logo=springboot\&logoColor=white)
 ![Tests](https://img.shields.io/badge/Testes-JUnit%205-25A162?logo=junit5\&logoColor=white)
 [![CI](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/ci.yml)
+[![Publish Docker Image](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/publish-image.yml/badge.svg)](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/publish-image.yml)
 
 API REST para gerenciamento de usuários, produtos, cupons, pedidos, pagamentos e notificações, desenvolvida com **Java 21** e **Spring Boot**.
 
-Criei este projeto para ir além de um CRUD tradicional. A proposta foi simular problemas encontrados em aplicações reais: autenticação com access e refresh tokens, controle do ciclo de vida de pedidos, idempotência, integração com gateways de pagamento, processamento de webhooks, auditoria, paginação, filtros administrativos, migrations, testes automatizados, observabilidade e integração contínua.
+Criei este projeto para ir além de um CRUD tradicional. A proposta foi simular problemas encontrados em aplicações reais: autenticação com access e refresh tokens, controle do ciclo de vida de pedidos, idempotência, integração com gateways de pagamento, processamento de webhooks, auditoria, paginação, filtros administrativos, migrations, testes automatizados, observabilidade, integração contínua e entrega contínua de artefatos.
 
 > O projeto tem finalidade de estudo e portfólio, mas foi estruturado com práticas que poderiam ser levadas para uma aplicação de produção.
 
@@ -39,6 +40,10 @@ Criei este projeto para ir além de um CRUD tradicional. A proposta foi simular 
 * Detecção de segredos versionados com Gitleaks.
 * Análise de vulnerabilidades críticas da imagem Docker com Trivy.
 * Atualização automatizada de dependências com Dependabot.
+* Imagem Docker versionada e publicada no GitHub Container Registry.
+* Tags rastreáveis por branch, commit e versão semântica.
+* Publicação executada somente após o pipeline de CI ser aprovado.
+* Imagem reutilizável sem inclusão de credenciais ou arquivos `.env`.
 
 ## Fluxo principal da aplicação
 
@@ -55,6 +60,7 @@ Criei este projeto para ir além de um CRUD tradicional. A proposta foi simular 
 11. O Actuator disponibiliza informações de saúde, runtime e métricas.
 12. O Docker Compose verifica automaticamente se a aplicação está pronta.
 13. O GitHub Actions valida testes, build Maven, Docker, Compose e segurança.
+14. Depois do CI aprovado na `main`, a imagem é publicada de forma versionada no GHCR.
 
 ```mermaid
 flowchart LR
@@ -86,6 +92,7 @@ flowchart LR
     GitHub --> Package[Empacotamento]
     GitHub --> DockerBuild[Docker build]
     GitHub --> Security[Segurança]
+    Security --> Registry[GitHub Container Registry]
 ```
 
 ## Funcionalidades
@@ -174,36 +181,40 @@ flowchart LR
 * Build da imagem Docker.
 * Verificação de execução com usuário sem privilégios.
 * Análise de vulnerabilidades críticas da imagem Docker.
+* Validação do Compose de release sem impressão de segredos.
+* Publicação da imagem no GHCR somente após aprovação do CI na `main`.
+* Geração de tags `latest`, `main`, `sha` e versões semânticas.
 
 ## Tecnologias utilizadas
 
-| Tecnologia              | Uso no projeto                                     |
-| ----------------------- | -------------------------------------------------- |
-| Java 21                 | Linguagem principal                                |
-| Spring Boot 3.3.4       | Configuração e execução da aplicação               |
-| Spring Web              | API REST                                           |
-| Spring Security         | Autenticação e autorização                         |
-| Spring Data JPA         | Persistência e consultas                           |
-| Spring Boot Actuator    | Healthchecks, informações operacionais e métricas  |
-| Micrometer              | Coleta e padronização das métricas do Actuator     |
-| Bean Validation         | Validação dos dados de entrada                     |
-| PostgreSQL 16           | Banco dos ambientes local, homologação e produção  |
-| H2                      | Desenvolvimento rápido e testes automatizados      |
-| Flyway                  | Versionamento e evolução do banco de dados         |
-| JJWT 0.11.5             | Geração e validação de tokens JWT                  |
-| Caffeine                | Cache local de usuários e blacklist                |
-| SLF4J e MDC             | Logs e correlação por Request ID                   |
-| Springdoc OpenAPI 2.6.0 | Swagger e especificação OpenAPI                    |
-| Maven                   | Build e gerenciamento de dependências              |
-| Docker                  | Empacotamento da aplicação                         |
-| Docker Compose          | Orquestração e healthchecks da API e do PostgreSQL |
-| GitHub Actions          | Integração contínua e validação automatizada       |
-| Gitleaks                | Detecção de segredos no histórico Git              |
-| Trivy                   | Análise de vulnerabilidades da imagem Docker       |
-| Dependabot              | Atualização automatizada de dependências           |
-| JUnit 5                 | Testes automatizados                               |
-| Mockito                 | Testes unitários com mocks                         |
-| MockMvc                 | Testes de integração dos endpoints                 |
+| Tecnologia                | Uso no projeto                                     |
+| ------------------------- | -------------------------------------------------- |
+| Java 21                   | Linguagem principal                                |
+| Spring Boot 3.5.16        | Configuração e execução da aplicação               |
+| Spring Web                | API REST                                           |
+| Spring Security           | Autenticação e autorização                         |
+| Spring Data JPA           | Persistência e consultas                           |
+| Spring Boot Actuator      | Healthchecks, informações operacionais e métricas  |
+| Micrometer                | Coleta e padronização das métricas do Actuator     |
+| Bean Validation           | Validação dos dados de entrada                     |
+| PostgreSQL 16             | Banco dos ambientes local, homologação e produção  |
+| H2                        | Desenvolvimento rápido e testes automatizados      |
+| Flyway                    | Versionamento e evolução do banco de dados         |
+| JJWT 0.11.5               | Geração e validação de tokens JWT                  |
+| Caffeine                  | Cache local de usuários e blacklist                |
+| SLF4J e MDC               | Logs e correlação por Request ID                   |
+| Springdoc OpenAPI 2.8.17  | Swagger e especificação OpenAPI                    |
+| Maven                     | Build e gerenciamento de dependências              |
+| Docker                    | Empacotamento da aplicação                         |
+| Docker Compose            | Orquestração e healthchecks da API e do PostgreSQL |
+| GitHub Container Registry | Armazenamento e distribuição da imagem Docker      |
+| GitHub Actions            | Integração contínua e validação automatizada       |
+| Gitleaks                  | Detecção de segredos no histórico Git              |
+| Trivy                     | Análise de vulnerabilidades da imagem Docker       |
+| Dependabot                | Atualização automatizada de dependências           |
+| JUnit 5                   | Testes automatizados                               |
+| Mockito                   | Testes unitários com mocks                         |
+| MockMvc                   | Testes de integração dos endpoints                 |
 
 ## Padrões de projeto aplicados
 
@@ -364,13 +375,19 @@ Dentro dos módulos, as classes são separadas conforme a responsabilidade:
 * `filter`: filtros HTTP, autenticação, rate limiting e correlação.
 * `info`: informações operacionais disponibilizadas pelo Actuator.
 
-A infraestrutura de integração contínua fica organizada da seguinte forma:
+A infraestrutura de build, integração contínua e publicação fica organizada da seguinte forma:
 
 ```text
 .github
 ├── dependabot.yml
 └── workflows
-    └── ci.yml
+    ├── ci.yml
+    └── publish-image.yml
+
+.dockerignore
+Dockerfile
+docker-compose.yml
+docker-compose.release.yml
 ```
 
 ## Resposta padronizada da API
@@ -646,6 +663,150 @@ O `Dockerfile` utiliza build multi-stage. A aplicação é compilada em uma imag
 
 A imagem final instala o `curl`, utilizado pelo healthcheck, e executa o processo Java com um usuário sem privilégios de root.
 
+## Imagem Docker publicada
+
+A imagem da aplicação é publicada no GitHub Container Registry:
+
+```text
+ghcr.io/filipex97/api-de-pedidos
+```
+
+A publicação ocorre em um workflow separado, localizado em:
+
+```text
+.github/workflows/publish-image.yml
+```
+
+O workflow utiliza o `GITHUB_TOKEN` fornecido pelo próprio GitHub e recebe a permissão `packages: write` apenas no job responsável pela publicação.
+
+Nenhum segredo da aplicação é utilizado durante o build ou o envio da imagem. Credenciais de banco, chave JWT e segredo do webhook são fornecidos somente quando o container é executado.
+
+### Tags da branch principal
+
+Depois de um CI aprovado na branch `main`, são publicadas tags como:
+
+```text
+ghcr.io/filipex97/api-de-pedidos:latest
+ghcr.io/filipex97/api-de-pedidos:main
+ghcr.io/filipex97/api-de-pedidos:sha-<commit>
+```
+
+A tag `latest` representa o commit mais recente da `main` que passou por todas as verificações do pipeline.
+
+### Tags de versões
+
+Uma tag Git no formato `vMAJOR.MINOR.PATCH`, como `v1.0.0`, publica:
+
+```text
+ghcr.io/filipex97/api-de-pedidos:v1.0.0
+ghcr.io/filipex97/api-de-pedidos:1.0.0
+ghcr.io/filipex97/api-de-pedidos:1.0
+ghcr.io/filipex97/api-de-pedidos:sha-<commit>
+```
+
+A publicação versionada só é permitida quando a tag aponta para um commit pertencente à `main` e esse commit possui uma execução bem-sucedida do workflow de CI.
+
+### Baixar a imagem
+
+Versão mais recente aprovada na `main`:
+
+```bash
+docker pull ghcr.io/filipex97/api-de-pedidos:latest
+```
+
+Versão específica:
+
+```bash
+docker pull ghcr.io/filipex97/api-de-pedidos:v1.0.0
+```
+
+Caso o pacote esteja privado, autentique-se no GHCR antes do `pull`. Para uma imagem pública, o download pode ser realizado sem autenticação.
+
+### Executar a imagem publicada com Docker Compose
+
+Copie o arquivo de exemplo.
+
+**Windows PowerShell:**
+
+```powershell
+Copy-Item .env.release.example .env.release
+```
+
+**Linux/macOS:**
+
+```bash
+cp .env.release.example .env.release
+```
+
+Preencha as variáveis em `.env.release`. Esse arquivo contém valores locais ou do servidor e não deve ser versionado.
+
+Baixe a imagem configurada:
+
+```bash
+docker compose \
+  --env-file .env.release \
+  --file docker-compose.release.yml \
+  pull
+```
+
+Inicie os serviços:
+
+```bash
+docker compose \
+  --env-file .env.release \
+  --file docker-compose.release.yml \
+  up -d
+```
+
+Verifique o estado:
+
+```bash
+docker compose \
+  --env-file .env.release \
+  --file docker-compose.release.yml \
+  ps
+```
+
+Acompanhe os logs:
+
+```bash
+docker compose \
+  --env-file .env.release \
+  --file docker-compose.release.yml \
+  logs -f
+```
+
+Pare a stack:
+
+```bash
+docker compose \
+  --env-file .env.release \
+  --file docker-compose.release.yml \
+  down
+```
+
+Para executar outra versão, altere no `.env.release`:
+
+```dotenv
+IMAGE_TAG=v1.0.0
+```
+
+O `docker-compose.yml` permanece responsável pelo build local. O `docker-compose.release.yml` utiliza exclusivamente a imagem publicada no GHCR.
+
+### Segurança da imagem
+
+O contexto de build é protegido por `.dockerignore`, que exclui arquivos de ambiente, metadados do Git, artefatos locais, arquivos das IDEs e outros conteúdos que não precisam ser enviados ao builder.
+
+A imagem publicada:
+
+* Não contém arquivos `.env`.
+* Não recebe `DB_PASSWORD` durante o build.
+* Não recebe `JWT_SECRET` durante o build.
+* Não recebe `FAKE_WEBHOOK_SECRET` durante o build.
+* Executa com o usuário sem privilégios `app`.
+* É analisada pelo Trivy antes da publicação.
+* Possui labels OCI que indicam título, descrição, origem e revisão.
+
 ## Banco de dados e migrations
 
 O Flyway é responsável pela criação e evolução do schema.
@@ -825,7 +986,7 @@ Exemplo:
       "homolog"
     ],
     "java": "21.0.5",
-    "springBoot": "3.3.4"
+    "springBoot": "3.5.16"
   }
 }
 ```
@@ -1064,9 +1225,23 @@ docker compose --env-file .env.local --profile full config
 
 ## Integração contínua com GitHub Actions
 
-O projeto utiliza GitHub Actions para validar automaticamente cada push na
-branch `main`, cada push em branches `feature/**` e cada pull request destinado
-à `main`.
+O projeto possui dois workflows separados:
+
+```text
+.github/workflows/ci.yml
+.github/workflows/publish-image.yml
+```
+
+Essa separação mantém responsabilidades e permissões isoladas.
+
+### Workflow de CI
+
+O `ci.yml` é executado em:
+
+* Push para a branch `main`.
+* Push para branches `feature/**`.
+* Pull request destinado à `main`.
+* Execução manual pela aba Actions.
 
 O pipeline executa:
 
@@ -1079,35 +1254,48 @@ O pipeline executa:
 7. Empacotamento da aplicação.
 8. Confirmação da geração do JAR executável.
 9. Validação silenciosa do `docker-compose.yml`.
-10. Build da imagem Docker.
-11. Verificação de execução com usuário não root.
-12. Análise de vulnerabilidades críticas com Trivy.
+10. Validação silenciosa do `docker-compose.release.yml`.
+11. Build da imagem Docker.
+12. Verificação de execução com usuário não root.
+13. Análise de vulnerabilidades críticas com Trivy.
 
-As informações sensíveis utilizadas pelo pipeline são armazenadas como
-GitHub Actions Secrets:
+As informações sensíveis utilizadas pelo pipeline são armazenadas como GitHub Actions Secrets:
 
-- `CI_JWT_SECRET`
-- `CI_FAKE_WEBHOOK_SECRET`
-- `CI_DB_PASSWORD`
+* `CI_JWT_SECRET`
+* `CI_FAKE_WEBHOOK_SECRET`
+* `CI_DB_PASSWORD`
 
 As configurações não sensíveis são armazenadas como Repository Variables:
 
-- `CI_DB_NAME`
-- `CI_DB_USERNAME`
-- `CI_DB_PORT`
-- `CI_API_PORT`
-- `CI_JWT_EXPIRATION`
-- `CI_JWT_REFRESH_EXPIRATION`
-- `CI_JWT_RENEW_BEFORE_EXPIRATION`
+* `CI_DB_NAME`
+* `CI_DB_USERNAME`
+* `CI_DB_PORT`
+* `CI_API_PORT`
+* `CI_JWT_EXPIRATION`
+* `CI_JWT_REFRESH_EXPIRATION`
+* `CI_JWT_RENEW_BEFORE_EXPIRATION`
 
-Nenhum valor sensível é escrito no workflow, criado em arquivo `.env` ou
-impresso intencionalmente nos logs.
+Nenhum valor sensível é escrito no workflow, criado em arquivo `.env` ou impresso intencionalmente nos logs.
 
-A validação do Docker Compose utiliza o modo `config --quiet`, que verifica a
-configuração sem imprimir o conteúdo resolvido.
+A validação dos arquivos Compose utiliza `config --quiet`, que verifica a configuração sem imprimir o conteúdo resolvido.
 
-O pipeline atual implementa integração contínua. Ele ainda não publica imagens
-nem executa deploy automático.
+### Workflow de publicação
+
+O `publish-image.yml` publica a imagem no GitHub Container Registry.
+
+Para a branch `main`, a publicação só começa depois que o workflow `CI` termina com sucesso. Um CI de pull request, uma execução com falha ou uma execução originada por outro repositório não publica a imagem.
+
+Para tags versionadas, o workflow confirma:
+
+* Formato `vMAJOR.MINOR.PATCH`.
+* Pertencimento do commit à branch `main`.
+* Existência de uma execução bem-sucedida do CI para o commit.
+
+O workflow utiliza somente o `GITHUB_TOKEN` fornecido pelo GitHub. A permissão `packages: write` fica limitada ao job de publicação.
+
+Nenhum segredo da aplicação é fornecido durante o build ou a publicação da imagem.
+
+A etapa atual implementa integração contínua e entrega contínua do artefato Docker. O deploy da aplicação em um ambiente ainda não é executado automaticamente.
 
 ## Dependabot
 
@@ -1140,6 +1328,7 @@ Depois que o workflow executar com sucesso, a branch `main` deve ser protegida c
 Checks recomendados:
 
 ```text
+CI / Configuração
 CI / Segredos
 CI / Testes Maven
 CI / Empacotamento Maven
@@ -1150,7 +1339,6 @@ CI / Docker e Segurança
 ## Próximas melhorias
 
 * Utilizar Testcontainers nos testes de integração com PostgreSQL.
-* Publicar uma imagem versionada no GitHub Container Registry.
 * Realizar deploy automático em ambiente cloud.
 * Exportar métricas no formato Prometheus.
 * Criar dashboards de monitoramento com Grafana.
@@ -1162,7 +1350,10 @@ CI / Docker e Segurança
 * Integrar um gateway de pagamento real em ambiente sandbox.
 * Aplicar Outbox Pattern para publicação confiável de eventos.
 * Criar testes automatizados do contrato OpenAPI.
-* Assinar e gerar SBOM das imagens publicadas.
+* Publicar imagem para múltiplas arquiteturas, como `linux/amd64` e `linux/arm64`.
+* Assinar imagens publicadas com Sigstore Cosign.
+* Gerar e publicar SBOM das imagens.
+* Configurar retenção de versões antigas no GHCR.
 
 ## O que este projeto demonstra
 
@@ -1189,6 +1380,10 @@ Este repositório demonstra conhecimentos em:
 * Detecção automatizada de segredos.
 * Análise de vulnerabilidades em imagens.
 * Manutenção automatizada de dependências.
+* Publicação segura de imagens no GitHub Container Registry.
+* Versionamento de imagens por branch, commit e versão semântica.
+* Separação entre build da imagem e configuração de runtime.
+* Continuous Delivery de artefatos Docker.
 
 ## Autor
 
