@@ -1,11 +1,11 @@
 # API de Pedidos
 
-![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk\&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.16-6DB33F?logo=springboot\&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql\&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker\&logoColor=white)
-![Actuator](https://img.shields.io/badge/Spring%20Boot-Actuator-6DB33F?logo=springboot\&logoColor=white)
-![Tests](https://img.shields.io/badge/Testes-JUnit%205-25A162?logo=junit5\&logoColor=white)
+![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.16-6DB33F?logo=springboot&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![Actuator](https://img.shields.io/badge/Spring%20Boot-Actuator-6DB33F?logo=springboot&logoColor=white)
+![Tests](https://img.shields.io/badge/Testes-JUnit%205-25A162?logo=junit5&logoColor=white)
 [![CI](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/ci.yml)
 [![Publish Docker Image](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/publish-image.yml/badge.svg)](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/publish-image.yml)
 
@@ -722,76 +722,47 @@ docker pull ghcr.io/filipex97/api-de-pedidos:v1.0.0
 
 Caso o pacote esteja privado, autentique-se no GHCR antes do `pull`. Para uma imagem pública, o download pode ser realizado sem autenticação.
 
-### Executar a imagem publicada com Docker Compose
+### Executar a imagem publicada
 
-Copie o arquivo de exemplo.
+O arquivo `docker-compose.release.yml` utiliza a imagem publicada no GHCR e
+contém somente referências às configurações exigidas pela aplicação.
 
-**Windows PowerShell:**
+Variáveis utilizadas pelo Compose:
 
-```powershell
-Copy-Item .env.release.example .env.release
-```
+* `IMAGE_TAG`
+* `SPRING_PROFILES_ACTIVE`
+* `DB_NAME`
+* `DB_PORT`
+* `DB_USERNAME`
+* `DB_PASSWORD`
+* `API_PORT`
+* `JWT_SECRET`
+* `JWT_EXPIRATION`
+* `JWT_REFRESH_EXPIRATION`
+* `JWT_RENEW_BEFORE_EXPIRATION`
+* `FAKE_WEBHOOK_SECRET`
 
-**Linux/macOS:**
+Nenhum valor real fica armazenado no arquivo `docker-compose.release.yml`.
 
-```bash
-cp .env.release.example .env.release
-```
+Quando a imagem for executada em outro ambiente, esses valores deverão ser
+fornecidos pelo próprio ambiente, como variáveis da sessão, configurações do
+servidor ou secrets da plataforma de hospedagem.
 
-Preencha as variáveis em `.env.release`. Esse arquivo contém valores locais ou do servidor e não deve ser versionado.
-
-Baixe a imagem configurada:
-
-```bash
-docker compose \
-  --env-file .env.release \
-  --file docker-compose.release.yml \
-  pull
-```
-
-Inicie os serviços:
-
-```bash
-docker compose \
-  --env-file .env.release \
-  --file docker-compose.release.yml \
-  up -d
-```
-
-Verifique o estado:
+Depois que as variáveis estiverem disponíveis no ambiente, a imagem pode ser
+baixada com:
 
 ```bash
-docker compose \
-  --env-file .env.release \
-  --file docker-compose.release.yml \
-  ps
+docker compose --file docker-compose.release.yml pull
 ```
 
-Acompanhe os logs:
+E os serviços podem ser iniciados com:
 
 ```bash
-docker compose \
-  --env-file .env.release \
-  --file docker-compose.release.yml \
-  logs -f
+docker compose --file docker-compose.release.yml up -d
 ```
 
-Pare a stack:
-
-```bash
-docker compose \
-  --env-file .env.release \
-  --file docker-compose.release.yml \
-  down
-```
-
-Para executar outra versão, altere no `.env.release`:
-
-```dotenv
-IMAGE_TAG=v1.0.0
-```
-
-O `docker-compose.yml` permanece responsável pelo build local. O `docker-compose.release.yml` utiliza exclusivamente a imagem publicada no GHCR.
+O `docker-compose.yml` permanece responsável pelo build local. O
+`docker-compose.release.yml` utiliza exclusivamente a imagem publicada no GHCR.
 
 ### Segurança da imagem
 

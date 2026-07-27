@@ -1,41 +1,42 @@
-# Build Maven
-target/
+# Git e automação
+.git
+.github
 
-# Git
-.git/
-.gitignore
+# Variáveis e credenciais locais
+.env
+.env.*
+**/.env
+**/.env.*
 
-# IDEs
-.idea/
-.vscode/
+# Builds e artefatos
+target
+**/target
+build
+**/build
+*.jar
+*.war
+*.log
+
+# IDEs e editores
+.idea
+.vscode
+.settings
+.classpath
+.project
 *.iml
 *.ipr
 *.iws
-
-# Maven Wrapper não utilizado dentro da imagem
-.mvn/
-mvnw
-mvnw.cmd
-
-# Variáveis e segredos
-.env
-.env.*
-
-# Mantém somente exemplos públicos
-!.env.local.example
-!.env.*.example
-
-# Logs
-*.log
-
-# Arquivos temporários
-*.tmp
-*.bak
 *.swp
+*.swo
 
 # Sistema operacional
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# Arquivos auxiliares
+# Arquivos que não participam do build da imagem
+README.md
 README.html
+docker-compose.yml
+docker-compose.release.yml
+*.txt
