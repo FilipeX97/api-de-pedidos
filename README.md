@@ -3,6 +3,7 @@
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.16-6DB33F?logo=springboot&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-8.0-47A248?logo=mongodb&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![Actuator](https://img.shields.io/badge/Spring%20Boot-Actuator-6DB33F?logo=springboot&logoColor=white)
 ![Tests](https://img.shields.io/badge/Testes-JUnit%205-25A162?logo=junit5&logoColor=white)
@@ -28,6 +29,9 @@ Criei este projeto para ir além de um CRUD tradicional. A proposta foi simular 
 * Webhook fake protegido por assinatura HMAC-SHA256.
 * Consultas administrativas com paginação, ordenação e Specifications.
 * PostgreSQL, H2, Flyway, Docker e Docker Compose.
+* Persistência poliglota com PostgreSQL e MongoDB.
+* PostgreSQL como fonte da verdade para operações transacionais.
+* MongoDB para registros operacionais e documentais de webhooks.
 * Documentação interativa com Swagger/OpenAPI.
 * Observabilidade com Spring Boot Actuator.
 * Healthchecks da aplicação e do PostgreSQL.
@@ -194,10 +198,12 @@ flowchart LR
 | Spring Web                | API REST                                           |
 | Spring Security           | Autenticação e autorização                         |
 | Spring Data JPA           | Persistência e consultas                           |
+| Spring Data MongoDB       | Persistência documental e consultas operacionais   |
 | Spring Boot Actuator      | Healthchecks, informações operacionais e métricas  |
 | Micrometer                | Coleta e padronização das métricas do Actuator     |
 | Bean Validation           | Validação dos dados de entrada                     |
 | PostgreSQL 16             | Banco dos ambientes local, homologação e produção  |
+| MongoDB 8.0               | Registros operacionais de webhooks de pagamento    |
 | H2                        | Desenvolvimento rápido e testes automatizados      |
 | Flyway                    | Versionamento e evolução do banco de dados         |
 | JJWT 0.11.5               | Geração e validação de tokens JWT                  |
@@ -490,19 +496,25 @@ O perfil `test` gera automaticamente uma chave JWT e um segredo de webhook tempo
 
 ## Variáveis de ambiente
 
-| Variável                      | Perfil/uso   | Descrição                                   |
-| ----------------------------- | ------------ | ------------------------------------------- |
-| `DB_NAME`                     | local/Docker | Nome do banco PostgreSQL                    |
-| `DB_PORT`                     | local/Docker | Porta publicada. Padrão: `5432`             |
-| `DB_URL`                      | homolog/prod | URL JDBC completa do PostgreSQL             |
-| `DB_USERNAME`                 | PostgreSQL   | Usuário do banco                            |
-| `DB_PASSWORD`                 | PostgreSQL   | Senha do banco                              |
-| `API_PORT`                    | Docker       | Porta publicada da API. Padrão: `8080`      |
-| `JWT_SECRET`                  | exceto test  | Chave JWT com pelo menos 64 caracteres      |
-| `JWT_EXPIRATION`              | segurança    | Expiração do access token em milissegundos  |
-| `JWT_REFRESH_EXPIRATION`      | segurança    | Expiração do refresh token em milissegundos |
-| `JWT_RENEW_BEFORE_EXPIRATION` | segurança    | Janela de renovação em milissegundos        |
-| `FAKE_WEBHOOK_SECRET`         | webhook      | Segredo HMAC com pelo menos 32 caracteres   |
+| Variável                        | Perfil/uso     | Descrição                                    |
+|---------------------------------|----------------|----------------------------------------------|
+| `DB_NAME`                       | local/Docker   | Nome do banco PostgreSQL                     |
+| `DB_PORT`                       | local/Docker   | Porta publicada. Padrão: `5432`              |
+| `DB_URL`                        | homolog/prod   | URL JDBC completa do PostgreSQL              |
+| `DB_USERNAME`                   | PostgreSQL     | Usuário do banco                             |
+| `DB_PASSWORD`                   | PostgreSQL     | Senha do banco                               |
+| `MONGO_HOST`                    | MongoDB        | Host do servidor MongoDB                     |
+| `MONGO_PORT`                    | MongoDB        | Porta do MongoDB. Padrão: `27017`            |
+| `MONGO_DATABASE`                | MongoDB        | Banco dos registros operacionais             |
+| `MONGO_USERNAME`                | MongoDB        | Usuário de autenticação                      |
+| `MONGO_PASSWORD`                | MongoDB        | Senha de autenticação                        |
+| `MONGO_AUTHENTICATION_DATABASE` | MongoDB        | Banco de autenticação. Padrão: `admin`       |
+| `API_PORT`                      | Docker         | Porta publicada da API. Padrão: `8080`       |
+| `JWT_SECRET`                    | exceto test    | Chave JWT com pelo menos 64 caracteres       |
+| `JWT_EXPIRATION`                | segurança      | Expiração do access token em milissegundos   |
+| `JWT_REFRESH_EXPIRATION`        | segurança      | Expiração do refresh token em milissegundos  |
+| `JWT_RENEW_BEFORE_EXPIRATION`   | segurança      | Janela de renovação em milissegundos         |
+| `FAKE_WEBHOOK_SECRET`           | webhook        | Segredo HMAC com pelo menos 32 caracteres    |
 
 Os arquivos `.env.*.example` servem apenas como modelo. Arquivos com valores reais não devem ser versionados.
 
@@ -612,15 +624,15 @@ docker compose --env-file .env.local --profile full up --build
 O fluxo de inicialização é:
 
 1. O PostgreSQL é iniciado.
-2. O healthcheck aguarda o PostgreSQL ficar saudável.
-3. A API é iniciada com o perfil `homolog`.
-4. O Flyway executa as migrations pendentes.
-5. O Hibernate valida o schema.
-6. O Actuator inicializa os indicadores de saúde.
-7. O Docker consulta `/actuator/health/readiness`.
-8. A conexão com o banco é validada pelo readiness.
-9. O container da API passa para o estado `healthy`.
-10. A API fica disponível na porta configurada.
+2. O MongoDB é iniciado.
+3. Os healthchecks aguardam os dois bancos ficarem saudáveis.
+4. A API é iniciada com o profile `homolog`.
+5. O Flyway executa as migrations do PostgreSQL.
+6. O Hibernate valida o schema relacional.
+7. O Spring Data MongoDB configura a persistência documental.
+8. O Actuator inicializa os indicadores de saúde.
+9. O Docker consulta `/actuator/health/readiness`.
+10. O container da API passa para o estado `healthy`.
 
 Verificar o estado:
 

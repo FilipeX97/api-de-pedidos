@@ -42,6 +42,14 @@ jobs:
       CI_JWT_REFRESH_EXPIRATION: ${{ vars.CI_JWT_REFRESH_EXPIRATION }}
       CI_JWT_RENEW_BEFORE_EXPIRATION: ${{ vars.CI_JWT_RENEW_BEFORE_EXPIRATION }}
 
+      CI_MONGO_PASSWORD: ${{ secrets.CI_MONGO_PASSWORD }}
+
+      CI_MONGO_DATABASE: ${{ vars.CI_MONGO_DATABASE }}
+      CI_MONGO_USERNAME: ${{ vars.CI_MONGO_USERNAME }}
+      CI_MONGO_PORT: ${{ vars.CI_MONGO_PORT }}
+      CI_MONGO_AUTHENTICATION_DATABASE: >-
+        ${{ vars.CI_MONGO_AUTHENTICATION_DATABASE }}
+
     steps:
       - name: Validar Secrets e Variables obrigatórios
         shell: bash
@@ -70,6 +78,23 @@ jobs:
 
           [[ -n "${CI_API_PORT:-}" ]] ||
             configuracoes_ausentes+=("Variable CI_API_PORT")
+          
+          [[ -n "${CI_MONGO_PASSWORD:-}" ]] ||
+            configuracoes_ausentes+=("Secret CI_MONGO_PASSWORD")
+
+          [[ -n "${CI_MONGO_DATABASE:-}" ]] ||
+            configuracoes_ausentes+=("Variable CI_MONGO_DATABASE")
+
+          [[ -n "${CI_MONGO_USERNAME:-}" ]] ||
+            configuracoes_ausentes+=("Variable CI_MONGO_USERNAME")
+
+          [[ -n "${CI_MONGO_PORT:-}" ]] ||
+            configuracoes_ausentes+=("Variable CI_MONGO_PORT")
+
+          [[ -n "${CI_MONGO_AUTHENTICATION_DATABASE:-}" ]] ||
+            configuracoes_ausentes+=(
+              "Variable CI_MONGO_AUTHENTICATION_DATABASE"
+            )
 
           [[ -n "${CI_JWT_EXPIRATION:-}" ]] ||
             configuracoes_ausentes+=("Variable CI_JWT_EXPIRATION")
@@ -253,6 +278,13 @@ jobs:
       DB_PORT: ${{ vars.CI_DB_PORT }}
       DB_USERNAME: ${{ vars.CI_DB_USERNAME }}
       DB_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
+
+      MONGO_DATABASE: ${{ vars.CI_MONGO_DATABASE }}
+      MONGO_PORT: ${{ vars.CI_MONGO_PORT }}
+      MONGO_USERNAME: ${{ vars.CI_MONGO_USERNAME }}
+      MONGO_PASSWORD: ${{ secrets.CI_MONGO_PASSWORD }}
+      MONGO_AUTHENTICATION_DATABASE: >-
+        ${{ vars.CI_MONGO_AUTHENTICATION_DATABASE }}
 
       API_PORT: ${{ vars.CI_API_PORT }}
 

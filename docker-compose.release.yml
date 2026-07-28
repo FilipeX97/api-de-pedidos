@@ -26,6 +26,35 @@ services:
       retries: 5
       start_period: 10s
 
+  mongo:
+    image: mongo:8.0.28-noble
+    container_name: api-pedidos-release-mongo
+    restart: unless-stopped
+
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE}
+
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+
+    volumes:
+      - api_pedidos_release_mongo_data:/data/db
+
+    healthcheck:
+      test: >
+        mongosh --quiet
+        --username "$$MONGO_INITDB_ROOT_USERNAME"
+        --password "$$MONGO_INITDB_ROOT_PASSWORD"
+        --authenticationDatabase admin
+        --eval "db.adminCommand('ping').ok"
+        | grep 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
   api-de-pedidos:
     image: ghcr.io/filipex97/api-de-pedidos:${IMAGE_TAG:-latest}
     container_name: api-pedidos-release-api
@@ -33,6 +62,8 @@ services:
 
     depends_on:
       postgres:
+        condition: service_healthy
+      mongo:
         condition: service_healthy
 
     environment:
@@ -48,6 +79,13 @@ services:
       JWT_RENEW_BEFORE_EXPIRATION: ${JWT_RENEW_BEFORE_EXPIRATION}
 
       FAKE_WEBHOOK_SECRET: ${FAKE_WEBHOOK_SECRET}
+
+      MONGO_HOST: mongo
+      MONGO_PORT: 27017
+      MONGO_DATABASE: ${MONGO_DATABASE}
+      MONGO_USERNAME: ${MONGO_USERNAME}
+      MONGO_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_AUTHENTICATION_DATABASE: ${MONGO_AUTHENTICATION_DATABASE:-admin}
 
     ports:
       - "${API_PORT:-8080}:8080"
@@ -70,4 +108,5 @@ services:
 
 volumes:
   api_pedidos_release_postgres_data:
+  api_pedidos_mongo_data:
   
