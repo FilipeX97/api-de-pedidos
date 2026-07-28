@@ -30,7 +30,7 @@ public class RegistroOperacionalWebhookPagamento {
     @Indexed(name = "idx_registro_operacional_webhook_event_id")
     private String eventId;
 
-    @Indexed(name = "idx_reistro_operacional_webhook_codigo_transacao")
+    @Indexed(name = "idx_registro_operacional_webhook_codigo_transacao")
     private String codigoTransacao;
 
     private StatusPagamento statusRecebido;
@@ -114,22 +114,27 @@ public class RegistroOperacionalWebhookPagamento {
         this.duplicado = false;
     }
 
+    public void sinalizarDuplicidade() {
+        this.duplicado = true;
+    }
+
     public void marcarComoProcessado() {
         Instant momentoProcessamento = Instant.now();
         this.statusProcessamento = StatusRegistroOperacionalWebhook.PROCESSADO;
         this.dataProcessamento = momentoProcessamento;
         this.duracaoProcessamentoMs =
-                calcularDuracaoEmMilisegundos(momentoProcessamento);
-        this.duplicado = false;
+                calcularDuracaoEmMilissegundos(momentoProcessamento);
         this.mensagemErro = null;
     }
 
     public void marcarComoDuplicado() {
         Instant momentoProcessamento = Instant.now();
-        this.statusProcessamento = StatusRegistroOperacionalWebhook.DUPLICADO;
+
+        this.statusProcessamento =
+                StatusRegistroOperacionalWebhook.DUPLICADO;
         this.dataProcessamento = momentoProcessamento;
         this.duracaoProcessamentoMs =
-                calcularDuracaoEmMilisegundos(momentoProcessamento);
+                calcularDuracaoEmMilissegundos(momentoProcessamento);
         this.duplicado = true;
         this.mensagemErro = null;
     }
@@ -139,8 +144,7 @@ public class RegistroOperacionalWebhookPagamento {
         this.statusProcessamento = StatusRegistroOperacionalWebhook.ERRO;
         this.dataProcessamento = momentoProcessamento;
         this.duracaoProcessamentoMs =
-                calcularDuracaoEmMilisegundos(momentoProcessamento);
-        this.duplicado = false;
+                calcularDuracaoEmMilissegundos(momentoProcessamento);
         this.mensagemErro = limitarMensagemErro(mensagemErro);
     }
 
@@ -155,6 +159,10 @@ public class RegistroOperacionalWebhookPagamento {
     }
 
     public boolean estaDuplicado() {
+        return duplicado;
+    }
+
+    public boolean foiIgnoradoComoDuplicado() {
         return statusProcessamento
                 == StatusRegistroOperacionalWebhook.DUPLICADO;
     }
@@ -169,10 +177,10 @@ public class RegistroOperacionalWebhookPagamento {
                 && statusProcessamento.estaFinalizado();
     }
 
-    private Long calcularDuracaoEmMilisegundos(
+    private Long calcularDuracaoEmMilissegundos(
             Instant momentoProcessamento
     ) {
-        if(dataRecebimento == null || momentoProcessamento == null) {
+        if (dataRecebimento == null || momentoProcessamento == null) {
             return null;
         }
 
