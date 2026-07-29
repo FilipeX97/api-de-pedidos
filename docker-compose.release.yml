@@ -108,5 +108,5 @@ services:
 
 volumes:
   api_pedidos_release_postgres_data:
-  api_pedidos_mongo_data:
+  api_pedidos_release_mongo_data:
   
