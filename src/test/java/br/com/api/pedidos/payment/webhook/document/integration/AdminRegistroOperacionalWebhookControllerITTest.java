@@ -21,7 +21,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -46,14 +45,6 @@ import static org.springframework.test.web.servlet.result
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@TestPropertySource(properties = {
-        "management.health.mongo.enabled=false",
-        "spring.data.mongodb.auto-index-creation=false",
-        "spring.data.mongodb.uri=" +
-                "mongodb://localhost:27017/" +
-                "api_pedidos_operacional_controller_test" +
-                "?serverSelectionTimeoutMS=200"
-})
 class AdminRegistroOperacionalWebhookControllerITTest {
 
     private static final String ENDPOINT =

@@ -17,6 +17,7 @@ import br.com.api.pedidos.payment.webhook.entity
 import br.com.api.pedidos.payment.webhook.service.result
         .ResultadoRegistroWebhook;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -66,8 +67,14 @@ class FakePagamentoWebhookServiceTest {
 
     @BeforeEach
     void setUp() {
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        objectMapper.registerModule(
+                new JavaTimeModule()
+        );
+
         service = new FakePagamentoWebhookService(
-                new ObjectMapper(),
+                objectMapper,
                 assinaturaWebhookFakeService,
                 gatewayPagamentoFakeConsulta,
                 checkoutFacade,

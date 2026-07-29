@@ -2,6 +2,7 @@ package br.com.api.pedidos.security.config;
 
 import br.com.api.pedidos.security.filter.JwtFiltroAutenticacao;
 import br.com.api.pedidos.security.filter.FiltroIntervaloRequisicao;
+import br.com.api.pedidos.security.handler.ManipuladorAcessoNegado;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -36,11 +37,15 @@ public class SegurancaConfig {
 
     private final JwtFiltroAutenticacao jwtFiltroAutenticacao;
     private final FiltroIntervaloRequisicao filtroIntervaloRequisicao;
+    private final ManipuladorAcessoNegado manipuladorAcessoNegado;
 
-    public SegurancaConfig(JwtFiltroAutenticacao jwtFiltroAutenticacao,
-                           FiltroIntervaloRequisicao filtroIntervaloRequisicao) {
+    public SegurancaConfig(
+            JwtFiltroAutenticacao jwtFiltroAutenticacao,
+            FiltroIntervaloRequisicao filtroIntervaloRequisicao,
+            ManipuladorAcessoNegado manipuladorAcessoNegado) {
         this.jwtFiltroAutenticacao = jwtFiltroAutenticacao;
         this.filtroIntervaloRequisicao = filtroIntervaloRequisicao;
+        this.manipuladorAcessoNegado = manipuladorAcessoNegado;
     }
 
     @Bean
@@ -73,6 +78,12 @@ public class SegurancaConfig {
                                 .requestMatchers("/webhooks/**").permitAll()
                                 .requestMatchers("/admin/**").hasRole("ADMIN")
                                 .anyRequest().authenticated()
+                )
+                .exceptionHandling(
+                        exception ->
+                                exception.accessDeniedHandler(
+                                        manipuladorAcessoNegado
+                                )
                 )
                 .addFilterBefore(
                         filtroIntervaloRequisicao,

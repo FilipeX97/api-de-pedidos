@@ -18,6 +18,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -39,7 +40,7 @@ public class PedidoControllerITTest {
     @Autowired
     private ProdutoRepository produtoRepository;
 
-    @MockBean
+    @MockitoBean
     private RateLimitService rateLimitService;
 
     private static final String USER_AGENT = "JUnit-Test-Agent";
