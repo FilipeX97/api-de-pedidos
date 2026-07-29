@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -165,7 +166,7 @@ class WebhookPagamentoRecebidoServiceTest {
                 "PAYMENT_UPDATED",
                 "PIX-123",
                 StatusPagamento.APROVADO,
-                "2026-07-13T10:00:00"
+                LocalDateTime.of(2026, 7, 13, 10, 0, 0)
         );
     }
 }

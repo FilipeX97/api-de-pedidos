@@ -2,397 +2,331 @@
 
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.16-6DB33F?logo=springboot&logoColor=white)
+![Spring Security](https://img.shields.io/badge/Spring%20Security-6.5.11-6DB33F?logo=springsecurity&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-8.0-47A248?logo=mongodb&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
-![Actuator](https://img.shields.io/badge/Spring%20Boot-Actuator-6DB33F?logo=springboot&logoColor=white)
 ![Tests](https://img.shields.io/badge/Testes-JUnit%205-25A162?logo=junit5&logoColor=white)
 [![CI](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/ci.yml)
 [![Publish Docker Image](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/publish-image.yml/badge.svg)](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/publish-image.yml)
 
-API REST para gerenciamento de usuários, produtos, cupons, pedidos, pagamentos e notificações, desenvolvida com **Java 21** e **Spring Boot**.
+API REST de estudo e portfólio para gerenciamento de usuários, produtos, cupons, pedidos e pagamentos. O projeto foi desenvolvido com **Java 21** e **Spring Boot 3.5.16**, indo além de um CRUD tradicional ao implementar autenticação JWT, idempotência, padrões de projeto, integração com gateway fake, webhooks assinados, persistência poliglota, observabilidade, testes automatizados, Docker e CI/CD.
 
-Criei este projeto para ir além de um CRUD tradicional. A proposta foi simular problemas encontrados em aplicações reais: autenticação com access e refresh tokens, controle do ciclo de vida de pedidos, idempotência, integração com gateways de pagamento, processamento de webhooks, auditoria, paginação, filtros administrativos, migrations, testes automatizados, observabilidade, integração contínua e entrega contínua de artefatos.
+> O PostgreSQL permanece como fonte da verdade dos dados transacionais. O MongoDB armazena registros operacionais e documentais dos webhooks de pagamento para consulta, diagnóstico e investigação técnica.
 
-> O projeto tem finalidade de estudo e portfólio, mas foi estruturado com práticas que poderiam ser levadas para uma aplicação de produção.
+---
 
 ## Principais destaques
 
-* Autenticação stateless com JWT, refresh token, rotação e revogação.
-* Autorização por perfil `USER` e `ADMIN`.
-* Ciclo de vida do pedido controlado pelo padrão State.
-* Descontos e formas de pagamento implementados com Strategy.
-* Gateways de cartão, PIX e boleto isolados por Adapters.
-* Checkout centralizado por uma Facade.
-* Eventos de domínio com histórico, notificações e auditoria.
-* Idempotência em operações sensíveis.
-* Webhook fake protegido por assinatura HMAC-SHA256.
-* Consultas administrativas com paginação, ordenação e Specifications.
-* PostgreSQL, H2, Flyway, Docker e Docker Compose.
-* Documentação interativa com Swagger/OpenAPI.
-* Observabilidade com Spring Boot Actuator.
-* Healthchecks da aplicação e do PostgreSQL.
-* Probes de liveness e readiness.
-* Métricas de requisições HTTP, JVM e conexões.
-* Correlação de logs por meio do header `X-Request-Id`.
-* Tratamento seguro de erros internos sem exposição de stacktrace.
-* Testes unitários e de integração com JUnit 5, Mockito e MockMvc.
-* Pipeline de integração contínua com GitHub Actions.
-* Detecção de segredos versionados com Gitleaks.
-* Análise de vulnerabilidades críticas da imagem Docker com Trivy.
-* Atualização automatizada de dependências com Dependabot.
-* Imagem Docker versionada e publicada no GitHub Container Registry.
-* Tags rastreáveis por branch, commit e versão semântica.
-* Publicação executada somente após o pipeline de CI ser aprovado.
-* Imagem reutilizável sem inclusão de credenciais ou arquivos `.env`.
+- Autenticação stateless com access token e refresh token.
+- Rotação, revogação e detecção de reutilização de refresh token.
+- Blacklist de access tokens após logout.
+- Autorização por perfis `USER` e `ADMIN`.
+- Senhas protegidas com BCrypt.
+- Pedidos controlados pelo padrão **State**.
+- Descontos e pagamentos implementados com **Strategy**.
+- Gateways de pagamento isolados por **Adapter**.
+- Checkout coordenado por **Facade**.
+- Eventos de domínio e listeners no estilo **Observer**.
+- Consultas administrativas combináveis.
+- Idempotência em operações sensíveis.
+- Pagamentos por PIX, cartão e boleto.
+- Gateway fake com transações persistidas no PostgreSQL.
+- Webhook fake protegido por assinatura HMAC-SHA256.
+- Controle transacional e idempotente de webhooks no PostgreSQL.
+- Registro operacional de webhooks no MongoDB.
+- Estratégia **best effort**: falhas no MongoDB não interrompem pagamentos.
+- Paginação, ordenação e filtros administrativos.
+- Migrations com Flyway.
+- Documentação com Swagger/OpenAPI.
+- Observabilidade com Spring Boot Actuator.
+- Correlação de logs pelo header `X-Request-Id`.
+- Testes com JUnit 5, Mockito, MockMvc e Spring Security Test.
+- Pipeline de CI com GitHub Actions.
+- Detecção de segredos com Gitleaks.
+- Verificação de vulnerabilidades da imagem com Trivy.
+- Publicação da imagem no GitHub Container Registry.
+- Atualização automatizada de dependências com Dependabot.
 
-## Fluxo principal da aplicação
+---
 
-1. O usuário se registra e realiza login.
-2. A API emite um access token JWT e um refresh token.
-3. O usuário cria um pedido e adiciona produtos.
-4. O motor de promoções calcula os descontos aplicáveis.
-5. O usuário escolhe cartão, PIX ou boleto para iniciar o pagamento.
-6. A estratégia correspondente chama o adapter do gateway fake.
-7. Pagamentos pendentes podem ser confirmados por webhook assinado.
-8. O pedido muda de estado conforme as regras permitidas.
-9. Eventos geram histórico, notificações e registros de auditoria.
-10. Administradores podem consultar pedidos por filtros e gerar relatórios.
-11. O Actuator disponibiliza informações de saúde, runtime e métricas.
-12. O Docker Compose verifica automaticamente se a aplicação está pronta.
-13. O GitHub Actions valida testes, build Maven, Docker, Compose e segurança.
-14. Depois do CI aprovado na `main`, a imagem é publicada de forma versionada no GHCR.
+## Arquitetura e persistência poliglota
+
+A aplicação utiliza dois bancos com responsabilidades diferentes:
+
+| Banco | Responsabilidade |
+|---|---|
+| PostgreSQL | Fonte da verdade para usuários, produtos, cupons, pedidos, pagamentos, idempotência, tokens, histórico, notificações, auditoria, transações do gateway fake e controle transacional dos webhooks |
+| MongoDB | Registros operacionais e documentais das tentativas de webhook, incluindo payload original, Request ID, duração, duplicidade, resultado e mensagem técnica de erro |
+
+### Por que o PostgreSQL continua sendo a fonte da verdade?
+
+Pedidos e pagamentos exigem:
+
+- integridade referencial;
+- constraints;
+- transações;
+- consistência forte;
+- relacionamentos;
+- controle confiável de duplicidade;
+- relatórios oficiais.
+
+O `eventId` utilizado para impedir o processamento repetido continua protegido por constraint única no PostgreSQL.
+
+### Por que usar MongoDB para o registro operacional?
+
+O payload e os metadados de webhooks podem variar conforme o gateway e evoluir com o tempo. O modelo documental permite guardar essas informações de forma flexível, sem transformar o MongoDB na fonte oficial do pagamento.
+
+O documento operacional registra:
+
+- `eventId`;
+- `codigoTransacao`;
+- status recebido;
+- status do processamento;
+- payload original;
+- `requestId`;
+- tipo do evento;
+- origem;
+- data de recebimento;
+- data de processamento;
+- duração em milissegundos;
+- indicação de duplicidade;
+- mensagem técnica resumida em caso de erro.
+
+Não são persistidos no documento:
+
+- senha;
+- access token;
+- refresh token;
+- chave JWT;
+- segredo do webhook;
+- senha do banco;
+- assinatura HMAC completa.
+
+---
+
+## Fluxo do webhook de pagamento
 
 ```mermaid
-flowchart LR
-    Cliente[Cliente da API] --> Controller
-    Controller --> Service[Serviços de aplicação]
-    Service --> Domain[Entidades e regras de domínio]
-    Service --> Repository[Repositories]
-    Repository --> Database[(H2 / PostgreSQL)]
+flowchart TD
+    A[Gateway envia webhook] --> B[Controller recebe corpo original e assinatura]
+    B --> C[Validar assinatura HMAC-SHA256]
+    C --> D[Converter e validar payload]
+    D --> E[Registrar tentativa operacional no MongoDB]
+    E --> F[Registrar ou recuperar eventId no PostgreSQL]
+    F --> G{Evento deve ser processado?}
 
-    Service --> Events[Eventos de pedido]
-    Events --> History[Histórico]
-    Events --> Notifications[Notificações]
-    Events --> Audit[Auditoria]
+    G -- Não --> H[Marcar tentativa operacional como DUPLICADO]
+    H --> I[Retornar estado atual do pagamento]
 
-    Service --> Checkout[Checkout Facade]
-    Checkout --> PaymentStrategy[Strategy de pagamento]
-    PaymentStrategy --> Adapter[Gateway Adapter]
-    Adapter --> FakeGateway[Gateway fake]
-    FakeGateway --> Webhook[Webhook HMAC]
+    G -- Sim --> J[Atualizar transação no gateway fake]
+    J --> K[Processar pagamento no PostgreSQL]
+    K --> L[Marcar webhook transacional como PROCESSADO]
+    L --> M[Marcar documento operacional como PROCESSADO]
 
-    Monitoring[Spring Boot Actuator] --> ApplicationHealth[Health da aplicação]
-    Monitoring --> DatabaseHealth[Health do banco]
-    Monitoring --> Metrics[Métricas]
+    J --> N[Erro no processamento]
+    K --> N
+    N --> O[Marcar PostgreSQL como ERRO]
+    O --> P[Marcar documento MongoDB como ERRO]
 
-    Docker[Docker Compose] --> Readiness[Readiness probe]
-    Readiness --> Monitoring
-
-    GitHub[GitHub Actions] --> Tests[Testes Maven]
-    GitHub --> Package[Empacotamento]
-    GitHub --> DockerBuild[Docker build]
-    GitHub --> Security[Segurança]
-    Security --> Registry[GitHub Container Registry]
+    E -. MongoDB indisponível .-> F
 ```
 
-## Funcionalidades
+### Consistência eventual e best effort
 
-### Autenticação e segurança
+A gravação operacional no MongoDB é executada em modo best effort:
 
-* Registro de usuários com senha armazenada utilizando BCrypt.
-* Login com access token e refresh token.
-* Renovação com rotação de refresh tokens.
-* Detecção de reutilização de refresh token revogado.
-* Logout com blacklist do access token.
-* Revogação dos refresh tokens do usuário durante o logout.
-* Validação do IP e do User-Agent associados ao JWT.
-* Bloqueio temporário após tentativas de login inválidas.
-* Rate limiting para endpoints protegidos.
-* Autorização por perfil e por proprietário do recurso.
-* Respostas padronizadas para falhas de autenticação e autorização.
-* Tratamento seguro de erros internos.
+- a exceção é registrada nos logs;
+- o processamento transacional continua;
+- o pagamento não é recusado apenas porque o MongoDB está indisponível;
+- o registro operacional pode ficar ausente ou incompleto em uma falha de infraestrutura.
 
-### Usuários e produtos
+A consulta administrativa depende do MongoDB. Portanto, caso ele esteja indisponível, o endpoint operacional pode falhar sem comprometer os pagamentos já controlados pelo PostgreSQL.
 
-* Cadastro e atualização de usuários.
-* Consulta por ID e e-mail.
-* Paginação da listagem administrativa.
-* Ativação, desativação e remoção de usuários.
-* Cadastro, consulta, atualização e remoção de produtos.
-* Controle de preço, estoque e situação do produto.
+---
 
-### Pedidos e promoções
+## Estados do registro operacional
 
-* Criação e consulta de pedidos do usuário autenticado.
-* Inclusão, alteração e remoção de itens.
-* Recálculo de subtotal, descontos e valor final.
-* Aplicação de cupons promocionais.
-* Estratégias de desconto por quantidade, cupom e cliente VIP.
-* Cancelamento, envio, entrega e estorno conforme o estado atual.
-* Histórico completo das alterações do pedido.
+| Status | Significado |
+|---|---|
+| `RECEBIDO` | A tentativa foi registrada, mas ainda não recebeu resultado final |
+| `PROCESSADO` | A tentativa foi processada com sucesso |
+| `DUPLICADO` | O `eventId` já havia sido processado e a nova tentativa foi ignorada |
+| `ERRO` | A tentativa terminou com erro |
 
-### Pagamentos e webhooks
+O campo booleano `duplicado` é independente do status final. Assim, é possível existir:
 
-* Pagamentos por cartão de crédito, PIX e boleto.
-* Gateways fake independentes para cada forma de pagamento.
-* Persistência das transações simuladas do gateway.
-* Consulta de pagamentos vinculados ao pedido.
-* Processamento de confirmação por webhook.
-* Validação de assinatura HMAC-SHA256.
-* Controle contra processamento duplicado de webhooks.
-* Logs de início e resultado do processamento dos pagamentos.
-* Logs de webhooks recebidos, processados, duplicados ou com erro.
+```json
+{
+  "statusProcessamento": "PROCESSADO",
+  "duplicado": true
+}
+```
 
-### Administração e acompanhamento
+Esse caso representa um `eventId` repetido que foi reprocessado porque a tentativa anterior havia terminado com erro.
 
-* Notificações do usuário com controle de leitura.
-* Auditoria de eventos importantes do pedido.
-* Consulta administrativa com filtros combináveis.
-* Paginação e ordenação dos resultados.
-* Relatório consolidado de pedidos por período.
+---
 
-### Observabilidade e monitoramento
+## Índices do MongoDB
 
-* Healthcheck geral da aplicação.
-* Healthcheck da conexão com o banco de dados.
-* Probes independentes de liveness e readiness.
-* Informações sobre nome, versão, ambiente e runtime.
-* Métricas de requisições HTTP.
-* Métricas da JVM, memória, threads e CPU.
-* Métricas de conexões JDBC.
-* Healthcheck automático da API pelo Docker Compose.
-* Identificação de cada requisição pelo header `X-Request-Id`.
-* Inclusão automática do Request ID nos logs.
-* Logs operacionais de autenticação, pedidos, pagamentos e webhooks.
-* Stacktrace completa apenas nos logs internos.
-* Resposta genérica para erros inesperados.
+A coleção utilizada é:
 
-### Integração contínua
+```text
+registro_operacional_webhook_pagamento
+```
 
-* Execução automática em pushes para `main` e `feature/**`.
-* Execução automática em pull requests destinados à `main`.
-* Validação de arquivos `.env` indevidamente versionados.
-* Detecção de segredos no histórico Git.
-* Execução dos testes Maven com Java 21.
-* Cache de dependências Maven.
-* Empacotamento da aplicação.
-* Validação da geração do JAR executável.
-* Validação sintática do Docker Compose.
-* Build da imagem Docker.
-* Verificação de execução com usuário sem privilégios.
-* Análise de vulnerabilidades críticas da imagem Docker.
-* Validação do Compose de release sem impressão de segredos.
-* Publicação da imagem no GHCR somente após aprovação do CI na `main`.
-* Geração de tags `latest`, `main`, `sha` e versões semânticas.
+Índices declarados no documento:
+
+- `eventId`;
+- `codigoTransacao`;
+- `statusProcessamento`;
+- `requestId`;
+- `dataRecebimento`.
+
+O índice de `eventId` **não é único**, pois o objetivo operacional é visualizar todas as tentativas recebidas, inclusive repetições do mesmo evento.
+
+---
 
 ## Tecnologias utilizadas
 
-| Tecnologia                | Uso no projeto                                     |
-| ------------------------- | -------------------------------------------------- |
-| Java 21                   | Linguagem principal                                |
-| Spring Boot 3.5.16        | Configuração e execução da aplicação               |
-| Spring Web                | API REST                                           |
-| Spring Security           | Autenticação e autorização                         |
-| Spring Data JPA           | Persistência e consultas                           |
-| Spring Boot Actuator      | Healthchecks, informações operacionais e métricas  |
-| Micrometer                | Coleta e padronização das métricas do Actuator     |
-| Bean Validation           | Validação dos dados de entrada                     |
-| PostgreSQL 16             | Banco dos ambientes local, homologação e produção  |
-| H2                        | Desenvolvimento rápido e testes automatizados      |
-| Flyway                    | Versionamento e evolução do banco de dados         |
-| JJWT 0.11.5               | Geração e validação de tokens JWT                  |
-| Caffeine                  | Cache local de usuários e blacklist                |
-| SLF4J e MDC               | Logs e correlação por Request ID                   |
-| Springdoc OpenAPI 2.8.17  | Swagger e especificação OpenAPI                    |
-| Maven                     | Build e gerenciamento de dependências              |
-| Docker                    | Empacotamento da aplicação                         |
-| Docker Compose            | Orquestração e healthchecks da API e do PostgreSQL |
-| GitHub Container Registry | Armazenamento e distribuição da imagem Docker      |
-| GitHub Actions            | Integração contínua e validação automatizada       |
-| Gitleaks                  | Detecção de segredos no histórico Git              |
-| Trivy                     | Análise de vulnerabilidades da imagem Docker       |
-| Dependabot                | Atualização automatizada de dependências           |
-| JUnit 5                   | Testes automatizados                               |
-| Mockito                   | Testes unitários com mocks                         |
-| MockMvc                   | Testes de integração dos endpoints                 |
+| Tecnologia | Uso |
+|---|---|
+| Java 21 | Linguagem principal |
+| Spring Boot 3.5.16 | Configuração e execução |
+| Spring Web / MVC | API REST |
+| Spring Security 6.5.11 | Autenticação e autorização |
+| Spring Data JPA | Persistência relacional |
+| Spring Data MongoDB | Persistência documental |
+| PostgreSQL 16 | Banco transacional |
+| MongoDB 8.0 | Registros operacionais de webhooks |
+| H2 | Desenvolvimento rápido e testes |
+| Flyway | Versionamento do schema relacional |
+| JJWT 0.11.5 | Tokens JWT |
+| Caffeine | Cache local |
+| Bean Validation | Validação de entrada |
+| Springdoc OpenAPI 2.8.17 | Swagger/OpenAPI |
+| Spring Boot Actuator | Healthchecks, informações e métricas |
+| SLF4J e MDC | Logs e correlação por Request ID |
+| Maven | Build e dependências |
+| Docker / Docker Compose | Empacotamento e orquestração |
+| JUnit 5 | Testes automatizados |
+| Mockito | Testes unitários |
+| MockMvc | Testes HTTP |
+| GitHub Actions | Integração contínua |
+| GHCR | Registro de imagens Docker |
+| Gitleaks | Detecção de segredos |
+| Trivy | Análise de vulnerabilidades |
+| Dependabot | Atualização de dependências |
 
-## Padrões de projeto aplicados
+---
 
-Os padrões foram utilizados para resolver problemas concretos do domínio, e não apenas para criar exemplos isolados.
+## Padrões de projeto
 
 ### Strategy
 
-Permite adicionar novas regras sem concentrar condicionais no fluxo principal.
+Usado para encapsular comportamentos intercambiáveis.
 
-**Descontos:**
+**Descontos**
 
-* `EstrategiaDesconto`
-* `DescontoClienteVip`
-* `DescontoCupom`
-* `DescontoQuantidade`
-* `MotorPromocao`
+- desconto por quantidade;
+- cupom;
+- cliente VIP;
+- motor de promoções.
 
-**Pagamentos:**
+**Pagamentos**
 
-* `EstrategiaPagamento`
-* `PagamentoCartaoCredito`
-* `PagamentoPix`
-* `PagamentoBoleto`
-
-Uma nova forma de pagamento pode ser criada implementando a interface, sem alterar o serviço que processa os pagamentos.
+- cartão de crédito;
+- PIX;
+- boleto.
 
 ### State
 
-Cada estado do pedido define quais transições são permitidas. Isso evita que regras de estado fiquem espalhadas em vários `if` e `switch`.
+Controla as transições do pedido e impede mudanças inválidas de estado.
 
-Principais classes:
+Exemplos:
 
-* `EstadoPedido`
-* `EstadoCriado`
-* `EstadoAguardandoPagamento`
-* `EstadoPago`
-* `EstadoEnviado`
-* `EstadoEntregue`
-* `EstadoCancelamentoSolicitado`
-* `EstadoCancelado`
-* `EstadoEstornado`
-* `EstadoPedidoFactory`
-
-### Observer
-
-Eventos e listeners do Spring desacoplam a operação principal de efeitos secundários.
-
-Quando um pedido é criado, pago, enviado, entregue, cancelado ou estornado, listeners independentes podem registrar:
-
-* Histórico.
-* Notificações.
-* Auditoria.
-
-Principais classes:
-
-* Eventos em `order/event`.
-* `HistoricoPedidoListener`.
-* `NotificacaoPedidoListener`.
-* `AuditoriaPedidoListener`.
+- criado;
+- aguardando pagamento;
+- pago;
+- enviado;
+- entregue;
+- cancelamento solicitado;
+- cancelado;
+- estornado.
 
 ### Adapter
 
-Os adapters escondem os detalhes de integração de cada gateway. O domínio trabalha com uma resposta padronizada, independentemente do formato retornado pelo cartão, PIX ou boleto.
-
-* `GatewayPagamentoAdapter`
-* `GatewayCartaoAdapter`
-* `GatewayPixAdapter`
-* `GatewayBoletoAdapter`
+Isola o domínio dos formatos específicos de cada gateway de pagamento.
 
 ### Facade
 
-A `CheckoutFacade` concentra a coordenação do checkout:
+A `CheckoutFacade` centraliza a coordenação do checkout, pagamento e confirmação por webhook.
 
-* Busca e valida o pedido.
-* Recalcula os valores.
-* Inicia o pagamento.
-* Interpreta o resultado.
-* Atualiza o estado do pedido.
-* Processa confirmações recebidas por webhook.
+### Observer
 
-O controller não precisa conhecer todos esses detalhes.
+Eventos e listeners desacoplam efeitos secundários, como:
+
+- histórico;
+- notificações;
+- auditoria.
 
 ### Specification
 
-A classe `PedidoSpecifications` monta filtros combináveis para consultas administrativas, permitindo pesquisar pedidos por usuário, status, período e valores sem criar um método fixo para cada combinação.
+Utilizada nas consultas administrativas relacionais com filtros combináveis.
 
 ### Factory
 
-As factories selecionam a implementação correta em tempo de execução:
+Seleciona estratégias de pagamento e estados do pedido em tempo de execução.
 
-* `EstrategiaPagamentoFactory` seleciona a estratégia pela forma de pagamento.
-* `EstadoPedidoFactory` seleciona o comportamento pelo status atual do pedido.
+---
 
-## Princípios SOLID
-
-### Single Responsibility Principle
-
-As responsabilidades foram separadas em serviços específicos, por exemplo:
-
-* `PedidoService`: regras e alterações do pedido.
-* `PagamentoService`: processamento e persistência dos pagamentos.
-* `CupomService`: gerenciamento dos cupons.
-* `NotificacaoService`: notificações do usuário.
-* `AuditoriaService`: registros de auditoria.
-* `PedidoConsultaService`: consultas administrativas.
-* `PedidoUsuarioConsultaService`: consultas do próprio usuário.
-* `RelatorioPedidoService`: relatórios consolidados.
-* `AutenticacaoService`: login, refresh e logout.
-* `RequestIdFilter`: geração e propagação do identificador da requisição.
-* `InformacoesAplicacaoContributor`: informações operacionais da aplicação.
-
-### Open/Closed Principle
-
-O projeto pode receber novas estratégias de desconto, meios de pagamento, estados, listeners, filtros, métricas e indicadores de saúde sem alterar o núcleo dos fluxos existentes.
-
-### Liskov Substitution Principle
-
-As implementações de `EstrategiaPagamento`, `EstrategiaDesconto`, `GatewayPagamentoAdapter` e `EstadoPedido` podem ser substituídas pelas respectivas abstrações sem alterar os consumidores.
-
-### Interface Segregation Principle
-
-As interfaces representam comportamentos específicos do domínio. Uma estratégia de pagamento, por exemplo, não precisa implementar operações que pertencem a notificações, pedidos, relatórios ou monitoramento.
-
-### Dependency Inversion Principle
-
-Os fluxos de alto nível utilizam abstrações para selecionar estratégias, estados e gateways. O Spring injeta as implementações disponíveis, reduzindo o acoplamento entre os componentes.
-
-## Arquitetura do projeto
-
-A aplicação é organizada por domínio. Cada módulo mantém próximas as classes relacionadas ao mesmo contexto.
+## Organização do projeto
 
 ```text
 src/main/java/br/com/api/pedidos
-├── audit           # Auditoria de eventos do pedido
-├── auth            # Registro, login, refresh token e logout
-├── cache           # Nomes e configurações de cache
-├── config          # Configurações gerais, tokens e OpenAPI
-├── coupon          # Cupons promocionais
-├── notification    # Notificações do usuário
-├── observability   # Request ID e informações operacionais
-├── order           # Pedidos, itens, estados, eventos e consultas
-├── payment         # Pagamentos, strategies, adapters e webhooks
-├── product         # Produtos
-├── report          # Relatórios administrativos
-├── security        # JWT, filtros, rate limit e autenticação
-├── shared          # Respostas, exceções, paginação e idempotência
-└── user            # Usuários e administração de usuários
+├── audit
+├── auth
+├── cache
+├── config
+├── coupon
+├── notification
+├── observability
+├── order
+├── payment
+│   └── webhook
+│       ├── controller
+│       ├── dto
+│       ├── entity
+│       ├── repository
+│       ├── service
+│       └── document
+│           ├── controller
+│           ├── dto
+│           ├── entity
+│           ├── repository
+│           └── service
+├── product
+├── report
+├── security
+├── shared
+└── user
 ```
 
-Dentro dos módulos, as classes são separadas conforme a responsabilidade:
+Dentro dos módulos:
 
-* `controller`: contrato HTTP e documentação OpenAPI.
-* `service`: casos de uso e regras de aplicação.
-* `entity`: entidades e invariantes do domínio.
-* `repository`: persistência e consultas.
-* `dto`: entrada e saída de dados.
-* `strategy`, `state`, `adapter`, `listener` e `specification`: comportamentos específicos.
-* `filter`: filtros HTTP, autenticação, rate limiting e correlação.
-* `info`: informações operacionais disponibilizadas pelo Actuator.
+- `controller`: contrato HTTP e OpenAPI;
+- `service`: casos de uso e regras de aplicação;
+- `entity`: entidades e invariantes;
+- `document`: documentos MongoDB;
+- `repository`: acesso a dados;
+- `dto`: entrada e saída;
+- `strategy`, `state`, `adapter`, `factory`, `listener` e `specification`: comportamentos especializados.
 
-A infraestrutura de build, integração contínua e publicação fica organizada da seguinte forma:
+---
 
-```text
-.github
-├── dependabot.yml
-└── workflows
-    ├── ci.yml
-    └── publish-image.yml
+## Resposta padronizada
 
-.dockerignore
-Dockerfile
-docker-compose.yml
-docker-compose.release.yml
-```
-
-## Resposta padronizada da API
-
-As respostas seguem um envelope comum:
+Sucesso:
 
 ```json
 {
@@ -402,137 +336,167 @@ As respostas seguem um envelope comum:
 }
 ```
 
-Erros de validação utilizam o mesmo contrato, colocando os campos inválidos em `dados` e uma mensagem geral em `mensagem`.
-
-Os principais status utilizados são:
-
-| Status | Situação                                        |
-| -----: | ----------------------------------------------- |
-|  `400` | Dados inválidos ou violação de regra de negócio |
-|  `401` | Usuário não autenticado ou token inválido       |
-|  `403` | Usuário autenticado sem permissão               |
-|  `404` | Recurso não encontrado                          |
-|  `409` | Conflito de integridade ou idempotência         |
-|  `500` | Erro interno inesperado                         |
-
-Em um erro inesperado, o cliente recebe uma mensagem genérica:
+Erro:
 
 ```json
 {
   "sucesso": false,
   "dados": null,
-  "mensagem": "Erro interno no servidor"
+  "mensagem": "Descrição do erro"
 }
 ```
 
-A exceção e a stacktrace completa ficam disponíveis somente nos logs internos.
+Principais códigos HTTP:
 
-## Segurança e confiabilidade
+| Código | Uso |
+|---:|---|
+| 200 | Consulta ou alteração concluída |
+| 201 | Recurso criado |
+| 400 | Entrada inválida ou regra de negócio violada |
+| 401 | Token ausente, inválido, expirado ou bloqueado |
+| 403 | Usuário autenticado sem permissão |
+| 404 | Recurso não encontrado |
+| 409 | Conflito de integridade ou idempotência |
+| 429 | Rate limit excedido |
+| 500 | Falha interna inesperada |
 
-Além do JWT, o projeto implementa outras proteções e controles:
+---
 
-* Senhas protegidas com BCrypt.
-* API stateless, sem sessão HTTP no servidor.
-* Access token associado ao IP e ao User-Agent.
-* Refresh tokens persistidos e rotacionados.
-* Blacklist de access tokens após logout.
-* Limpeza agendada de tokens e chaves expiradas.
-* Bloqueio temporário por tentativas de login.
-* Rate limiting de uma requisição protegida por segundo por usuário.
-* Autorização por perfil e propriedade do recurso.
-* Assinatura HMAC-SHA256 para o webhook fake.
-* Comparação segura da assinatura do webhook.
-* Idempotência associada à chave, usuário, endpoint, método e hash do payload.
-* Endpoints de métricas protegidos por perfil `ADMIN`.
-* Métricas não expostas no perfil de produção.
-* Detalhes internos do healthcheck ocultos em homologação e produção.
-* Erros inesperados sem exposição de stacktrace ao cliente.
-* Correlação de logs com identificador único por requisição.
-* Proibição de registro de senhas, tokens JWT, refresh tokens e segredos HMAC.
-* Bloqueio de arquivos `.env` reais no pipeline.
-* Detecção de segredos no histórico Git com Gitleaks.
-* Execução da imagem Docker com usuário sem privilégios.
-* Verificação de vulnerabilidades críticas com Trivy.
+## Segurança
 
-> O rate limiting atual é mantido em memória. Em uma aplicação distribuída, uma evolução natural seria utilizar Redis ou outro armazenamento compartilhado.
+- API stateless.
+- Autenticação com Bearer Token.
+- Access token associado ao IP e ao User-Agent.
+- Refresh token persistido e rotacionado.
+- Detecção de reutilização de refresh token revogado.
+- Blacklist de access tokens.
+- BCrypt para senhas.
+- Perfis `USER` e `ADMIN`.
+- Rate limiting local.
+- HMAC-SHA256 para webhook fake.
+- Comparação segura da assinatura.
+- Idempotência por chave, usuário, endpoint, método e hash do payload.
+- Respostas internas sem exposição de stacktrace.
+- Proibição de registrar tokens, senhas e segredos nos logs operacionais.
+- Execução da imagem Docker com usuário não root.
+- Gitleaks no pipeline.
+- Trivy na imagem Docker.
+
+> O rate limiting é mantido em memória. Em uma implantação distribuída, uma evolução natural seria usar Redis ou outro armazenamento compartilhado.
+
+---
 
 ## Idempotência
 
-Operações sensíveis recebem o header:
+Operações sensíveis recebem:
 
 ```http
-Idempotency-Key: <valor-unico>
+Idempotency-Key: <chave-unica>
 ```
 
-A chave fica vinculada ao usuário, endpoint, método HTTP e conteúdo da requisição por 24 horas.
+Comportamento:
 
-* A mesma chave com o mesmo payload retorna a resposta já processada.
-* A mesma chave com outro payload é rejeitada.
-* O controle reduz o risco de pedidos, pagamentos ou alterações duplicadas.
+- mesma chave e mesmo payload: devolve a resposta já processada;
+- mesma chave e payload diferente: rejeita a requisição;
+- a chave fica vinculada ao usuário, endpoint e método;
+- reduz o risco de pedidos, itens, pagamentos e transições duplicadas.
 
-## Perfis de ambiente
+---
 
-| Perfil    | Banco                                                | Swagger      | Actuator exposto                 | Uso esperado                        |
-| --------- | ---------------------------------------------------- | ------------ | -------------------------------- | ----------------------------------- |
-| `dev`     | H2 em memória, em modo de compatibilidade PostgreSQL | Habilitado   | `health`, `info`, `metrics`      | Desenvolvimento rápido              |
-| `local`   | PostgreSQL iniciado pelo Docker Compose              | Habilitado   | `health`, `info`, `metrics`      | API executada pela IDE ou Maven     |
-| `homolog` | PostgreSQL                                           | Habilitado   | `health`, `info`, `metrics`      | Homologação e stack Docker completa |
-| `prod`    | PostgreSQL                                           | Desabilitado | `health`, `info`                 | Produção                            |
-| `test`    | H2 em memória                                        | Desabilitado | Endpoints necessários aos testes | Testes automatizados                |
+## Perfis
 
-O perfil padrão é `dev`.
+| Perfil | Banco transacional | MongoDB | Swagger | Actuator |
+|---|---|---|---|---|
+| `dev` | H2 em memória | Externo em `localhost` | Habilitado | `health`, `info`, `metrics` com detalhes |
+| `local` | PostgreSQL via Docker Compose | MongoDB via Docker Compose | Habilitado | `health`, `info`, `metrics` com detalhes |
+| `homolog` | PostgreSQL | MongoDB | Habilitado | `health`, `info`, `metrics`, sem detalhes internos |
+| `prod` | PostgreSQL | MongoDB | Desabilitado | `health` e `info`, sem detalhes internos |
+| `test` | H2 em memória | Conexão real desabilitada nos testes atuais | Desabilitado | Apenas o necessário aos testes |
 
-Nos perfis `dev` e `local`, os componentes internos do healthcheck são exibidos para facilitar o desenvolvimento.
+O profile padrão é `dev`.
 
-Nos perfis `homolog` e `prod`, os detalhes internos são ocultados. O endpoint informa apenas o estado geral da aplicação.
+### Readiness
 
-O perfil `test` gera automaticamente uma chave JWT e um segredo de webhook temporários, evitando dependência de credenciais externas durante os testes automatizados.
+A readiness inclui:
+
+```text
+readinessState,db
+```
+
+Ela valida a aplicação e o banco relacional. O MongoDB não participa da readiness porque seu uso no processamento crítico é operacional e best effort.
+
+No Docker Compose, entretanto, a API aguarda PostgreSQL e MongoDB ficarem saudáveis antes de iniciar.
+
+---
 
 ## Variáveis de ambiente
 
-| Variável                      | Perfil/uso   | Descrição                                   |
-| ----------------------------- | ------------ | ------------------------------------------- |
-| `DB_NAME`                     | local/Docker | Nome do banco PostgreSQL                    |
-| `DB_PORT`                     | local/Docker | Porta publicada. Padrão: `5432`             |
-| `DB_URL`                      | homolog/prod | URL JDBC completa do PostgreSQL             |
-| `DB_USERNAME`                 | PostgreSQL   | Usuário do banco                            |
-| `DB_PASSWORD`                 | PostgreSQL   | Senha do banco                              |
-| `API_PORT`                    | Docker       | Porta publicada da API. Padrão: `8080`      |
-| `JWT_SECRET`                  | exceto test  | Chave JWT com pelo menos 64 caracteres      |
-| `JWT_EXPIRATION`              | segurança    | Expiração do access token em milissegundos  |
-| `JWT_REFRESH_EXPIRATION`      | segurança    | Expiração do refresh token em milissegundos |
-| `JWT_RENEW_BEFORE_EXPIRATION` | segurança    | Janela de renovação em milissegundos        |
-| `FAKE_WEBHOOK_SECRET`         | webhook      | Segredo HMAC com pelo menos 32 caracteres   |
+### PostgreSQL
 
-Os arquivos `.env.*.example` servem apenas como modelo. Arquivos com valores reais não devem ser versionados.
+| Variável | Descrição |
+|---|---|
+| `DB_NAME` | Nome do banco |
+| `DB_PORT` | Porta publicada, padrão `5432` |
+| `DB_URL` | URL JDBC completa em homologação/produção |
+| `DB_USERNAME` | Usuário |
+| `DB_PASSWORD` | Senha |
 
-> O Spring Boot não carrega arquivos `.env` automaticamente. No ambiente local, as variáveis devem ser carregadas pela configuração da IDE ou exportadas no terminal. No Docker Compose, utilize a opção `--env-file`.
+### MongoDB
+
+| Variável | Descrição |
+|---|---|
+| `MONGO_HOST` | Host do MongoDB |
+| `MONGO_PORT` | Porta, padrão `27017` |
+| `MONGO_DATABASE` | Banco operacional |
+| `MONGO_USERNAME` | Usuário |
+| `MONGO_PASSWORD` | Senha |
+| `MONGO_AUTHENTICATION_DATABASE` | Banco de autenticação, padrão `admin` |
+
+### API e segurança
+
+| Variável | Descrição |
+|---|---|
+| `API_PORT` | Porta publicada da API, padrão `8080` |
+| `JWT_SECRET` | Chave JWT com pelo menos 64 caracteres |
+| `JWT_EXPIRATION` | Expiração do access token em milissegundos |
+| `JWT_REFRESH_EXPIRATION` | Expiração do refresh token em milissegundos |
+| `JWT_RENEW_BEFORE_EXPIRATION` | Janela de renovação |
+| `FAKE_WEBHOOK_SECRET` | Segredo HMAC do webhook fake |
+
+Nunca versione arquivos `.env` reais. Somente arquivos `.env.*.example` devem permanecer no Git.
+
+O Spring Boot não carrega `.env` automaticamente. Configure as variáveis na IDE, exporte-as no terminal ou use `--env-file` com Docker Compose.
+
+---
 
 ## Pré-requisitos
 
-Para executar sem Docker:
+Execução sem container da API:
 
-* Java 21.
-* Maven 3.9 ou superior.
+- Java 21;
+- Maven 3.9 ou superior;
+- MongoDB disponível para os profiles que habilitam o documento operacional.
 
-Para executar a stack completa:
+Stack completa:
 
-* Docker.
-* Docker Compose.
+- Docker;
+- Docker Compose.
 
-## Como executar com H2
+---
 
-O perfil `dev` utiliza H2 em memória e carrega uma massa inicial de usuários e produtos.
+## Executar com o profile `dev`
 
-1. Use `.env.dev.example` como referência.
-2. Configure `JWT_SECRET` e `FAKE_WEBHOOK_SECRET` na IDE ou no terminal.
+O profile `dev` usa H2 para os dados transacionais e MongoDB para os registros operacionais.
+
+1. Configure as variáveis JWT, webhook e MongoDB.
+2. Garanta que o MongoDB esteja disponível em `localhost:27017`.
 3. Execute:
 
 ```bash
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-A API ficará disponível em:
+API:
 
 ```text
 http://localhost:8080
@@ -544,258 +508,162 @@ Console H2:
 http://localhost:8080/h2-console
 ```
 
-Configuração do H2:
+Configuração:
 
 ```text
 JDBC URL: jdbc:h2:mem:api_pedidos_dev
 User Name: sa
-Password: deixe em branco
+Password: vazio
 ```
 
-Usuário administrador criado somente nos perfis de desenvolvimento e teste:
+Massa inicial criada em `dev` e `test`:
 
 ```text
+ADMIN
 E-mail: admin@api.com
+Senha: 123456
+
+USER
+E-mail: user1@teste.com
 Senha: 123456
 ```
 
-Endpoints de observabilidade:
+Essas credenciais são apenas para desenvolvimento e testes.
 
-```text
-http://localhost:8080/actuator/health
-http://localhost:8080/actuator/health/liveness
-http://localhost:8080/actuator/health/readiness
-http://localhost:8080/actuator/info
-```
+---
 
-## Como executar localmente com PostgreSQL
+## Executar localmente pela IDE
 
-Neste modo, a API é executada pela IDE ou pelo Maven, enquanto o Spring Boot Docker Compose inicia somente o PostgreSQL.
+Neste modo, a API roda pela IDE ou Maven e o Spring Boot Docker Compose inicia PostgreSQL e MongoDB.
 
-1. Copie o arquivo de exemplo.
+1. Copie o arquivo de exemplo:
 
-**Windows PowerShell:**
+**PowerShell**
 
 ```powershell
 Copy-Item .env.local.example .env.local
 ```
 
-**Linux/macOS:**
+**Linux/macOS**
 
 ```bash
 cp .env.local.example .env.local
 ```
 
-2. Preencha as variáveis no `.env.local`.
-3. Carregue o arquivo na configuração de execução da IDE.
-4. Ative o perfil `local`.
+2. Preencha todas as variáveis.
+3. Carregue o `.env.local` na configuração da IDE.
+4. Ative o profile `local`.
 5. Execute `ApiDePedidosApplication`.
 
-Pelo Maven, depois de exportar as variáveis:
+Pelo Maven:
 
 ```bash
 mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-O serviço da API no `docker-compose.yml` pertence ao profile `full`. Por isso, o perfil `local` inicia somente o banco e evita que uma segunda instância da API concorra pela porta `8080`.
+O serviço da API no `docker-compose.yml` pertence ao profile Compose `full`, evitando uma segunda instância concorrendo com a API executada pela IDE.
 
-## Como executar a stack completa com Docker
+---
 
-1. Crie o arquivo `.env.local` a partir do exemplo.
-2. Preencha banco, JWT e segredo do webhook.
-3. Execute:
+## Executar a stack completa com Docker
 
 ```bash
 docker compose --env-file .env.local --profile full up --build
 ```
 
-O fluxo de inicialização é:
-
-1. O PostgreSQL é iniciado.
-2. O healthcheck aguarda o PostgreSQL ficar saudável.
-3. A API é iniciada com o perfil `homolog`.
-4. O Flyway executa as migrations pendentes.
-5. O Hibernate valida o schema.
-6. O Actuator inicializa os indicadores de saúde.
-7. O Docker consulta `/actuator/health/readiness`.
-8. A conexão com o banco é validada pelo readiness.
-9. O container da API passa para o estado `healthy`.
-10. A API fica disponível na porta configurada.
-
-Verificar o estado:
+Verificar:
 
 ```bash
 docker compose --env-file .env.local --profile full ps
 ```
 
-Resultado esperado:
+Containers esperados:
 
 ```text
-api-pedidos-postgres   healthy
-api-pedidos-api        healthy
+api-pedidos-postgres
+api-pedidos-mongo
+api-pedidos-api
 ```
 
-Acompanhar os logs:
+Logs:
 
 ```bash
 docker compose --env-file .env.local --profile full logs -f
 ```
 
-Acompanhar somente a API:
+Somente API:
 
 ```bash
 docker compose --env-file .env.local --profile full logs -f api-de-pedidos
 ```
 
-Parar os containers:
+Parar:
 
 ```bash
 docker compose --env-file .env.local --profile full down
 ```
 
-Parar e remover também o volume:
+Parar e remover volumes locais:
 
 ```bash
 docker compose --env-file .env.local --profile full down -v
 ```
 
-O `Dockerfile` utiliza build multi-stage. A aplicação é compilada em uma imagem Maven e executada em uma imagem menor com Java 21 JRE.
+> `down -v` apaga os dados locais do PostgreSQL e do MongoDB.
 
-A imagem final instala o `curl`, utilizado pelo healthcheck, e executa o processo Java com um usuário sem privilégios de root.
+---
 
-## Imagem Docker publicada
+## Validar os bancos
 
-A imagem da aplicação é publicada no GitHub Container Registry:
-
-```text
-ghcr.io/filipex97/api-de-pedidos
-```
-
-A publicação ocorre em um workflow separado, localizado em:
-
-```text
-.github/workflows/publish-image.yml
-```
-
-O workflow utiliza o `GITHUB_TOKEN` fornecido pelo próprio GitHub e recebe a permissão `packages: write` apenas no job responsável pela publicação.
-
-Nenhum segredo da aplicação é utilizado durante o build ou o envio da imagem. Credenciais de banco, chave JWT e segredo do webhook são fornecidos somente quando o container é executado.
-
-### Tags da branch principal
-
-Depois de um CI aprovado na branch `main`, são publicadas tags como:
-
-```text
-ghcr.io/filipex97/api-de-pedidos:latest
-ghcr.io/filipex97/api-de-pedidos:main
-ghcr.io/filipex97/api-de-pedidos:sha-<commit>
-```
-
-A tag `latest` representa o commit mais recente da `main` que passou por todas as verificações do pipeline.
-
-### Tags de versões
-
-Uma tag Git no formato `vMAJOR.MINOR.PATCH`, como `v1.0.0`, publica:
-
-```text
-ghcr.io/filipex97/api-de-pedidos:v1.0.0
-ghcr.io/filipex97/api-de-pedidos:1.0.0
-ghcr.io/filipex97/api-de-pedidos:1.0
-ghcr.io/filipex97/api-de-pedidos:sha-<commit>
-```
-
-A publicação versionada só é permitida quando a tag aponta para um commit pertencente à `main` e esse commit possui uma execução bem-sucedida do workflow de CI.
-
-### Baixar a imagem
-
-Versão mais recente aprovada na `main`:
+### PostgreSQL
 
 ```bash
-docker pull ghcr.io/filipex97/api-de-pedidos:latest
+docker compose --env-file .env.local exec postgres \
+  psql -U "$DB_USERNAME" -d "$DB_NAME"
 ```
 
-Versão específica:
+### MongoDB
 
 ```bash
-docker pull ghcr.io/filipex97/api-de-pedidos:v1.0.0
+docker compose --env-file .env.local exec mongo \
+  sh -lc 'mongosh --username "$MONGO_INITDB_ROOT_USERNAME" --password "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin'
 ```
 
-Caso o pacote esteja privado, autentique-se no GHCR antes do `pull`. Para uma imagem pública, o download pode ser realizado sem autenticação.
+No `mongosh`:
 
-### Executar a imagem publicada
+```javascript
+show dbs
+use api_pedidos_operacional
+show collections
 
-O arquivo `docker-compose.release.yml` utiliza a imagem publicada no GHCR e
-contém somente referências às configurações exigidas pela aplicação.
-
-Variáveis utilizadas pelo Compose:
-
-* `IMAGE_TAG`
-* `SPRING_PROFILES_ACTIVE`
-* `DB_NAME`
-* `DB_PORT`
-* `DB_USERNAME`
-* `DB_PASSWORD`
-* `API_PORT`
-* `JWT_SECRET`
-* `JWT_EXPIRATION`
-* `JWT_REFRESH_EXPIRATION`
-* `JWT_RENEW_BEFORE_EXPIRATION`
-* `FAKE_WEBHOOK_SECRET`
-
-Nenhum valor real fica armazenado no arquivo `docker-compose.release.yml`.
-
-Quando a imagem for executada em outro ambiente, esses valores deverão ser
-fornecidos pelo próprio ambiente, como variáveis da sessão, configurações do
-servidor ou secrets da plataforma de hospedagem.
-
-Depois que as variáveis estiverem disponíveis no ambiente, a imagem pode ser
-baixada com:
-
-```bash
-docker compose --file docker-compose.release.yml pull
+db.registro_operacional_webhook_pagamento
+  .find()
+  .sort({ dataRecebimento: -1 })
+  .pretty()
 ```
 
-E os serviços podem ser iniciados com:
+Índices:
 
-```bash
-docker compose --file docker-compose.release.yml up -d
+```javascript
+db.registro_operacional_webhook_pagamento.getIndexes()
 ```
 
-O `docker-compose.yml` permanece responsável pelo build local. O
-`docker-compose.release.yml` utiliza exclusivamente a imagem publicada no GHCR.
+---
 
-### Segurança da imagem
+## Flyway
 
-O contexto de build é protegido por `.dockerignore`, que exclui arquivos de ambiente, metadados do Git, artefatos locais, arquivos das IDEs e outros conteúdos que não precisam ser enviados ao builder.
-
-A imagem publicada:
-
-* Não contém arquivos `.env`.
-* Não recebe `DB_PASSWORD` durante o build.
-* Não recebe `JWT_SECRET` durante o build.
-* Não recebe `FAKE_WEBHOOK_SECRET` durante o build.
-* Executa com o usuário sem privilégios `app`.
-* É analisada pelo Trivy antes da publicação.
-* Possui labels OCI que indicam título, descrição, origem e revisão.
-
-## Banco de dados e migrations
-
-O Flyway é responsável pela criação e evolução do schema.
-
-As migrations ficam em:
+Migrations relacionais atuais:
 
 ```text
-src/main/resources/db/migration
+V1__criar_schema_inicial.sql
+V2__criar_historico_notificacao_auditoria.sql
+V3__criar_tabela_pagamento.sql
+V4__criar_tabela_webhook_pagamento_recebido.sql
+V5__adicionar_processamento_webhook_pagamento.sql
+V6__adicionar_indices_consultas_administrativas.sql
+V7__adicionar_indices_paginacao_usuario_notificacao.sql
+V8__persistir_transacoes_gateway_fake.sql
 ```
-
-Na versão atual existem migrations para:
-
-* Schema inicial de usuários, produtos, pedidos, tokens e idempotência.
-* Histórico, notificações e auditoria.
-* Pagamentos.
-* Recebimento e processamento de webhooks.
-* Índices para consultas administrativas e paginação.
-* Persistência das transações do gateway fake.
 
 O Hibernate está configurado com:
 
@@ -803,561 +671,438 @@ O Hibernate está configurado com:
 spring.jpa.hibernate.ddl-auto=validate
 ```
 
-Assim, o Flyway altera o banco e o Hibernate verifica se o modelo Java está compatível com o schema.
+O Flyway cria e evolui o schema; o Hibernate apenas valida o resultado.
 
-## Autenticação JWT
+O MongoDB não utiliza migrations Flyway. Os índices documentais são criados pelo Spring Data MongoDB nos profiles com:
 
-Fluxo básico:
-
-1. Registre um usuário em `POST /auth/registrar`.
-2. Faça login em `POST /auth/login`.
-3. Envie o access token nos endpoints protegidos:
-
-```http
-Authorization: Bearer <access-token>
+```properties
+spring.data.mongodb.auto-index-creation=true
 ```
 
-4. Renove a sessão em `POST /auth/refresh`.
-5. Finalize a sessão em `POST /auth/logout`.
-
-O logout adiciona o access token à blacklist e revoga os refresh tokens do usuário.
-
-Como o JWT é associado ao IP e ao User-Agent, o token deve ser utilizado no mesmo contexto em que foi emitido.
+---
 
 ## Swagger/OpenAPI
 
-Nos perfis `dev`, `local` e `homolog`, a interface fica disponível em:
+Com a aplicação executando em `dev`, `local` ou `homolog`:
 
 ```text
 http://localhost:8080/swagger-ui.html
 ```
 
-Especificação OpenAPI:
+Especificação:
 
 ```text
 http://localhost:8080/v3/api-docs
 ```
 
-Para testar endpoints protegidos:
+Para endpoints protegidos:
 
-1. Execute `POST /auth/registrar`, se necessário.
-2. Execute `POST /auth/login`.
-3. Copie somente o valor de `accessToken`.
-4. Clique em `Authorize`.
-5. Cole o token sem escrever o prefixo `Bearer`.
+```text
+Authorize
+Bearer <access-token>
+```
 
-O Swagger adiciona o prefixo automaticamente.
+O Swagger é desabilitado no profile `prod`.
+
+---
 
 ## Observabilidade
 
-### Endpoints de monitoramento
+Endpoints públicos:
 
-| Método | Endpoint                     | Finalidade                                 | Acesso  |
-| ------ | ---------------------------- | ------------------------------------------ | ------- |
-| `GET`  | `/actuator/health`           | Saúde geral da aplicação                   | Público |
-| `GET`  | `/actuator/health/liveness`  | Informa se o processo está vivo            | Público |
-| `GET`  | `/actuator/health/readiness` | Informa se aplicação e banco estão prontos | Público |
-| `GET`  | `/actuator/info`             | Nome, versão, ambiente, Java e Spring Boot | Público |
-| `GET`  | `/actuator/metrics`          | Lista as métricas disponíveis              | ADMIN   |
-| `GET`  | `/actuator/metrics/{nome}`   | Consulta uma métrica específica            | ADMIN   |
-
-No perfil `prod`, o endpoint de métricas não é exposto.
-
-### Healthcheck geral
-
-```http
+```text
 GET /actuator/health
-```
-
-Em desenvolvimento ou execução local, o retorno pode apresentar os componentes:
-
-```json
-{
-  "status": "UP",
-  "components": {
-    "db": {
-      "status": "UP"
-    },
-    "diskSpace": {
-      "status": "UP"
-    },
-    "livenessState": {
-      "status": "UP"
-    },
-    "readinessState": {
-      "status": "UP"
-    }
-  }
-}
-```
-
-Em homologação e produção, os detalhes ficam ocultos:
-
-```json
-{
-  "status": "UP"
-}
-```
-
-### Liveness
-
-```http
 GET /actuator/health/liveness
-```
-
-O liveness responde se o processo da aplicação continua vivo.
-
-Ele não depende da conexão com o PostgreSQL. Dessa forma, uma indisponibilidade temporária do banco não significa que o processo Java morreu.
-
-### Readiness
-
-```http
 GET /actuator/health/readiness
-```
-
-O readiness responde se a aplicação está pronta para receber requisições.
-
-O grupo inclui:
-
-* Estado de prontidão da aplicação.
-* Conexão com o banco de dados.
-
-Caso o PostgreSQL fique indisponível:
-
-```json
-{
-  "status": "DOWN"
-}
-```
-
-O Docker Compose utiliza esse endpoint para determinar a saúde do container da API.
-
-### Informações da aplicação
-
-```http
 GET /actuator/info
 ```
 
-Exemplo:
-
-```json
-{
-  "app": {
-    "name": "api-de-pedidos",
-    "description": "API REST para gerenciamento de pedidos e pagamentos"
-  },
-  "build": {
-    "artifact": "api-de-pedidos",
-    "name": "api-de-pedidos",
-    "version": "0.0.1-SNAPSHOT",
-    "group": "br.com.dio"
-  },
-  "runtime": {
-    "ambiente": [
-      "homolog"
-    ],
-    "java": "21.0.5",
-    "springBoot": "3.5.16"
-  }
-}
-```
-
-Nenhum segredo, token, senha ou informação sensível é publicado.
-
-### Métricas
-
-Listar métricas:
-
-```http
-GET /actuator/metrics
-Authorization: Bearer <token-admin>
-```
-
-Consultar métricas HTTP:
-
-```http
-GET /actuator/metrics/http.server.requests
-Authorization: Bearer <token-admin>
-```
-
-Outras métricas úteis:
+Métricas protegidas por `ADMIN`:
 
 ```text
-jvm.memory.used
-jvm.threads.live
-process.uptime
-system.cpu.usage
-jdbc.connections.active
-jdbc.connections.max
-http.server.requests
+GET /actuator/metrics
+GET /actuator/metrics/{nome}
 ```
 
 ### Request ID
 
-Todas as requisições recebem o header:
+Toda resposta recebe:
 
 ```http
-X-Request-Id: <identificador>
+X-Request-Id: identificador
 ```
 
-Quando o cliente envia um identificador válido, a API preserva o valor.
+Quando o cliente envia um valor válido, ele é preservado. Caso não envie, a API gera um novo identificador.
 
-Quando o header não é enviado ou é inválido, a aplicação gera um UUID.
-
-São aceitos identificadores com:
-
-* Letras.
-* Números.
-* Ponto.
-* Hífen.
-* Underscore.
-* Até 100 caracteres.
-
-O identificador também é incluído nos logs por meio do MDC:
+O mesmo valor é adicionado ao MDC e aparece nos logs:
 
 ```text
-2026-07-26 18:30:42.154 INFO
-[requestId=7f2c3a4e-5478-4bd3-9872-14dc90f0db20]
-PagamentoService - Pagamento processado. pagamentoId=10 pedidoId=5 status=APROVADO
+[requestId=abc-123]
 ```
 
-### Logs operacionais
+O documento MongoDB também armazena o Request ID do webhook, permitindo correlacionar:
 
-A aplicação registra eventos importantes, como:
+```text
+requisição HTTP
+↔ logs
+↔ documento operacional
+```
 
-* Login realizado.
-* Falha de login.
-* Usuário bloqueado ou desativado.
-* Pedido criado.
-* Pedido cancelado.
-* Pagamento iniciado.
-* Pagamento processado.
-* Webhook recebido.
-* Webhook processado.
-* Webhook duplicado.
-* Erro durante o processamento do webhook.
-* Erro em tarefas agendadas.
-* Erro inesperado da aplicação.
-
-Os logs nunca devem registrar:
-
-* Senhas.
-* Access tokens.
-* Refresh tokens.
-* Segredos JWT.
-* Segredos HMAC.
-* Assinaturas completas.
-* Credenciais do banco.
+---
 
 ## Endpoints principais
 
 ### Autenticação
 
-| Método | Endpoint          | Acesso      |
-| ------ | ----------------- | ----------- |
-| `POST` | `/auth/registrar` | Público     |
-| `POST` | `/auth/login`     | Público     |
-| `POST` | `/auth/refresh`   | Público     |
-| `POST` | `/auth/logout`    | Autenticado |
+```http
+POST /auth/login
+POST /auth/refresh
+POST /auth/registrar
+POST /auth/logout
+```
 
 ### Usuários
 
-| Método   | Endpoint                         | Acesso                   |
-| -------- | -------------------------------- | ------------------------ |
-| `POST`   | `/usuarios`                      | ADMIN                    |
-| `GET`    | `/usuarios/{id}`                 | Próprio usuário ou ADMIN |
-| `GET`    | `/usuarios/email`                | ADMIN                    |
-| `PATCH`  | `/usuarios/{id}`                 | Próprio usuário ou ADMIN |
-| `GET`    | `/admin/usuarios`                | ADMIN                    |
-| `POST`   | `/admin/usuarios/{id}/ativar`    | ADMIN                    |
-| `POST`   | `/admin/usuarios/{id}/desativar` | ADMIN                    |
-| `DELETE` | `/admin/usuarios/{id}`           | ADMIN                    |
+```http
+POST  /usuarios
+GET   /usuarios/{id}
+GET   /usuarios/email
+PATCH /usuarios/{id}
+
+GET    /admin/usuarios
+POST   /admin/usuarios/{id}/ativar
+POST   /admin/usuarios/{id}/desativar
+DELETE /admin/usuarios/{id}
+```
 
 ### Produtos
 
-| Método   | Endpoint         | Acesso      |
-| -------- | ---------------- | ----------- |
-| `GET`    | `/produtos`      | Autenticado |
-| `GET`    | `/produtos/{id}` | Autenticado |
-| `POST`   | `/produtos`      | ADMIN       |
-| `PATCH`  | `/produtos/{id}` | ADMIN       |
-| `DELETE` | `/produtos/{id}` | ADMIN       |
-
-### Pedidos
-
-| Método   | Endpoint                            | Acesso         |
-| -------- | ----------------------------------- | -------------- |
-| `GET`    | `/orders`                           | Autenticado    |
-| `GET`    | `/orders/{id}`                      | Dono do pedido |
-| `POST`   | `/orders`                           | Autenticado    |
-| `POST`   | `/orders/{idPedido}/items`          | Dono do pedido |
-| `PATCH`  | `/orders/{idPedido}/items/{itemId}` | Dono do pedido |
-| `DELETE` | `/orders/{idPedido}/items/{itemId}` | Dono do pedido |
-| `POST`   | `/orders/{idPedido}/coupon`         | Dono do pedido |
-| `POST`   | `/orders/{idPedido}/cancel`         | Dono do pedido |
-| `POST`   | `/orders/{idPedido}/ship`           | ADMIN          |
-| `POST`   | `/orders/{idPedido}/deliver`        | ADMIN          |
-| `POST`   | `/orders/{idPedido}/refund`         | ADMIN          |
-| `GET`    | `/orders/{idPedido}/history`        | Dono do pedido |
-| `GET`    | `/admin/orders`                     | ADMIN          |
-
-### Pagamentos
-
-| Método | Endpoint                      | Acesso                      |
-| ------ | ----------------------------- | --------------------------- |
-| `POST` | `/orders/{idPedido}/payments` | Dono do pedido              |
-| `GET`  | `/orders/{idPedido}/payments` | Dono do pedido              |
-| `POST` | `/webhooks/payments/fake`     | Público com assinatura HMAC |
-
-O webhook recebe a assinatura:
-
 ```http
-X-Fake-Gateway-Signature: <assinatura-hmac>
+GET    /produtos
+GET    /produtos/{id}
+POST   /produtos
+PATCH  /produtos/{id}
+DELETE /produtos/{id}
 ```
 
 ### Cupons
 
-| Método | Endpoint                 | Acesso |
-| ------ | ------------------------ | ------ |
-| `POST` | `/cupons`                | ADMIN  |
-| `GET`  | `/cupons`                | ADMIN  |
-| `GET`  | `/cupons/{id}`           | ADMIN  |
-| `POST` | `/cupons/{id}/ativar`    | ADMIN  |
-| `POST` | `/cupons/{id}/desativar` | ADMIN  |
+```http
+POST /cupons
+GET  /cupons
+GET  /cupons/{id}
+POST /cupons/{id}/ativar
+POST /cupons/{id}/desativar
+```
+
+### Pedidos
+
+```http
+GET    /orders
+GET    /orders/{id}
+POST   /orders
+POST   /orders/{idPedido}/items
+PATCH  /orders/{idPedido}/items/{itemId}
+DELETE /orders/{idPedido}/items/{itemId}
+POST   /orders/{idPedido}/coupon
+POST   /orders/{idPedido}/ship
+POST   /orders/{idPedido}/deliver
+POST   /orders/{idPedido}/cancel
+POST   /orders/{idPedido}/refund
+GET    /orders/{idPedido}/history
+```
+
+### Pagamentos
+
+```http
+POST /orders/{idPedido}/payments
+GET  /orders/{idPedido}/payments
+```
+
+### Webhook fake
+
+```http
+POST /webhooks/payments/fake
+```
+
+Header obrigatório:
+
+```http
+X-Fake-Gateway-Signature: <hmac-sha256-do-corpo>
+```
+
+### Consulta operacional MongoDB
+
+```http
+GET /admin/webhooks/payments/operational
+```
+
+Filtros opcionais:
+
+```text
+eventId
+codigoTransacao
+statusProcessamento
+dataInicio
+dataFim
+duplicado
+page
+size
+sort
+```
+
+Exemplo:
+
+```http
+GET /admin/webhooks/payments/operational
+    ?statusProcessamento=ERRO
+    &duplicado=true
+    &dataInicio=2026-07-28T00:00:00Z
+    &dataFim=2026-07-28T23:59:59Z
+    &page=0
+    &size=20
+    &sort=dataRecebimento,desc
+```
+
+Somente `ADMIN`.
 
 ### Notificações
 
-| Método  | Endpoint                              | Acesso              |
-| ------- | ------------------------------------- | ------------------- |
-| `GET`   | `/notifications`                      | Autenticado         |
-| `GET`   | `/notifications/unread-count`         | Autenticado         |
-| `PATCH` | `/notifications/{idNotificacao}/read` | Dono da notificação |
+```http
+GET   /notifications
+GET   /notifications/unread-count
+PATCH /notifications/{idNotificacao}/read
+```
 
-### Relatórios
+### Administração e relatórios
 
-| Método | Endpoint                        | Acesso |
-| ------ | ------------------------------- | ------ |
-| `GET`  | `/admin/reports/orders/summary` | ADMIN  |
+```http
+GET /admin/orders
+GET /admin/reports/orders/summary
+```
+
+---
+
+## Coleção Postman
+
+Importe o arquivo atualizado:
+
+```text
+API_de_Pedidos_E2E_Completo_Etapa_16_MongoDB.postman_collection.json
+```
+
+Configure as variáveis da coleção:
+
+| Variável | Valor esperado |
+|---|---|
+| `baseUrl` | `http://localhost:8080` |
+| `adminEmail` | Usuário ADMIN local |
+| `adminSenha` | Senha do ADMIN local |
+| `userEmail` | Usuário USER local |
+| `userSenha` | Senha do USER local |
+| `fakeWebhookSecret` | Mesmo valor de `FAKE_WEBHOOK_SECRET` usado pela API |
+
+A coleção mantém os cenários anteriores e adiciona a pasta:
+
+```text
+10 - MongoDB Operacional (Etapa 16)
+```
+
+Essa pasta cobre:
+
+- login administrativo;
+- listagem paginada;
+- filtro por `eventId`;
+- filtro por código da transação;
+- filtro por status;
+- filtro de duplicados;
+- filtro de erros;
+- filtro por período;
+- ordenação;
+- acesso com `USER` retornando `403`;
+- acesso sem token retornando `401`;
+- status inválido retornando `400`;
+- tamanho de página inválido retornando `400`.
+
+Para obter registros operacionais, execute primeiro um fluxo que envie webhooks, especialmente:
+
+```text
+07 - Webhook Recuperável E2E (PROCESSADO e ERRO)
+```
+
+---
 
 ## Testes
 
-Na versão atual, o projeto possui **44 classes de teste e mais de 340 métodos de teste**, cobrindo entidades, serviços, estados, strategies, adapters, listeners, segurança, consultas, relatórios, gateways, webhooks, endpoints e observabilidade.
-
-Entre os cenários testados estão:
-
-* Inicialização do contexto Spring.
-* Login e emissão de tokens.
-* Validações de cupom, produto e pedido.
-* Regras de alteração dos itens.
-* Cálculo de descontos.
-* Transições dos estados do pedido.
-* Seleção de estados pela factory.
-* Processamento das estratégias de pagamento.
-* Integração com adapters dos gateways fake.
-* Idempotência de pagamentos.
-* Permissões de usuário e administrador.
-* Filtros e paginação de pedidos.
-* Histórico e notificações por eventos.
-* Processamento e duplicidade de webhooks.
-* Consulta de transações do gateway fake.
-* Rate limiting.
-* Relatórios administrativos.
-* Healthcheck sem token.
-* Liveness e readiness sem token.
-* Healthcheck do banco de dados.
-* Informações da aplicação sem token.
-* Proteção dos endpoints de métricas.
-* Geração automática do `X-Request-Id`.
-* Preservação do `X-Request-Id` enviado pelo cliente.
-
-Executar todos os testes:
+Executar toda a suíte:
 
 ```bash
-mvn test
+mvn -B -ntp test
 ```
 
-Executar uma classe específica:
+Empacotar:
 
 ```bash
-mvn -Dtest=ObservabilidadeActuatorITTest test
+mvn -B -ntp clean package
 ```
 
-Gerar o pacote:
+Coberturas relevantes:
 
-```bash
-mvn clean package
-```
+- autenticação;
+- refresh e logout;
+- usuários;
+- produtos;
+- cupons;
+- pedidos e estados;
+- pagamentos;
+- idempotência;
+- gateway fake persistente;
+- webhook novo;
+- webhook duplicado;
+- reprocessamento após erro;
+- falha no checkout;
+- documento MongoDB;
+- transições do registro operacional;
+- best effort quando o MongoDB falha;
+- consulta dinâmica com `MongoTemplate`;
+- filtros, paginação e ordenação;
+- endpoint administrativo;
+- autorização `ADMIN`;
+- `401`, `403` e erros de validação;
+- observabilidade e Request ID.
 
-Validar o Docker Compose:
+Nesta etapa, os testes de MongoDB são unitários e mockados. A validação com MongoDB real ficará para uma evolução com Testcontainers.
 
-```bash
-docker compose --env-file .env.local --profile full config
-```
+---
 
-## Integração contínua com GitHub Actions
+## CI/CD
 
-O projeto possui dois workflows separados:
+O workflow de CI executa:
+
+1. validação das Secrets e Variables;
+2. bloqueio de arquivos `.env` reais;
+3. Gitleaks no histórico Git;
+4. testes Maven;
+5. empacotamento;
+6. validação dos Docker Compose;
+7. build da imagem;
+8. verificação de usuário não root;
+9. análise de vulnerabilidades críticas com Trivy.
+
+Variáveis MongoDB também são validadas no pipeline:
 
 ```text
-.github/workflows/ci.yml
-.github/workflows/publish-image.yml
+CI_MONGO_DATABASE
+CI_MONGO_USERNAME
+CI_MONGO_PORT
+CI_MONGO_AUTHENTICATION_DATABASE
+CI_MONGO_PASSWORD
 ```
 
-Essa separação mantém responsabilidades e permissões isoladas.
-
-### Workflow de CI
-
-O `ci.yml` é executado em:
-
-* Push para a branch `main`.
-* Push para branches `feature/**`.
-* Pull request destinado à `main`.
-* Execução manual pela aba Actions.
-
-O pipeline executa:
-
-1. Validação dos Secrets e Repository Variables obrigatórios.
-2. Verificação de arquivos `.env` reais versionados.
-3. Detecção de segredos no histórico Git com Gitleaks.
-4. Configuração do Java 21.
-5. Cache das dependências Maven.
-6. Execução dos testes com o perfil `test` e banco H2.
-7. Empacotamento da aplicação.
-8. Confirmação da geração do JAR executável.
-9. Validação silenciosa do `docker-compose.yml`.
-10. Validação silenciosa do `docker-compose.release.yml`.
-11. Build da imagem Docker.
-12. Verificação de execução com usuário não root.
-13. Análise de vulnerabilidades críticas com Trivy.
-
-As informações sensíveis utilizadas pelo pipeline são armazenadas como GitHub Actions Secrets:
-
-* `CI_JWT_SECRET`
-* `CI_FAKE_WEBHOOK_SECRET`
-* `CI_DB_PASSWORD`
-
-As configurações não sensíveis são armazenadas como Repository Variables:
-
-* `CI_DB_NAME`
-* `CI_DB_USERNAME`
-* `CI_DB_PORT`
-* `CI_API_PORT`
-* `CI_JWT_EXPIRATION`
-* `CI_JWT_REFRESH_EXPIRATION`
-* `CI_JWT_RENEW_BEFORE_EXPIRATION`
-
-Nenhum valor sensível é escrito no workflow, criado em arquivo `.env` ou impresso intencionalmente nos logs.
-
-A validação dos arquivos Compose utiliza `config --quiet`, que verifica a configuração sem imprimir o conteúdo resolvido.
-
-### Workflow de publicação
-
-O `publish-image.yml` publica a imagem no GitHub Container Registry.
-
-Para a branch `main`, a publicação só começa depois que o workflow `CI` termina com sucesso. Um CI de pull request, uma execução com falha ou uma execução originada por outro repositório não publica a imagem.
-
-Para tags versionadas, o workflow confirma:
-
-* Formato `vMAJOR.MINOR.PATCH`.
-* Pertencimento do commit à branch `main`.
-* Existência de uma execução bem-sucedida do CI para o commit.
-
-O workflow utiliza somente o `GITHUB_TOKEN` fornecido pelo GitHub. A permissão `packages: write` fica limitada ao job de publicação.
-
-Nenhum segredo da aplicação é fornecido durante o build ou a publicação da imagem.
-
-A etapa atual implementa integração contínua e entrega contínua do artefato Docker. O deploy da aplicação em um ambiente ainda não é executado automaticamente.
-
-## Dependabot
-
-O Dependabot está configurado em:
+Após um CI aprovado na `main`, o workflow de publicação envia a imagem para:
 
 ```text
-.github/dependabot.yml
+ghcr.io/filipex97/api-de-pedidos
 ```
 
-São monitorados:
-
-* Dependências Maven.
-* GitHub Actions.
-* Imagens do Dockerfile.
-* Imagens do Docker Compose.
-
-As verificações são executadas semanalmente e as atualizações são propostas por pull requests.
-
-## Proteção da branch principal
-
-Depois que o workflow executar com sucesso, a branch `main` deve ser protegida com:
-
-* Pull request obrigatório.
-* Status checks obrigatórios.
-* Branch atualizada antes do merge.
-* Conversas resolvidas antes do merge.
-* Bloqueio de force push.
-* Bloqueio de exclusão da branch.
-
-Checks recomendados:
+Tags suportadas:
 
 ```text
-CI / Configuração
-CI / Segredos
-CI / Testes Maven
-CI / Empacotamento Maven
-CI / Docker Compose
-CI / Docker e Segurança
+latest
+main
+sha-<commit>
+vMAJOR.MINOR.PATCH
+MAJOR.MINOR.PATCH
+MAJOR.MINOR
 ```
 
-## Próximas melhorias
+---
 
-* Utilizar Testcontainers nos testes de integração com PostgreSQL.
-* Realizar deploy automático em ambiente cloud.
-* Exportar métricas no formato Prometheus.
-* Criar dashboards de monitoramento com Grafana.
-* Adicionar tracing distribuído com OpenTelemetry.
-* Centralizar logs com Loki ou Elasticsearch.
-* Criar alertas para aumento de erros HTTP `500`.
-* Criar alertas para indisponibilidade do readiness.
-* Migrar cache e rate limiting para Redis.
-* Integrar um gateway de pagamento real em ambiente sandbox.
-* Aplicar Outbox Pattern para publicação confiável de eventos.
-* Criar testes automatizados do contrato OpenAPI.
-* Publicar imagem para múltiplas arquiteturas, como `linux/amd64` e `linux/arm64`.
-* Assinar imagens publicadas com Sigstore Cosign.
-* Gerar e publicar SBOM das imagens.
-* Configurar retenção de versões antigas no GHCR.
+## Comandos úteis
 
-## O que este projeto demonstra
+Validar Compose:
 
-Este repositório demonstra conhecimentos em:
+```bash
+docker compose --env-file .env.local --profile full config --quiet
+```
 
-* Desenvolvimento de APIs REST com Spring Boot.
-* Modelagem de regras de negócio e estados.
-* Segurança com Spring Security e JWT.
-* Arquitetura modular e separação de responsabilidades.
-* Padrões de projeto aplicados a problemas reais.
-* Princípios SOLID.
-* Persistência com JPA e versionamento com Flyway.
-* Integração por adapters e webhooks.
-* Dockerização e configuração por ambiente.
-* Healthchecks de aplicação e banco de dados.
-* Probes de liveness e readiness.
-* Monitoramento com Spring Boot Actuator.
-* Coleta de métricas com Micrometer.
-* Correlação de logs utilizando MDC e Request ID.
-* Tratamento seguro de falhas inesperadas.
-* Testes unitários e de integração.
-* Documentação técnica com OpenAPI.
-* Integração contínua com GitHub Actions.
-* Detecção automatizada de segredos.
-* Análise de vulnerabilidades em imagens.
-* Manutenção automatizada de dependências.
-* Publicação segura de imagens no GitHub Container Registry.
-* Versionamento de imagens por branch, commit e versão semântica.
-* Separação entre build da imagem e configuração de runtime.
-* Continuous Delivery de artefatos Docker.
+Subir:
+
+```bash
+docker compose --env-file .env.local --profile full up --build
+```
+
+Ver containers:
+
+```bash
+docker compose --env-file .env.local --profile full ps
+```
+
+Logs do MongoDB:
+
+```bash
+docker compose --env-file .env.local logs -f mongo
+```
+
+Logs da API:
+
+```bash
+docker compose --env-file .env.local logs -f api-de-pedidos
+```
+
+Testes:
+
+```bash
+mvn -B -ntp test
+```
+
+Build:
+
+```bash
+mvn -B -ntp clean package
+```
+
+---
+
+## Decisões técnicas que o projeto demonstra
+
+- PostgreSQL como fonte da verdade transacional.
+- MongoDB como armazenamento operacional flexível.
+- Persistência poliglota com responsabilidades explícitas.
+- Consistência forte onde a regra de negócio exige.
+- Consistência eventual em dados de diagnóstico.
+- Best effort para observabilidade não crítica.
+- Idempotência em APIs de pagamento.
+- Separação entre estado oficial e trilha operacional.
+- Segurança em profundidade.
+- Evolução de schema com Flyway.
+- Contratos HTTP documentados.
+- Testabilidade por camadas.
+- CI/CD e segurança da cadeia de entrega.
+
+Uma explicação resumida para entrevistas:
+
+> “Mantive pedidos, pagamentos e idempotência no PostgreSQL porque são dados transacionais e exigem consistência forte. Usei MongoDB para registrar tentativas operacionais de webhooks, pois o payload e os metadados podem variar. A escrita documental é best effort e não interrompe o pagamento caso o MongoDB esteja indisponível.”
+
+---
+
+## Próximas evoluções
+
+- Testcontainers para PostgreSQL e MongoDB reais.
+- Métricas próprias para webhooks processados, duplicados e com erro.
+- Retry assíncrono ou padrão Outbox para registros operacionais.
+- Índices compostos definidos a partir de consultas reais.
+- Endpoint de detalhe sem carregar payload na listagem.
+- Sanitização específica para payloads de gateways reais.
+- Redis para rate limiting distribuído.
+- Mensageria com Kafka ou RabbitMQ.
+- Observabilidade distribuída com OpenTelemetry.
+- Deploy em Kubernetes ou serviço gerenciado.
+
+---
 
 ## Autor
 
-Desenvolvido por **Filipe Xavier** como projeto de estudo e portfólio.
+**Filipe Xavier**
 
-* [LinkedIn](https://www.linkedin.com/in/filipex97)
+Projeto desenvolvido para estudo, prática e portfólio com foco em desenvolvimento Back-end Java.

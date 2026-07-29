@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.time.LocalDateTime;
+
 @Schema(
         name = "FakePagamentoWebhook",
         description = """
@@ -84,6 +86,6 @@ public record FakePagamentoWebhookDTO(
                 example = "2026-07-19T18:30:00Z",
                 nullable = true
         )
-        String dataEvento
+        LocalDateTime dataEvento
 ) {
 }

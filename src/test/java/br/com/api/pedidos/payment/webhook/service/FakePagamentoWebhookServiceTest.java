@@ -1,13 +1,23 @@
 package br.com.api.pedidos.payment.webhook.service;
 
-import br.com.api.pedidos.payment.adapter.fake.GatewayPagamentoFakeConsulta;
+import br.com.api.pedidos.payment.adapter.fake
+        .GatewayPagamentoFakeConsulta;
 import br.com.api.pedidos.payment.dto.PagamentoResponseDTO;
 import br.com.api.pedidos.payment.entity.FormaPagamento;
 import br.com.api.pedidos.payment.entity.StatusPagamento;
 import br.com.api.pedidos.payment.facade.CheckoutFacade;
-import br.com.api.pedidos.payment.webhook.entity.WebhookPagamentoRecebido;
-import br.com.api.pedidos.payment.webhook.service.result.ResultadoRegistroWebhook;
+import br.com.api.pedidos.payment.webhook.document.entity
+        .RegistroOperacionalWebhookPagamento;
+import br.com.api.pedidos.payment.webhook.document.service
+        .RegistroOperacionalWebhookPagamentoService;
+import br.com.api.pedidos.payment.webhook.dto
+        .FakePagamentoWebhookDTO;
+import br.com.api.pedidos.payment.webhook.entity
+        .WebhookPagamentoRecebido;
+import br.com.api.pedidos.payment.webhook.service.result
+        .ResultadoRegistroWebhook;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,37 +26,60 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class FakePagamentoWebhookServiceTest {
 
     @Mock
-    private AssinaturaWebhookFakeService assinaturaWebhookFakeService;
+    private AssinaturaWebhookFakeService
+            assinaturaWebhookFakeService;
 
     @Mock
-    private GatewayPagamentoFakeConsulta gatewayPagamentoFakeConsulta;
+    private GatewayPagamentoFakeConsulta
+            gatewayPagamentoFakeConsulta;
 
     @Mock
     private CheckoutFacade checkoutFacade;
 
     @Mock
-    private WebhookPagamentoRecebidoService webhookPagamentoRecebidoService;
+    private WebhookPagamentoRecebidoService
+            webhookPagamentoRecebidoService;
+
+    @Mock
+    private RegistroOperacionalWebhookPagamentoService
+            registroOperacionalWebhookPagamentoService;
 
     private FakePagamentoWebhookService service;
 
     @BeforeEach
     void setUp() {
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        objectMapper.registerModule(
+                new JavaTimeModule()
+        );
+
         service = new FakePagamentoWebhookService(
-                new ObjectMapper(),
+                objectMapper,
                 assinaturaWebhookFakeService,
                 gatewayPagamentoFakeConsulta,
                 checkoutFacade,
-                webhookPagamentoRecebidoService
+                webhookPagamentoRecebidoService,
+                registroOperacionalWebhookPagamentoService
         );
     }
 
@@ -55,40 +88,76 @@ class FakePagamentoWebhookServiceTest {
         String payload = payloadValido();
 
         WebhookPagamentoRecebido evento =
-                new WebhookPagamentoRecebido(
-                        "evt-1",
-                        "PIX-123",
-                        StatusPagamento.APROVADO,
-                        payload
-                );
+                criarEventoTransacional(payload);
+
+        RegistroOperacionalWebhookPagamento registroOperacional =
+                criarRegistroOperacional(payload);
 
         PagamentoResponseDTO resposta =
-                respostaPagamento(StatusPagamento.APROVADO);
+                respostaPagamento(
+                        StatusPagamento.APROVADO
+                );
 
-        when(webhookPagamentoRecebidoService.registrarOuBuscarExistente(
-                any(),
-                eq(payload)
-        )).thenReturn(new ResultadoRegistroWebhook(evento, true));
+        when(registroOperacionalWebhookPagamentoService
+                .registrarRecebimento(
+                        any(FakePagamentoWebhookDTO.class),
+                        eq(payload)
+                ))
+                .thenReturn(
+                        Optional.of(registroOperacional)
+                );
 
-        when(checkoutFacade.processarWebhookPagamento("PIX-123"))
+        when(webhookPagamentoRecebidoService
+                .registrarOuBuscarExistente(
+                        any(FakePagamentoWebhookDTO.class),
+                        eq(payload)
+                ))
+                .thenReturn(
+                        new ResultadoRegistroWebhook(
+                                evento,
+                                true
+                        )
+                );
+
+        when(checkoutFacade
+                .processarWebhookPagamento("PIX-123"))
                 .thenReturn(resposta);
 
         PagamentoResponseDTO resultado =
-                service.processarWebhook(payload, "assinatura");
+                service.processarWebhook(
+                        payload,
+                        "assinatura"
+                );
 
-        assertEquals(StatusPagamento.APROVADO, resultado.statusPagamento());
-
-        verify(gatewayPagamentoFakeConsulta).simularAtualizacaoExterna(
-                "PIX-123",
-                StatusPagamento.APROVADO
+        assertEquals(
+                StatusPagamento.APROVADO,
+                resultado.statusPagamento()
         );
 
-        verify(checkoutFacade).processarWebhookPagamento("PIX-123");
+        verify(gatewayPagamentoFakeConsulta)
+                .simularAtualizacaoExterna(
+                        "PIX-123",
+                        StatusPagamento.APROVADO
+                );
+
+        verify(checkoutFacade)
+                .processarWebhookPagamento("PIX-123");
 
         verify(webhookPagamentoRecebidoService)
                 .marcarComoProcessado(evento);
 
-        verify(webhookPagamentoRecebidoService, never())
+        verify(registroOperacionalWebhookPagamentoService)
+                .marcarComoProcessado(
+                        registroOperacional
+                );
+
+        verify(registroOperacionalWebhookPagamentoService, never())
+                .sinalizarDuplicidade(any());
+
+        verify(registroOperacionalWebhookPagamentoService, never())
+                .marcarComoDuplicado(any());
+
+        verify(registroOperacionalWebhookPagamentoService, never())
                 .marcarComoErro(any(), any());
     }
 
@@ -97,39 +166,85 @@ class FakePagamentoWebhookServiceTest {
         String payload = payloadValido();
 
         WebhookPagamentoRecebido evento =
-                new WebhookPagamentoRecebido(
-                        "evt-1",
-                        "PIX-123",
-                        StatusPagamento.APROVADO,
-                        payload
-                );
+                criarEventoTransacional(payload);
 
         evento.marcarComoProcessado();
 
+        RegistroOperacionalWebhookPagamento registroOperacional =
+                criarRegistroOperacional(payload);
+
         PagamentoResponseDTO resposta =
-                respostaPagamento(StatusPagamento.APROVADO);
+                respostaPagamento(
+                        StatusPagamento.APROVADO
+                );
 
-        when(webhookPagamentoRecebidoService.registrarOuBuscarExistente(
-                any(),
-                eq(payload)
-        )).thenReturn(new ResultadoRegistroWebhook(evento, false));
+        when(registroOperacionalWebhookPagamentoService
+                .registrarRecebimento(
+                        any(FakePagamentoWebhookDTO.class),
+                        eq(payload)
+                ))
+                .thenReturn(
+                        Optional.of(registroOperacional)
+                );
 
-        when(checkoutFacade.buscarPagamentoPorCodigoTransacao("PIX-123"))
+        when(webhookPagamentoRecebidoService
+                .registrarOuBuscarExistente(
+                        any(FakePagamentoWebhookDTO.class),
+                        eq(payload)
+                ))
+                .thenReturn(
+                        new ResultadoRegistroWebhook(
+                                evento,
+                                false
+                        )
+                );
+
+        when(checkoutFacade
+                .buscarPagamentoPorCodigoTransacao(
+                        "PIX-123"
+                ))
                 .thenReturn(resposta);
 
         PagamentoResponseDTO resultado =
-                service.processarWebhook(payload, "assinatura");
+                service.processarWebhook(
+                        payload,
+                        "assinatura"
+                );
 
-        assertEquals(StatusPagamento.APROVADO, resultado.statusPagamento());
+        assertEquals(
+                StatusPagamento.APROVADO,
+                resultado.statusPagamento()
+        );
 
         verify(gatewayPagamentoFakeConsulta, never())
-                .simularAtualizacaoExterna(anyString(), any());
+                .simularAtualizacaoExterna(
+                        anyString(),
+                        any()
+                );
 
         verify(checkoutFacade, never())
                 .processarWebhookPagamento(anyString());
 
         verify(checkoutFacade)
-                .buscarPagamentoPorCodigoTransacao("PIX-123");
+                .buscarPagamentoPorCodigoTransacao(
+                        "PIX-123"
+                );
+
+        verify(registroOperacionalWebhookPagamentoService)
+                .sinalizarDuplicidade(
+                        registroOperacional
+                );
+
+        verify(registroOperacionalWebhookPagamentoService)
+                .marcarComoDuplicado(
+                        registroOperacional
+                );
+
+        verify(registroOperacionalWebhookPagamentoService, never())
+                .marcarComoProcessado(any());
+
+        verify(registroOperacionalWebhookPagamentoService, never())
+                .marcarComoErro(any(), any());
 
         verify(webhookPagamentoRecebidoService, never())
                 .marcarComoProcessado(any());
@@ -139,12 +254,19 @@ class FakePagamentoWebhookServiceTest {
     }
 
     @Test
-    void naoDeveProcessarWebhookComAssinaturaInvalida() {
+    void naoDeveRegistrarOperacionalComAssinaturaInvalida() {
         String payload = payloadValido();
 
-        doThrow(new SecurityException("Assinatura inválida"))
+        doThrow(
+                new SecurityException(
+                        "Assinatura inválida"
+                )
+        )
                 .when(assinaturaWebhookFakeService)
-                .validarAssinatura(payload, "assinatura-invalida");
+                .validarAssinatura(
+                        payload,
+                        "assinatura-invalida"
+                );
 
         assertThrows(
                 SecurityException.class,
@@ -154,8 +276,18 @@ class FakePagamentoWebhookServiceTest {
                 )
         );
 
-        verifyNoInteractions(webhookPagamentoRecebidoService);
-        verifyNoInteractions(gatewayPagamentoFakeConsulta);
+        verifyNoInteractions(
+                registroOperacionalWebhookPagamentoService
+        );
+
+        verifyNoInteractions(
+                webhookPagamentoRecebidoService
+        );
+
+        verifyNoInteractions(
+                gatewayPagamentoFakeConsulta
+        );
+
         verifyNoInteractions(checkoutFacade);
     }
 
@@ -164,30 +296,55 @@ class FakePagamentoWebhookServiceTest {
         String payload = payloadValido();
 
         WebhookPagamentoRecebido evento =
-                new WebhookPagamentoRecebido(
-                        "evt-1",
-                        "PIX-123",
-                        StatusPagamento.APROVADO,
-                        payload
-                );
+                criarEventoTransacional(payload);
 
-        evento.marcarComoErro("Erro anterior");
+        evento.marcarComoErro(
+                "Erro anterior"
+        );
+
+        RegistroOperacionalWebhookPagamento registroOperacional =
+                criarRegistroOperacional(payload);
 
         PagamentoResponseDTO resposta =
-                respostaPagamento(StatusPagamento.APROVADO);
+                respostaPagamento(
+                        StatusPagamento.APROVADO
+                );
 
-        when(webhookPagamentoRecebidoService.registrarOuBuscarExistente(
-                any(),
-                eq(payload)
-        )).thenReturn(new ResultadoRegistroWebhook(evento, false));
+        when(registroOperacionalWebhookPagamentoService
+                .registrarRecebimento(
+                        any(FakePagamentoWebhookDTO.class),
+                        eq(payload)
+                ))
+                .thenReturn(
+                        Optional.of(registroOperacional)
+                );
 
-        when(checkoutFacade.processarWebhookPagamento("PIX-123"))
+        when(webhookPagamentoRecebidoService
+                .registrarOuBuscarExistente(
+                        any(FakePagamentoWebhookDTO.class),
+                        eq(payload)
+                ))
+                .thenReturn(
+                        new ResultadoRegistroWebhook(
+                                evento,
+                                false
+                        )
+                );
+
+        when(checkoutFacade
+                .processarWebhookPagamento("PIX-123"))
                 .thenReturn(resposta);
 
         PagamentoResponseDTO resultado =
-                service.processarWebhook(payload, "assinatura");
+                service.processarWebhook(
+                        payload,
+                        "assinatura"
+                );
 
-        assertEquals(StatusPagamento.APROVADO, resultado.statusPagamento());
+        assertEquals(
+                StatusPagamento.APROVADO,
+                resultado.statusPagamento()
+        );
 
         verify(gatewayPagamentoFakeConsulta)
                 .simularAtualizacaoExterna(
@@ -201,36 +358,75 @@ class FakePagamentoWebhookServiceTest {
         verify(webhookPagamentoRecebidoService)
                 .marcarComoProcessado(evento);
 
-        verify(webhookPagamentoRecebidoService, never())
+        verify(registroOperacionalWebhookPagamentoService)
+                .sinalizarDuplicidade(
+                        registroOperacional
+                );
+
+        verify(registroOperacionalWebhookPagamentoService)
+                .marcarComoProcessado(
+                        registroOperacional
+                );
+
+        verify(registroOperacionalWebhookPagamentoService, never())
+                .marcarComoDuplicado(any());
+
+        verify(registroOperacionalWebhookPagamentoService, never())
                 .marcarComoErro(any(), any());
     }
 
     @Test
-    void deveMarcarWebhookComoErroQuandoProcessamentoFalhar() {
+    void deveMarcarRegistrosComoErroQuandoProcessamentoFalhar() {
         String payload = payloadValido();
 
         WebhookPagamentoRecebido evento =
-                new WebhookPagamentoRecebido(
-                        "evt-1",
-                        "PIX-123",
-                        StatusPagamento.APROVADO,
-                        payload
-                );
+                criarEventoTransacional(payload);
+
+        RegistroOperacionalWebhookPagamento registroOperacional =
+                criarRegistroOperacional(payload);
 
         IllegalStateException exception =
-                new IllegalStateException("Falha ao processar pagamento");
+                new IllegalStateException(
+                        "Falha ao processar pagamento"
+                );
 
-        when(webhookPagamentoRecebidoService.registrarOuBuscarExistente(
-                any(),
-                eq(payload)
-        )).thenReturn(new ResultadoRegistroWebhook(evento, true));
+        when(registroOperacionalWebhookPagamentoService
+                .registrarRecebimento(
+                        any(FakePagamentoWebhookDTO.class),
+                        eq(payload)
+                ))
+                .thenReturn(
+                        Optional.of(registroOperacional)
+                );
 
-        when(checkoutFacade.processarWebhookPagamento("PIX-123"))
+        when(webhookPagamentoRecebidoService
+                .registrarOuBuscarExistente(
+                        any(FakePagamentoWebhookDTO.class),
+                        eq(payload)
+                ))
+                .thenReturn(
+                        new ResultadoRegistroWebhook(
+                                evento,
+                                true
+                        )
+                );
+
+        when(checkoutFacade
+                .processarWebhookPagamento("PIX-123"))
                 .thenThrow(exception);
 
-        assertThrows(
-                IllegalStateException.class,
-                () -> service.processarWebhook(payload, "assinatura")
+        IllegalStateException exceptionLancada =
+                assertThrows(
+                        IllegalStateException.class,
+                        () -> service.processarWebhook(
+                                payload,
+                                "assinatura"
+                        )
+                );
+
+        assertSame(
+                exception,
+                exceptionLancada
         );
 
         verify(gatewayPagamentoFakeConsulta)
@@ -246,7 +442,173 @@ class FakePagamentoWebhookServiceTest {
                 .marcarComoProcessado(any());
 
         verify(webhookPagamentoRecebidoService)
-                .marcarComoErro(evento, exception);
+                .marcarComoErro(
+                        evento,
+                        exception
+                );
+
+        verify(registroOperacionalWebhookPagamentoService)
+                .marcarComoErro(
+                        registroOperacional,
+                        exception
+                );
+
+        verify(registroOperacionalWebhookPagamentoService, never())
+                .marcarComoProcessado(any());
+
+        verify(registroOperacionalWebhookPagamentoService, never())
+                .marcarComoDuplicado(any());
+    }
+
+    @Test
+    void deveContinuarQuandoRegistroOperacionalNaoForCriado() {
+        String payload = payloadValido();
+
+        WebhookPagamentoRecebido evento =
+                criarEventoTransacional(payload);
+
+        PagamentoResponseDTO resposta =
+                respostaPagamento(
+                        StatusPagamento.APROVADO
+                );
+
+        when(registroOperacionalWebhookPagamentoService
+                .registrarRecebimento(
+                        any(FakePagamentoWebhookDTO.class),
+                        eq(payload)
+                ))
+                .thenReturn(Optional.empty());
+
+        when(webhookPagamentoRecebidoService
+                .registrarOuBuscarExistente(
+                        any(FakePagamentoWebhookDTO.class),
+                        eq(payload)
+                ))
+                .thenReturn(
+                        new ResultadoRegistroWebhook(
+                                evento,
+                                true
+                        )
+                );
+
+        when(checkoutFacade
+                .processarWebhookPagamento("PIX-123"))
+                .thenReturn(resposta);
+
+        PagamentoResponseDTO resultado =
+                service.processarWebhook(
+                        payload,
+                        "assinatura"
+                );
+
+        assertEquals(
+                StatusPagamento.APROVADO,
+                resultado.statusPagamento()
+        );
+
+        verify(gatewayPagamentoFakeConsulta)
+                .simularAtualizacaoExterna(
+                        "PIX-123",
+                        StatusPagamento.APROVADO
+                );
+
+        verify(checkoutFacade)
+                .processarWebhookPagamento("PIX-123");
+
+        verify(webhookPagamentoRecebidoService)
+                .marcarComoProcessado(evento);
+
+        verify(registroOperacionalWebhookPagamentoService)
+                .registrarRecebimento(
+                        any(FakePagamentoWebhookDTO.class),
+                        eq(payload)
+                );
+
+        verifyNoMoreInteractions(
+                registroOperacionalWebhookPagamentoService
+        );
+    }
+
+    @Test
+    void deveMarcarOperacionalComoErroQuandoPostgreSqlFalhar() {
+        String payload = payloadValido();
+
+        RegistroOperacionalWebhookPagamento registroOperacional =
+                criarRegistroOperacional(payload);
+
+        IllegalStateException exception =
+                new IllegalStateException(
+                        "Falha ao registrar webhook no PostgreSQL"
+                );
+
+        when(registroOperacionalWebhookPagamentoService
+                .registrarRecebimento(
+                        any(FakePagamentoWebhookDTO.class),
+                        eq(payload)
+                ))
+                .thenReturn(
+                        Optional.of(registroOperacional)
+                );
+
+        when(webhookPagamentoRecebidoService
+                .registrarOuBuscarExistente(
+                        any(FakePagamentoWebhookDTO.class),
+                        eq(payload)
+                ))
+                .thenThrow(exception);
+
+        IllegalStateException exceptionLancada =
+                assertThrows(
+                        IllegalStateException.class,
+                        () -> service.processarWebhook(
+                                payload,
+                                "assinatura"
+                        )
+                );
+
+        assertSame(
+                exception,
+                exceptionLancada
+        );
+
+        verify(registroOperacionalWebhookPagamentoService)
+                .marcarComoErro(
+                        registroOperacional,
+                        exception
+                );
+
+        verifyNoInteractions(
+                gatewayPagamentoFakeConsulta
+        );
+
+        verifyNoInteractions(checkoutFacade);
+    }
+
+    private WebhookPagamentoRecebido
+    criarEventoTransacional(
+            String payload
+    ) {
+        return new WebhookPagamentoRecebido(
+                "evt-1",
+                "PIX-123",
+                StatusPagamento.APROVADO,
+                payload
+        );
+    }
+
+    private RegistroOperacionalWebhookPagamento
+    criarRegistroOperacional(
+            String payload
+    ) {
+        return new RegistroOperacionalWebhookPagamento(
+                "evt-1",
+                "PIX-123",
+                StatusPagamento.APROVADO,
+                payload,
+                "request-123",
+                "PAYMENT_UPDATED",
+                "FAKE_GATEWAY"
+        );
     }
 
     private String payloadValido() {
