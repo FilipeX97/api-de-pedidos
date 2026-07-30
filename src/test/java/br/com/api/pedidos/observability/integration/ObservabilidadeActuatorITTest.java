@@ -2,23 +2,31 @@ package br.com.api.pedidos.observability.integration;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@AutoConfigureObservability(
+        metrics = true,
+        tracing = false
+)
 @ActiveProfiles("test")
 class ObservabilidadeActuatorITTest {
 
@@ -45,7 +53,10 @@ class ObservabilidadeActuatorITTest {
                         get("/actuator/health/liveness")
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("UP"));
+                .andExpect(
+                        jsonPath("$.status")
+                                .value("UP")
+                );
     }
 
     @Test
@@ -54,7 +65,10 @@ class ObservabilidadeActuatorITTest {
                         get("/actuator/health/readiness")
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("UP"))
+                .andExpect(
+                        jsonPath("$.status")
+                                .value("UP")
+                )
                 .andExpect(
                         jsonPath("$.components.db.status")
                                 .value("UP")
@@ -90,6 +104,26 @@ class ObservabilidadeActuatorITTest {
                 .andExpect(
                         jsonPath("$.sucesso")
                                 .value(false)
+                );
+    }
+
+    @Test
+    void prometheusDeveResponderSemToken() throws Exception {
+        mockMvc.perform(
+                        get("/actuator/prometheus")
+                )
+                .andExpect(status().isOk())
+                .andExpect(
+                        content().contentTypeCompatibleWith(
+                                MediaType.TEXT_PLAIN
+                        )
+                )
+                .andExpect(
+                        content().string(
+                                containsString(
+                                        "jvm_memory_used_bytes"
+                                )
+                        )
                 );
     }
 
@@ -138,6 +172,4 @@ class ObservabilidadeActuatorITTest {
                         )
                 );
     }
-
-
 }
