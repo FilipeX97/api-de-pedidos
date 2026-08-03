@@ -27,7 +27,7 @@ services:
       start_period: 10s
 
   mongo:
-    image: mongo:8.0.28-noble
+    image: mongo:8.2.12-noble
     container_name: api-pedidos-release-mongo
     restart: unless-stopped
 
