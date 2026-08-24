@@ -150,7 +150,7 @@ services:
       - full
 
     image: grafana/grafana:13.1.1
-    container_name: apu-pedidos-grafana
+    container_name: api-pedidos-grafana
     restart: unless-stopped
 
     depends_on:
