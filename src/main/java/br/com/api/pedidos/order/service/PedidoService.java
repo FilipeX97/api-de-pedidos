@@ -1,6 +1,7 @@
 package br.com.api.pedidos.order.service;
 
 import br.com.api.pedidos.coupon.service.CupomService;
+import br.com.api.pedidos.observability.metrics.MetricasPedidoService;
 import br.com.api.pedidos.order.event.*;
 import br.com.api.pedidos.order.promotion.engine.MotorPromocao;
 import br.com.api.pedidos.order.dto.AdicionarPedidoRequestDTO;
@@ -36,19 +37,22 @@ public class PedidoService {
     private final MotorPromocao motorPromocao;
     private final EstadoPedidoFactory estadoPedidoFactory;
     private final ApplicationEventPublisher eventPublisher;
+    private final MetricasPedidoService metricasPedidoService;
 
     public PedidoService(PedidoRepository pedidoRepository,
                          ProdutoRepository produtoRepository,
                          CupomService cupomService,
                          MotorPromocao motorPromocao,
                          EstadoPedidoFactory estadoPedidoFactory,
-                         ApplicationEventPublisher eventPublisher) {
+                         ApplicationEventPublisher eventPublisher,
+                         MetricasPedidoService metricasPedidoService) {
         this.pedidoRepository = pedidoRepository;
         this.produtoRepository = produtoRepository;
         this.cupomService = cupomService;
         this.motorPromocao = motorPromocao;
         this.estadoPedidoFactory = estadoPedidoFactory;
         this.eventPublisher = eventPublisher;
+        this.metricasPedidoService = metricasPedidoService;
     }
 
     @Transactional(readOnly = true)
@@ -60,6 +64,7 @@ public class PedidoService {
     public PedidoResponseDTO criarPedido(Usuario usuario) {
         Pedido pedido = new Pedido(usuario);
         Pedido pedidoSalvo = pedidoRepository.saveAndFlush(pedido);
+        metricasPedidoService.registrarPedidoCriado();
 
         eventPublisher.publishEvent(
                 new PedidoCriadoEvent(

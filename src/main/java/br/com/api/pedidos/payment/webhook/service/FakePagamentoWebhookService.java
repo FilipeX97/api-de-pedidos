@@ -1,5 +1,6 @@
 package br.com.api.pedidos.payment.webhook.service;
 
+import br.com.api.pedidos.observability.metrics.MetricasWebhookService;
 import br.com.api.pedidos.payment.adapter.fake.GatewayPagamentoFakeConsulta;
 import br.com.api.pedidos.payment.dto.PagamentoResponseDTO;
 import br.com.api.pedidos.payment.entity.StatusPagamento;
@@ -13,6 +14,7 @@ import br.com.api.pedidos.payment.webhook.entity.WebhookPagamentoRecebido;
 import br.com.api.pedidos.payment.webhook.service.result
         .ResultadoRegistroWebhook;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -46,24 +48,25 @@ public class FakePagamentoWebhookService {
     private final RegistroOperacionalWebhookPagamentoService
             registroOperacionalWebhookPagamentoService;
 
+    private final MetricasWebhookService metricasWebhookService;
+
     public FakePagamentoWebhookService(
             ObjectMapper objectMapper,
             AssinaturaWebhookFakeService assinaturaWebhookFakeService,
             GatewayPagamentoFakeConsulta gatewayPagamentoFakeConsulta,
             CheckoutFacade checkoutFacade,
             WebhookPagamentoRecebidoService webhookPagamentoRecebidoService,
-            RegistroOperacionalWebhookPagamentoService registroOperacionalWebhookPagamentoService
+            RegistroOperacionalWebhookPagamentoService registroOperacionalWebhookPagamentoService,
+            MetricasWebhookService metricasWebhookService
     ) {
         this.objectMapper = objectMapper;
-        this.assinaturaWebhookFakeService =
-                assinaturaWebhookFakeService;
-        this.gatewayPagamentoFakeConsulta =
-                gatewayPagamentoFakeConsulta;
+        this.assinaturaWebhookFakeService = assinaturaWebhookFakeService;
+        this.gatewayPagamentoFakeConsulta = gatewayPagamentoFakeConsulta;
         this.checkoutFacade = checkoutFacade;
-        this.webhookPagamentoRecebidoService =
-                webhookPagamentoRecebidoService;
+        this.webhookPagamentoRecebidoService = webhookPagamentoRecebidoService;
         this.registroOperacionalWebhookPagamentoService =
                 registroOperacionalWebhookPagamentoService;
+        this.metricasWebhookService = metricasWebhookService;
     }
 
     public PagamentoResponseDTO processarWebhook(
@@ -76,47 +79,65 @@ public class FakePagamentoWebhookService {
         );
 
         FakePagamentoWebhookDTO dto = converter(corpoOriginal);
-
         validarWebhook(dto);
 
-        log.info(
-                "Webhook recebido. eventId={} status={}",
-                dto.eventId(),
-                dto.statusPagamento()
-        );
+        metricasWebhookService.registrarWebhookRecebido();
 
-        Optional<RegistroOperacionalWebhookPagamento>
-                registroOperacional =
-                registroOperacionalWebhookPagamentoService
-                        .registrarRecebimento(
-                                dto,
-                                corpoOriginal
-                        );
+        Timer.Sample medicaoProcessamento = metricasWebhookService.iniciarMedicaoProcessamento();
 
-        ResultadoRegistroWebhook resultadoRegistro =
-                registrarNoControleTransacional(
-                        dto,
-                        corpoOriginal,
+        try {
+            log.info(
+                    "Webhook recebido. eventId={} status={}",
+                    dto.eventId(),
+                    dto.statusPagamento()
+            );
+
+            Optional<RegistroOperacionalWebhookPagamento>
+                    registroOperacional =
+                    registroOperacionalWebhookPagamentoService
+                            .registrarRecebimento(
+                                    dto,
+                                    corpoOriginal
+                            );
+
+            ResultadoRegistroWebhook resultadoRegistro =
+                    registrarNoControleTransacional(
+                            dto,
+                            corpoOriginal,
+                            registroOperacional
+                    );
+
+            if (resultadoRegistro.duplicado()) {
+                metricasWebhookService.registrarWebhookDuplicado();
+
+                sinalizarDuplicidadeOperacional(
                         registroOperacional
                 );
+            }
 
-        if (resultadoRegistro.duplicado()) {
-            sinalizarDuplicidadeOperacional(
-                    registroOperacional
-            );
+            if (!resultadoRegistro.deveProcessar()) {
+                return tratarWebhookDuplicadoIgnorado(
+                        resultadoRegistro,
+                        registroOperacional
+                );
+            }
+
+            PagamentoResponseDTO resposta =
+                    processarEventoRecebido(
+                            resultadoRegistro.evento(),
+                            registroOperacional
+                    );
+
+            metricasWebhookService.registrarWebhookProcessado();
+
+            return resposta;
+        } catch (RuntimeException exception) {
+            metricasWebhookService.registrarErroWebhook();
+            throw exception;
+        } finally {
+            metricasWebhookService
+                    .finalizarMedicaoProcessamento(medicaoProcessamento);
         }
-
-        if (!resultadoRegistro.deveProcessar()) {
-            return tratarWebhookDuplicadoIgnorado(
-                    resultadoRegistro,
-                    registroOperacional
-            );
-        }
-
-        return processarEventoRecebido(
-                resultadoRegistro.evento(),
-                registroOperacional
-        );
     }
 
     private ResultadoRegistroWebhook registrarNoControleTransacional(
