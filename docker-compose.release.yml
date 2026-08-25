@@ -125,6 +125,7 @@ services:
 
     volumes:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/rules:/etc/prometheus/rules:ro
       - api_pedidos_release_prometheus_data:/prometheus
 
     healthcheck:
