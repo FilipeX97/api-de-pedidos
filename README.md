@@ -5,79 +5,130 @@
 ![Spring Security](https://img.shields.io/badge/Spring%20Security-6.5.11-6DB33F?logo=springsecurity&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-8.0-47A248?logo=mongodb&logoColor=white)
+![Prometheus](https://img.shields.io/badge/Prometheus-3.13.1-E6522C?logo=prometheus&logoColor=white)
+![Grafana](https://img.shields.io/badge/Grafana-13.1.1-F46800?logo=grafana&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![Tests](https://img.shields.io/badge/Testes-JUnit%205-25A162?logo=junit5&logoColor=white)
 [![CI](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/ci.yml)
 [![Publish Docker Image](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/publish-image.yml/badge.svg)](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/publish-image.yml)
 
-API REST de estudo e portfólio para gerenciamento de usuários, produtos, cupons, pedidos e pagamentos. O projeto foi desenvolvido com **Java 21** e **Spring Boot 3.5.16**, indo além de um CRUD tradicional ao implementar autenticação JWT, idempotência, padrões de projeto, integração com gateway fake, webhooks assinados, persistência poliglota, observabilidade, testes automatizados, Docker e CI/CD.
+API REST para gerenciamento de usuários, produtos, cupons, pedidos e pagamentos, desenvolvida com **Java 21** e **Spring Boot 3.5.16**.
 
-> O PostgreSQL permanece como fonte da verdade dos dados transacionais. O MongoDB armazena registros operacionais e documentais dos webhooks de pagamento para consulta, diagnóstico e investigação técnica.
+O projeto foi construído com foco em regras de negócio, segurança, idempotência, padrões de projeto, integração com gateway de pagamento fake, webhooks assinados, persistência poliglota, observabilidade, testes automatizados e execução com Docker.
+
+> O PostgreSQL é a fonte da verdade dos dados transacionais. O MongoDB é utilizado para armazenar os registros operacionais dos webhooks de pagamento.
 
 ---
 
-## Principais destaques
+## Funcionalidades
 
 - Autenticação stateless com access token e refresh token.
-- Rotação, revogação e detecção de reutilização de refresh token.
+- Rotação e revogação de refresh tokens.
+- Detecção de reutilização de refresh token.
 - Blacklist de access tokens após logout.
 - Autorização por perfis `USER` e `ADMIN`.
 - Senhas protegidas com BCrypt.
-- Pedidos controlados pelo padrão **State**.
-- Descontos e pagamentos implementados com **Strategy**.
-- Gateways de pagamento isolados por **Adapter**.
-- Checkout coordenado por **Facade**.
-- Eventos de domínio e listeners no estilo **Observer**.
-- Consultas administrativas combináveis.
-- Idempotência em operações sensíveis.
-- Pagamentos por PIX, cartão e boleto.
-- Gateway fake com transações persistidas no PostgreSQL.
-- Webhook fake protegido por assinatura HMAC-SHA256.
-- Controle transacional e idempotente de webhooks no PostgreSQL.
-- Registro operacional de webhooks no MongoDB.
-- Estratégia **best effort**: falhas no MongoDB não interrompem pagamentos.
-- Paginação, ordenação e filtros administrativos.
-- Migrations com Flyway.
-- Documentação com Swagger/OpenAPI.
-- Observabilidade com Spring Boot Actuator.
-- Correlação de logs pelo header `X-Request-Id`.
-- Testes com JUnit 5, Mockito, MockMvc e Spring Security Test.
-- Pipeline de CI com GitHub Actions.
-- Detecção de segredos com Gitleaks.
-- Verificação de vulnerabilidades da imagem com Trivy.
+- CRUD de usuários, produtos e cupons.
+- Criação e gerenciamento de pedidos.
+- Controle de estados do pedido.
+- Aplicação de descontos e cupons.
+- Pagamentos por PIX, cartão de crédito e boleto.
+- Gateway de pagamento fake.
+- Persistência das transações do gateway fake.
+- Idempotência para operações sensíveis.
+- Webhook fake com assinatura HMAC-SHA256.
+- Controle idempotente de `eventId` dos webhooks.
+- Reprocessamento de webhooks que terminaram com erro.
+- Registro operacional dos webhooks no MongoDB.
+- Paginação, filtros e ordenação nas consultas administrativas.
+- Histórico de pedidos.
+- Notificações.
+- Auditoria.
+- Relatórios administrativos.
+- Rate limiting.
+- Request ID para correlação de requisições e logs.
+- Swagger/OpenAPI.
+- Spring Boot Actuator.
+- Métricas técnicas e de negócio.
+- Prometheus.
+- Grafana.
+- Dashboards provisionados por arquivo.
+- SLIs e SLOs.
+- Alertas do Prometheus.
+- Testes automatizados.
+- Docker e Docker Compose.
+- GitHub Actions.
+- Gitleaks.
+- Trivy.
+- Dependabot.
 - Publicação da imagem no GitHub Container Registry.
-- Atualização automatizada de dependências com Dependabot.
 
 ---
 
-## Arquitetura e persistência poliglota
+# Arquitetura
 
-A aplicação utiliza dois bancos com responsabilidades diferentes:
+A aplicação é organizada como um monólito modular, mantendo os módulos separados por responsabilidade sem introduzir microserviços artificialmente.
+
+```text
+                      ┌─────────────────────┐
+                      │      API REST       │
+                      └──────────┬──────────┘
+                                 │
+            ┌────────────────────┼─────────────────────┐
+            │                    │                     │
+            ▼                    ▼                     ▼
+       PostgreSQL            MongoDB              Observabilidade
+       Transacional        Operacional            Micrometer
+            │                    │                     │
+            │                    │                     ▼
+            │                    │                Prometheus
+            │                    │                     │
+            │                    │                     ▼
+            │                    │                  Grafana
+            │                    │
+            └──────────────┬─────┘
+                           │
+                    Regras de negócio
+```
+
+---
+
+# Persistência poliglota
+
+A aplicação utiliza PostgreSQL e MongoDB com responsabilidades distintas.
 
 | Banco | Responsabilidade |
 |---|---|
-| PostgreSQL | Fonte da verdade para usuários, produtos, cupons, pedidos, pagamentos, idempotência, tokens, histórico, notificações, auditoria, transações do gateway fake e controle transacional dos webhooks |
-| MongoDB | Registros operacionais e documentais das tentativas de webhook, incluindo payload original, Request ID, duração, duplicidade, resultado e mensagem técnica de erro |
+| PostgreSQL | Usuários, produtos, cupons, pedidos, pagamentos, idempotência, tokens, histórico, notificações, auditoria, transações do gateway fake e controle transacional dos webhooks |
+| MongoDB | Registros operacionais e documentais dos webhooks de pagamento |
 
-### Por que o PostgreSQL continua sendo a fonte da verdade?
+## PostgreSQL
 
-Pedidos e pagamentos exigem:
+O PostgreSQL concentra os dados transacionais e as regras que exigem consistência forte.
 
-- integridade referencial;
-- constraints;
-- transações;
-- consistência forte;
-- relacionamentos;
-- controle confiável de duplicidade;
-- relatórios oficiais.
+Entre os dados armazenados:
 
-O `eventId` utilizado para impedir o processamento repetido continua protegido por constraint única no PostgreSQL.
+- usuários;
+- produtos;
+- cupons;
+- pedidos;
+- itens;
+- pagamentos;
+- tokens;
+- idempotência;
+- histórico;
+- notificações;
+- auditoria;
+- transações do gateway fake;
+- controle transacional dos webhooks.
 
-### Por que usar MongoDB para o registro operacional?
+O `eventId` dos webhooks é protegido por constraint única no PostgreSQL para impedir processamento duplicado.
 
-O payload e os metadados de webhooks podem variar conforme o gateway e evoluir com o tempo. O modelo documental permite guardar essas informações de forma flexível, sem transformar o MongoDB na fonte oficial do pagamento.
+## MongoDB
 
-O documento operacional registra:
+O MongoDB armazena os registros operacionais dos webhooks.
+
+O documento pode conter:
 
 - `eventId`;
 - `codigoTransacao`;
@@ -89,11 +140,11 @@ O documento operacional registra:
 - origem;
 - data de recebimento;
 - data de processamento;
-- duração em milissegundos;
+- duração;
 - indicação de duplicidade;
 - mensagem técnica resumida em caso de erro.
 
-Não são persistidos no documento:
+Dados sensíveis não são armazenados no documento operacional, como:
 
 - senha;
 - access token;
@@ -103,58 +154,47 @@ Não são persistidos no documento:
 - senha do banco;
 - assinatura HMAC completa.
 
+A gravação operacional no MongoDB segue uma estratégia **best effort**. Uma falha no MongoDB não interrompe o processamento transacional do pagamento no PostgreSQL.
+
 ---
 
-## Fluxo do webhook de pagamento
+# Fluxo do webhook de pagamento
 
 ```mermaid
 flowchart TD
-    A[Gateway envia webhook] --> B[Controller recebe corpo original e assinatura]
+    A[Gateway envia webhook] --> B[Controller recebe corpo e assinatura]
     B --> C[Validar assinatura HMAC-SHA256]
     C --> D[Converter e validar payload]
     D --> E[Registrar tentativa operacional no MongoDB]
     E --> F[Registrar ou recuperar eventId no PostgreSQL]
     F --> G{Evento deve ser processado?}
 
-    G -- Não --> H[Marcar tentativa operacional como DUPLICADO]
+    G -- Não --> H[Registrar duplicidade]
     H --> I[Retornar estado atual do pagamento]
 
-    G -- Sim --> J[Atualizar transação no gateway fake]
-    J --> K[Processar pagamento no PostgreSQL]
-    K --> L[Marcar webhook transacional como PROCESSADO]
-    L --> M[Marcar documento operacional como PROCESSADO]
+    G -- Sim --> J[Atualizar gateway fake]
+    J --> K[Processar pagamento]
+    K --> L[Marcar webhook como PROCESSADO]
+    L --> M[Atualizar registro operacional]
 
-    J --> N[Erro no processamento]
+    J --> N[Erro]
     K --> N
     N --> O[Marcar PostgreSQL como ERRO]
-    O --> P[Marcar documento MongoDB como ERRO]
-
-    E -. MongoDB indisponível .-> F
+    O --> P[Atualizar registro operacional]
 ```
-
-### Consistência eventual e best effort
-
-A gravação operacional no MongoDB é executada em modo best effort:
-
-- a exceção é registrada nos logs;
-- o processamento transacional continua;
-- o pagamento não é recusado apenas porque o MongoDB está indisponível;
-- o registro operacional pode ficar ausente ou incompleto em uma falha de infraestrutura.
-
-A consulta administrativa depende do MongoDB. Portanto, caso ele esteja indisponível, o endpoint operacional pode falhar sem comprometer os pagamentos já controlados pelo PostgreSQL.
-
----
 
 ## Estados do registro operacional
 
-| Status | Significado |
+| Status | Descrição |
 |---|---|
-| `RECEBIDO` | A tentativa foi registrada, mas ainda não recebeu resultado final |
-| `PROCESSADO` | A tentativa foi processada com sucesso |
-| `DUPLICADO` | O `eventId` já havia sido processado e a nova tentativa foi ignorada |
-| `ERRO` | A tentativa terminou com erro |
+| `RECEBIDO` | Tentativa registrada sem resultado final |
+| `PROCESSADO` | Processamento concluído com sucesso |
+| `DUPLICADO` | Evento repetido e ignorado |
+| `ERRO` | Processamento terminou com erro |
 
-O campo booleano `duplicado` é independente do status final. Assim, é possível existir:
+O campo `duplicado` é independente do status final.
+
+Um webhook pode ser:
 
 ```json
 {
@@ -163,19 +203,19 @@ O campo booleano `duplicado` é independente do status final. Assim, é possíve
 }
 ```
 
-Esse caso representa um `eventId` repetido que foi reprocessado porque a tentativa anterior havia terminado com erro.
+Esse cenário representa um evento repetido que foi reprocessado porque a tentativa anterior havia terminado com erro.
 
 ---
 
-## Índices do MongoDB
+# Índices do MongoDB
 
-A coleção utilizada é:
+Coleção:
 
 ```text
 registro_operacional_webhook_pagamento
 ```
 
-Índices declarados no documento:
+Índices utilizados:
 
 - `eventId`;
 - `codigoTransacao`;
@@ -183,65 +223,32 @@ registro_operacional_webhook_pagamento
 - `requestId`;
 - `dataRecebimento`.
 
-O índice de `eventId` **não é único**, pois o objetivo operacional é visualizar todas as tentativas recebidas, inclusive repetições do mesmo evento.
+O índice de `eventId` não é único, pois o histórico operacional mantém as diferentes tentativas do mesmo evento.
 
 ---
 
-## Tecnologias utilizadas
+# Padrões de projeto
 
-| Tecnologia | Uso |
-|---|---|
-| Java 21 | Linguagem principal |
-| Spring Boot 3.5.16 | Configuração e execução |
-| Spring Web / MVC | API REST |
-| Spring Security 6.5.11 | Autenticação e autorização |
-| Spring Data JPA | Persistência relacional |
-| Spring Data MongoDB | Persistência documental |
-| PostgreSQL 16 | Banco transacional |
-| MongoDB 8.0 | Registros operacionais de webhooks |
-| H2 | Desenvolvimento rápido e testes |
-| Flyway | Versionamento do schema relacional |
-| JJWT 0.11.5 | Tokens JWT |
-| Caffeine | Cache local |
-| Bean Validation | Validação de entrada |
-| Springdoc OpenAPI 2.8.17 | Swagger/OpenAPI |
-| Spring Boot Actuator | Healthchecks, informações e métricas |
-| SLF4J e MDC | Logs e correlação por Request ID |
-| Maven | Build e dependências |
-| Docker / Docker Compose | Empacotamento e orquestração |
-| JUnit 5 | Testes automatizados |
-| Mockito | Testes unitários |
-| MockMvc | Testes HTTP |
-| GitHub Actions | Integração contínua |
-| GHCR | Registro de imagens Docker |
-| Gitleaks | Detecção de segredos |
-| Trivy | Análise de vulnerabilidades |
-| Dependabot | Atualização de dependências |
+## Strategy
 
----
+Utilizado para comportamentos intercambiáveis.
 
-## Padrões de projeto
+### Pagamentos
 
-### Strategy
+- cartão de crédito;
+- PIX;
+- boleto.
 
-Usado para encapsular comportamentos intercambiáveis.
-
-**Descontos**
+### Descontos
 
 - desconto por quantidade;
 - cupom;
 - cliente VIP;
 - motor de promoções.
 
-**Pagamentos**
+## State
 
-- cartão de crédito;
-- PIX;
-- boleto.
-
-### State
-
-Controla as transições do pedido e impede mudanças inválidas de estado.
+Utilizado para controlar as transições de estado dos pedidos.
 
 Exemplos:
 
@@ -254,115 +261,445 @@ Exemplos:
 - cancelado;
 - estornado.
 
-### Adapter
+## Adapter
 
-Isola o domínio dos formatos específicos de cada gateway de pagamento.
+Isola o domínio dos formatos específicos dos gateways de pagamento.
 
-### Facade
+## Facade
 
-A `CheckoutFacade` centraliza a coordenação do checkout, pagamento e confirmação por webhook.
+A `CheckoutFacade` coordena operações relacionadas ao checkout e ao processamento de pagamentos.
 
-### Observer
+## Observer
 
-Eventos e listeners desacoplam efeitos secundários, como:
+Eventos e listeners são utilizados para desacoplar efeitos secundários, como:
 
 - histórico;
 - notificações;
 - auditoria.
 
-### Specification
+## Specification
 
-Utilizada nas consultas administrativas relacionais com filtros combináveis.
+Utilizada para consultas administrativas com filtros combináveis.
 
-### Factory
+## Factory
 
-Seleciona estratégias de pagamento e estados do pedido em tempo de execução.
+Utilizada para selecionar estratégias de pagamento e estados do pedido.
 
 ---
 
-## Organização do projeto
+# Observabilidade
+
+A aplicação possui uma stack de observabilidade baseada em:
 
 ```text
-src/main/java/br/com/api/pedidos
-├── audit
-├── auth
-├── cache
-├── config
-├── coupon
-├── notification
-├── observability
-├── order
-├── payment
-│   └── webhook
-│       ├── controller
-│       ├── dto
-│       ├── entity
-│       ├── repository
-│       ├── service
-│       └── document
-│           ├── controller
-│           ├── dto
-│           ├── entity
-│           ├── repository
-│           └── service
-├── product
-├── report
-├── security
-├── shared
-└── user
+Spring Boot Actuator
+        ↓
+Micrometer
+        ↓
+/actuator/prometheus
+        ↓
+Prometheus
+        ↓
+PromQL
+        ↓
+Grafana
 ```
 
-Dentro dos módulos:
+## Actuator
 
-- `controller`: contrato HTTP e OpenAPI;
-- `service`: casos de uso e regras de aplicação;
-- `entity`: entidades e invariantes;
-- `document`: documentos MongoDB;
-- `repository`: acesso a dados;
-- `dto`: entrada e saída;
-- `strategy`, `state`, `adapter`, `factory`, `listener` e `specification`: comportamentos especializados.
+Endpoints:
+
+```http
+GET /actuator/health
+GET /actuator/health/liveness
+GET /actuator/health/readiness
+GET /actuator/info
+GET /actuator/prometheus
+```
+
+O endpoint:
+
+```http
+GET /actuator/metrics
+```
+
+é protegido por `ADMIN`.
+
+O endpoint Prometheus é utilizado nos ambientes de desenvolvimento, local e homologação. Em produção, permanece restrito enquanto não existir uma estratégia de exposição interna dedicada.
+
+## Request ID
+
+As respostas possuem:
+
+```http
+X-Request-Id
+```
+
+Quando o cliente envia um valor válido, ele é preservado. Caso contrário, a API gera um novo identificador.
+
+O mesmo valor é utilizado na correlação dos logs.
+
+Nos webhooks, o Request ID também pode ser armazenado no registro operacional do MongoDB.
 
 ---
 
-## Resposta padronizada
+# Métricas
 
-Sucesso:
+## Métricas técnicas
 
-```json
-{
-  "sucesso": true,
-  "dados": {},
-  "mensagem": "Operação realizada com sucesso"
-}
+Exemplos disponibilizados pelo Spring Boot e Micrometer:
+
+```text
+http_server_requests_seconds_count
+http_server_requests_seconds_bucket
+jvm_memory_used_bytes
+jvm_threads_live_threads
+process_cpu_usage
+process_uptime_seconds
+hikaricp_connections_active
 ```
 
-Erro:
+Essas métricas permitem acompanhar:
 
-```json
-{
-  "sucesso": false,
-  "dados": null,
-  "mensagem": "Descrição do erro"
-}
+- requisições;
+- taxa de requisições;
+- erros HTTP;
+- latência;
+- memória JVM;
+- threads;
+- CPU;
+- garbage collection;
+- pool de conexões.
+
+## Métricas de negócio
+
+As métricas de negócio são mantidas em classes próprias:
+
+```text
+MetricasPedidoService
+MetricasPagamentoService
+MetricasWebhookService
 ```
 
-Principais códigos HTTP:
+### Pedidos
 
-| Código | Uso |
-|---:|---|
-| 200 | Consulta ou alteração concluída |
-| 201 | Recurso criado |
-| 400 | Entrada inválida ou regra de negócio violada |
-| 401 | Token ausente, inválido, expirado ou bloqueado |
-| 403 | Usuário autenticado sem permissão |
-| 404 | Recurso não encontrado |
-| 409 | Conflito de integridade ou idempotência |
-| 429 | Rate limit excedido |
-| 500 | Falha interna inesperada |
+```text
+api_pedidos_pedidos_criados_total
+```
+
+### Pagamentos
+
+```text
+api_pedidos_pagamentos_iniciados_total
+api_pedidos_pagamentos_aprovados_total
+api_pedidos_pagamentos_recusados_total
+api_pedidos_pagamentos_pendentes_total
+```
+
+Os pagamentos utilizam a tag:
+
+```text
+forma_pagamento
+```
+
+com os valores:
+
+```text
+pix
+cartao_credito
+boleto
+```
+
+### Webhooks
+
+```text
+api_pedidos_webhooks_recebidos_total
+api_pedidos_webhooks_processados_total
+api_pedidos_webhooks_duplicados_total
+api_pedidos_webhooks_erros_total
+```
+
+Também é medido o processamento:
+
+```text
+api_pedidos_webhook_processamento_duracao_seconds
+```
 
 ---
 
-## Segurança
+# Cardinalidade das métricas
+
+As métricas não utilizam como tags valores de alta cardinalidade ou dados sensíveis.
+
+Não são utilizadas como tags:
+
+```text
+email
+nome
+idUsuario
+idPedido
+idPagamento
+codigoTransacao
+eventId
+requestId
+payload
+token
+```
+
+As tags são limitadas a valores com cardinalidade controlada, como:
+
+```text
+forma_pagamento
+status
+```
+
+---
+
+# Prometheus
+
+Configuração:
+
+```text
+observability/prometheus/prometheus.yml
+```
+
+Intervalo de coleta:
+
+```text
+15 segundos
+```
+
+O target da API utiliza:
+
+```text
+http://api-de-pedidos:8080/actuator/prometheus
+```
+
+Dentro do Docker Compose, o nome do serviço é utilizado para comunicação entre containers.
+
+## Recording Rules
+
+```text
+observability/prometheus/rules/slo.yml
+```
+
+Regras atuais:
+
+```text
+api_pedidos:http_requests_rate5m
+api_pedidos:http_requests_5xx_rate5m
+api_pedidos:http_availability_ratio5m
+api_pedidos:http_latency_p95_5m
+api_pedidos:webhooks_received_rate5m
+api_pedidos:webhooks_error_rate5m
+api_pedidos:webhooks_error_ratio5m
+```
+
+## Exemplos de PromQL
+
+### API disponível
+
+```promql
+up{job="api-de-pedidos"}
+```
+
+### Requests por segundo
+
+```promql
+sum(
+  rate(
+    http_server_requests_seconds_count{
+      job="api-de-pedidos"
+    }[5m]
+  )
+)
+```
+
+### Erros 5xx
+
+```promql
+sum(
+  rate(
+    http_server_requests_seconds_count{
+      job="api-de-pedidos",
+      status=~"5.."
+    }[5m]
+  )
+)
+```
+
+### Memória JVM
+
+```promql
+sum(
+  jvm_memory_used_bytes{
+    job="api-de-pedidos"
+  }
+)
+```
+
+### Pagamentos aprovados
+
+```promql
+sum(
+  api_pedidos_pagamentos_aprovados_total{
+    job="api-de-pedidos"
+  }
+)
+```
+
+### Webhooks duplicados
+
+```promql
+sum(
+  api_pedidos_webhooks_duplicados_total{
+    job="api-de-pedidos"
+  }
+)
+```
+
+---
+
+# Grafana
+
+O Grafana é executado como serviço separado da API.
+
+Acesso:
+
+```text
+http://localhost:3000
+```
+
+O datasource Prometheus é provisionado automaticamente por:
+
+```text
+observability/grafana/provisioning/datasources/prometheus.yml
+```
+
+A comunicação entre Grafana e Prometheus utiliza:
+
+```text
+http://prometheus:9090
+```
+
+## Dashboards
+
+Os dashboards ficam versionados em:
+
+```text
+observability/grafana/dashboards/
+```
+
+### API de Pedidos - Overview
+
+- requisições por segundo;
+- erros 4xx;
+- erros 5xx;
+- latência p95;
+- memória JVM;
+- pagamentos aprovados;
+- pagamentos recusados;
+- webhooks duplicados;
+- erros de webhook.
+
+### API de Pedidos - Pagamentos e Webhooks
+
+- pagamentos iniciados;
+- pagamentos aprovados;
+- pagamentos recusados;
+- pagamentos pendentes;
+- pagamentos por forma;
+- taxa de aprovação;
+- webhooks recebidos;
+- webhooks processados;
+- webhooks duplicados;
+- taxa de erro;
+- latência p95 de processamento.
+
+### API de Pedidos - JVM e HTTP
+
+- requests por endpoint;
+- latência média;
+- HTTP 4xx;
+- HTTP 5xx;
+- heap;
+- threads;
+- CPU;
+- garbage collection;
+- conexões Hikari.
+
+### API de Pedidos - SLI e SLO
+
+- disponibilidade HTTP;
+- SLO de disponibilidade;
+- latência p95;
+- SLO de latência;
+- erro de webhook;
+- SLO operacional de webhook.
+
+---
+
+# SLI e SLO
+
+Os indicadores atuais são:
+
+| Indicador | SLO |
+|---|---:|
+| Disponibilidade HTTP | >= 99,5% |
+| Latência HTTP p95 | <= 500 ms |
+| Erro de webhook | < 1% |
+
+## Disponibilidade
+
+A disponibilidade é calculada a partir da relação entre requisições sem erro 5xx e requisições totais.
+
+## Latência
+
+A latência é acompanhada utilizando o percentil p95.
+
+## Webhooks
+
+A taxa de erro dos webhooks é acompanhada como indicador operacional.
+
+## Error Budget
+
+Para um SLO de disponibilidade de 99,5%, a margem correspondente é de:
+
+```text
+0,5%
+```
+
+---
+
+# Alertas
+
+As regras ficam em:
+
+```text
+observability/prometheus/rules/alerts.yml
+```
+
+Alertas configurados:
+
+| Alerta | Condição | Tempo |
+|---|---|---:|
+| `ApiPedidosIndisponivel` | API DOWN | 2 min |
+| `ApiPedidosAltaTaxa5xx` | > 5% de 5xx | 5 min |
+| `ApiPedidosSloDisponibilidade` | disponibilidade < 99,5% | 10 min |
+| `ApiPedidosAltaLatenciaP95` | p95 > 500 ms | 10 min |
+| `ApiPedidosAltaTaxaErroWebhook` | erro de webhook > 1% | 10 min |
+
+Os alertas são avaliados pelo Prometheus e ficam disponíveis em:
+
+```text
+http://localhost:9090/alerts
+```
+
+Nesta etapa, o projeto não utiliza Alertmanager. O Prometheus é responsável pela avaliação das regras e apresentação dos alertas.
+
+---
+
+# Segurança
 
 - API stateless.
 - Autenticação com Bearer Token.
@@ -376,121 +713,125 @@ Principais códigos HTTP:
 - HMAC-SHA256 para webhook fake.
 - Comparação segura da assinatura.
 - Idempotência por chave, usuário, endpoint, método e hash do payload.
-- Respostas internas sem exposição de stacktrace.
-- Proibição de registrar tokens, senhas e segredos nos logs operacionais.
-- Execução da imagem Docker com usuário não root.
+- Respostas sem exposição de stacktrace.
+- Tokens, senhas e segredos não são armazenados nos logs operacionais.
+- Imagem Docker executada com usuário não root.
 - Gitleaks no pipeline.
-- Trivy na imagem Docker.
+- Trivy na análise da imagem.
 
-> O rate limiting é mantido em memória. Em uma implantação distribuída, uma evolução natural seria usar Redis ou outro armazenamento compartilhado.
+> O rate limiting é mantido em memória. Em uma implantação distribuída, uma evolução natural seria utilizar um mecanismo compartilhado.
 
 ---
 
-## Idempotência
+# Idempotência
 
-Operações sensíveis recebem:
+Operações sensíveis utilizam:
 
 ```http
 Idempotency-Key: <chave-unica>
 ```
 
-Comportamento:
+A mesma chave e o mesmo payload permitem reutilizar a resposta já processada.
 
-- mesma chave e mesmo payload: devolve a resposta já processada;
-- mesma chave e payload diferente: rejeita a requisição;
-- a chave fica vinculada ao usuário, endpoint e método;
-- reduz o risco de pedidos, itens, pagamentos e transições duplicadas.
+A mesma chave com payload diferente gera conflito.
+
+A chave é vinculada ao contexto da operação, reduzindo o risco de processamento duplicado.
 
 ---
 
-## Perfis
+# Perfis
 
 | Perfil | Banco transacional | MongoDB | Swagger | Actuator |
 |---|---|---|---|---|
-| `dev` | H2 em memória | Externo em `localhost` | Habilitado | `health`, `info`, `metrics` com detalhes |
-| `local` | PostgreSQL via Docker Compose | MongoDB via Docker Compose | Habilitado | `health`, `info`, `metrics` com detalhes |
-| `homolog` | PostgreSQL | MongoDB | Habilitado | `health`, `info`, `metrics`, sem detalhes internos |
-| `prod` | PostgreSQL | MongoDB | Desabilitado | `health` e `info`, sem detalhes internos |
-| `test` | H2 em memória | Conexão real desabilitada nos testes atuais | Desabilitado | Apenas o necessário aos testes |
+| `dev` | H2 em memória | Externo em `localhost` | Habilitado | Health, info e métricas |
+| `local` | PostgreSQL via Docker | MongoDB via Docker | Habilitado | Health, info, metrics e Prometheus |
+| `homolog` | PostgreSQL | MongoDB | Habilitado | Health, info, metrics e Prometheus |
+| `prod` | PostgreSQL | MongoDB | Desabilitado | Health e info |
+| `test` | H2 em memória | Conexão real desabilitada nos testes atuais | Desabilitado | Conforme os testes |
 
 O profile padrão é `dev`.
 
 ### Readiness
 
-A readiness inclui:
+A readiness considera:
 
 ```text
 readinessState,db
 ```
 
-Ela valida a aplicação e o banco relacional. O MongoDB não participa da readiness porque seu uso no processamento crítico é operacional e best effort.
+O MongoDB não participa diretamente da readiness porque seu uso no processamento crítico é operacional e best effort.
 
-No Docker Compose, entretanto, a API aguarda PostgreSQL e MongoDB ficarem saudáveis antes de iniciar.
+No Docker Compose, PostgreSQL e MongoDB são utilizados como dependências de inicialização da API.
 
 ---
 
-## Variáveis de ambiente
+# Variáveis de ambiente
 
-### PostgreSQL
+## PostgreSQL
 
 | Variável | Descrição |
 |---|---|
 | `DB_NAME` | Nome do banco |
-| `DB_PORT` | Porta publicada, padrão `5432` |
-| `DB_URL` | URL JDBC completa em homologação/produção |
+| `DB_PORT` | Porta publicada |
+| `DB_URL` | URL JDBC |
 | `DB_USERNAME` | Usuário |
 | `DB_PASSWORD` | Senha |
 
-### MongoDB
+## MongoDB
 
 | Variável | Descrição |
 |---|---|
-| `MONGO_HOST` | Host do MongoDB |
-| `MONGO_PORT` | Porta, padrão `27017` |
-| `MONGO_DATABASE` | Banco operacional |
+| `MONGO_HOST` | Host |
+| `MONGO_PORT` | Porta |
+| `MONGO_DATABASE` | Banco |
 | `MONGO_USERNAME` | Usuário |
 | `MONGO_PASSWORD` | Senha |
-| `MONGO_AUTHENTICATION_DATABASE` | Banco de autenticação, padrão `admin` |
+| `MONGO_AUTHENTICATION_DATABASE` | Banco de autenticação |
 
-### API e segurança
+## API e segurança
 
 | Variável | Descrição |
 |---|---|
-| `API_PORT` | Porta publicada da API, padrão `8080` |
-| `JWT_SECRET` | Chave JWT com pelo menos 64 caracteres |
-| `JWT_EXPIRATION` | Expiração do access token em milissegundos |
-| `JWT_REFRESH_EXPIRATION` | Expiração do refresh token em milissegundos |
+| `API_PORT` | Porta da API |
+| `JWT_SECRET` | Chave JWT |
+| `JWT_EXPIRATION` | Expiração do access token |
+| `JWT_REFRESH_EXPIRATION` | Expiração do refresh token |
 | `JWT_RENEW_BEFORE_EXPIRATION` | Janela de renovação |
-| `FAKE_WEBHOOK_SECRET` | Segredo HMAC do webhook fake |
+| `FAKE_WEBHOOK_SECRET` | Segredo HMAC |
 
-Nunca versione arquivos `.env` reais. Somente arquivos `.env.*.example` devem permanecer no Git.
+## Observabilidade
 
-O Spring Boot não carrega `.env` automaticamente. Configure as variáveis na IDE, exporte-as no terminal ou use `--env-file` com Docker Compose.
+| Variável | Descrição |
+|---|---|
+| `PROMETHEUS_PORT` | Porta do Prometheus |
+| `GRAFANA_PORT` | Porta do Grafana |
+| `GRAFANA_ADMIN_USER` | Usuário administrador |
+| `GRAFANA_ADMIN_PASSWORD` | Senha administrador |
+
+Arquivos `.env` reais não devem ser versionados.
+
+Use somente os arquivos:
+
+```text
+.env.local.example
+.env.homolog.example
+```
+
+como referência.
 
 ---
 
-## Pré-requisitos
+# Executando a aplicação
 
-Execução sem container da API:
+## Profile `dev`
+
+Pré-requisitos:
 
 - Java 21;
-- Maven 3.9 ou superior;
-- MongoDB disponível para os profiles que habilitam o documento operacional.
+- Maven;
+- MongoDB disponível em `localhost:27017`.
 
-Stack completa:
-
-- Docker;
-- Docker Compose.
-
----
-
-## Executar com o profile `dev`
-
-O profile `dev` usa H2 para os dados transacionais e MongoDB para os registros operacionais.
-
-1. Configure as variáveis JWT, webhook e MongoDB.
-2. Garanta que o MongoDB esteja disponível em `localhost:27017`.
-3. Execute:
+Execute:
 
 ```bash
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
@@ -502,7 +843,7 @@ API:
 http://localhost:8080
 ```
 
-Console H2:
+H2:
 
 ```text
 http://localhost:8080/h2-console
@@ -516,44 +857,44 @@ User Name: sa
 Password: vazio
 ```
 
-Massa inicial criada em `dev` e `test`:
+Credenciais de desenvolvimento:
 
 ```text
 ADMIN
-E-mail: admin@api.com
-Senha: 123456
+admin@api.com
+123456
 
 USER
-E-mail: user1@teste.com
-Senha: 123456
+user1@teste.com
+123456
 ```
 
-Essas credenciais são apenas para desenvolvimento e testes.
+Essas credenciais são destinadas exclusivamente ao ambiente de desenvolvimento/testes.
 
 ---
 
-## Executar localmente pela IDE
+# Executando localmente pela IDE
 
-Neste modo, a API roda pela IDE ou Maven e o Spring Boot Docker Compose inicia PostgreSQL e MongoDB.
+Copie o arquivo de exemplo.
 
-1. Copie o arquivo de exemplo:
-
-**PowerShell**
+### PowerShell
 
 ```powershell
 Copy-Item .env.local.example .env.local
 ```
 
-**Linux/macOS**
+### Linux/macOS
 
 ```bash
 cp .env.local.example .env.local
 ```
 
-2. Preencha todas as variáveis.
-3. Carregue o `.env.local` na configuração da IDE.
-4. Ative o profile `local`.
-5. Execute `ApiDePedidosApplication`.
+Depois:
+
+1. preencha as variáveis;
+2. carregue-as na IDE;
+3. ative o profile `local`;
+4. execute `ApiDePedidosApplication`.
 
 Pelo Maven:
 
@@ -561,78 +902,139 @@ Pelo Maven:
 mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-O serviço da API no `docker-compose.yml` pertence ao profile Compose `full`, evitando uma segunda instância concorrendo com a API executada pela IDE.
+Nesse cenário, PostgreSQL e MongoDB podem ser executados pelo Docker Compose enquanto a API roda pela IDE.
 
 ---
 
-## Executar a stack completa com Docker
+# Executando com Docker
 
 ```bash
-docker compose --env-file .env.local --profile full up --build
+docker compose \
+  --env-file .env.local \
+  --profile full \
+  up \
+  --build
 ```
 
 Verificar:
 
 ```bash
-docker compose --env-file .env.local --profile full ps
+docker compose \
+  --env-file .env.local \
+  --profile full \
+  ps
 ```
 
-Containers esperados:
+Containers:
 
 ```text
 api-pedidos-postgres
 api-pedidos-mongo
 api-pedidos-api
+api-pedidos-prometheus
+api-pedidos-grafana
 ```
 
-Logs:
+## Parar
 
 ```bash
-docker compose --env-file .env.local --profile full logs -f
+docker compose \
+  --env-file .env.local \
+  --profile full \
+  down
 ```
 
-Somente API:
+## Remover volumes
 
 ```bash
-docker compose --env-file .env.local --profile full logs -f api-de-pedidos
+docker compose \
+  --env-file .env.local \
+  --profile full \
+  down \
+  -v
 ```
 
-Parar:
-
-```bash
-docker compose --env-file .env.local --profile full down
-```
-
-Parar e remover volumes locais:
-
-```bash
-docker compose --env-file .env.local --profile full down -v
-```
-
-> `down -v` apaga os dados locais do PostgreSQL e do MongoDB.
+> `down -v` remove os dados persistidos localmente.
 
 ---
 
-## Validar os bancos
+# URLs da stack
 
-### PostgreSQL
+## API
 
-```bash
-docker compose --env-file .env.local exec postgres \
-  psql -U "$DB_USERNAME" -d "$DB_NAME"
+```text
+http://localhost:8080
 ```
 
-### MongoDB
+## Swagger
+
+```text
+http://localhost:8080/swagger-ui.html
+```
+
+## Actuator
+
+```text
+http://localhost:8080/actuator
+```
+
+## Prometheus
+
+```text
+http://localhost:9090
+```
+
+Targets:
+
+```text
+http://localhost:9090/targets
+```
+
+Rules:
+
+```text
+http://localhost:9090/rules
+```
+
+Alerts:
+
+```text
+http://localhost:9090/alerts
+```
+
+## Grafana
+
+```text
+http://localhost:3000
+```
+
+---
+
+# PostgreSQL e MongoDB
+
+## PostgreSQL
 
 ```bash
-docker compose --env-file .env.local exec mongo \
+docker compose \
+  --env-file .env.local \
+  exec postgres \
+  psql \
+  -U "$DB_USERNAME" \
+  -d "$DB_NAME"
+```
+
+## MongoDB
+
+```bash
+docker compose \
+  --env-file .env.local \
+  exec mongo \
   sh -lc 'mongosh --username "$MONGO_INITDB_ROOT_USERNAME" --password "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin'
 ```
 
-No `mongosh`:
+Depois:
 
 ```javascript
-show dbs
 use api_pedidos_operacional
 show collections
 
@@ -642,17 +1044,11 @@ db.registro_operacional_webhook_pagamento
   .pretty()
 ```
 
-Índices:
-
-```javascript
-db.registro_operacional_webhook_pagamento.getIndexes()
-```
-
 ---
 
-## Flyway
+# Flyway
 
-Migrations relacionais atuais:
+Migrations relacionais:
 
 ```text
 V1__criar_schema_inicial.sql
@@ -665,25 +1061,19 @@ V7__adicionar_indices_paginacao_usuario_notificacao.sql
 V8__persistir_transacoes_gateway_fake.sql
 ```
 
-O Hibernate está configurado com:
+Hibernate:
 
 ```properties
 spring.jpa.hibernate.ddl-auto=validate
 ```
 
-O Flyway cria e evolui o schema; o Hibernate apenas valida o resultado.
-
-O MongoDB não utiliza migrations Flyway. Os índices documentais são criados pelo Spring Data MongoDB nos profiles com:
-
-```properties
-spring.data.mongodb.auto-index-creation=true
-```
+O Flyway evolui o schema e o Hibernate valida a estrutura.
 
 ---
 
-## Swagger/OpenAPI
+# Swagger/OpenAPI
 
-Com a aplicação executando em `dev`, `local` ou `homolog`:
+Com `dev`, `local` ou `homolog`:
 
 ```text
 http://localhost:8080/swagger-ui.html
@@ -702,57 +1092,13 @@ Authorize
 Bearer <access-token>
 ```
 
-O Swagger é desabilitado no profile `prod`.
+Swagger é desabilitado em `prod`.
 
 ---
 
-## Observabilidade
+# Endpoints principais
 
-Endpoints públicos:
-
-```text
-GET /actuator/health
-GET /actuator/health/liveness
-GET /actuator/health/readiness
-GET /actuator/info
-```
-
-Métricas protegidas por `ADMIN`:
-
-```text
-GET /actuator/metrics
-GET /actuator/metrics/{nome}
-```
-
-### Request ID
-
-Toda resposta recebe:
-
-```http
-X-Request-Id: identificador
-```
-
-Quando o cliente envia um valor válido, ele é preservado. Caso não envie, a API gera um novo identificador.
-
-O mesmo valor é adicionado ao MDC e aparece nos logs:
-
-```text
-[requestId=abc-123]
-```
-
-O documento MongoDB também armazena o Request ID do webhook, permitindo correlacionar:
-
-```text
-requisição HTTP
-↔ logs
-↔ documento operacional
-```
-
----
-
-## Endpoints principais
-
-### Autenticação
+## Autenticação
 
 ```http
 POST /auth/login
@@ -761,7 +1107,7 @@ POST /auth/registrar
 POST /auth/logout
 ```
 
-### Usuários
+## Usuários
 
 ```http
 POST  /usuarios
@@ -775,7 +1121,7 @@ POST   /admin/usuarios/{id}/desativar
 DELETE /admin/usuarios/{id}
 ```
 
-### Produtos
+## Produtos
 
 ```http
 GET    /produtos
@@ -785,7 +1131,7 @@ PATCH  /produtos/{id}
 DELETE /produtos/{id}
 ```
 
-### Cupons
+## Cupons
 
 ```http
 POST /cupons
@@ -795,7 +1141,7 @@ POST /cupons/{id}/ativar
 POST /cupons/{id}/desativar
 ```
 
-### Pedidos
+## Pedidos
 
 ```http
 GET    /orders
@@ -812,32 +1158,32 @@ POST   /orders/{idPedido}/refund
 GET    /orders/{idPedido}/history
 ```
 
-### Pagamentos
+## Pagamentos
 
 ```http
 POST /orders/{idPedido}/payments
 GET  /orders/{idPedido}/payments
 ```
 
-### Webhook fake
+## Webhook
 
 ```http
 POST /webhooks/payments/fake
 ```
 
-Header obrigatório:
+Header:
 
 ```http
 X-Fake-Gateway-Signature: <hmac-sha256-do-corpo>
 ```
 
-### Consulta operacional MongoDB
+## Consulta operacional
 
 ```http
 GET /admin/webhooks/payments/operational
 ```
 
-Filtros opcionais:
+Filtros:
 
 ```text
 eventId
@@ -864,9 +1210,9 @@ GET /admin/webhooks/payments/operational
     &sort=dataRecebimento,desc
 ```
 
-Somente `ADMIN`.
+Acesso restrito a `ADMIN`.
 
-### Notificações
+## Notificações
 
 ```http
 GET   /notifications
@@ -874,7 +1220,7 @@ GET   /notifications/unread-count
 PATCH /notifications/{idNotificacao}/read
 ```
 
-### Administração e relatórios
+## Administração e relatórios
 
 ```http
 GET /admin/orders
@@ -883,56 +1229,41 @@ GET /admin/reports/orders/summary
 
 ---
 
-## Coleção Postman
+# Coleção Postman
 
-Importe o arquivo atualizado:
+Coleção:
 
 ```text
 API_de_Pedidos_E2E_Completo_Etapa_16_MongoDB.postman_collection.json
 ```
 
-Configure as variáveis da coleção:
+Variáveis:
 
-| Variável | Valor esperado |
+| Variável | Valor |
 |---|---|
 | `baseUrl` | `http://localhost:8080` |
-| `adminEmail` | Usuário ADMIN local |
-| `adminSenha` | Senha do ADMIN local |
-| `userEmail` | Usuário USER local |
-| `userSenha` | Senha do USER local |
-| `fakeWebhookSecret` | Mesmo valor de `FAKE_WEBHOOK_SECRET` usado pela API |
+| `adminEmail` | Usuário ADMIN |
+| `adminSenha` | Senha ADMIN |
+| `userEmail` | Usuário USER |
+| `userSenha` | Senha USER |
+| `fakeWebhookSecret` | Mesmo valor de `FAKE_WEBHOOK_SECRET` |
 
-A coleção mantém os cenários anteriores e adiciona a pasta:
+A coleção inclui cenários relacionados ao MongoDB operacional:
 
-```text
-10 - MongoDB Operacional (Etapa 16)
-```
-
-Essa pasta cobre:
-
-- login administrativo;
-- listagem paginada;
-- filtro por `eventId`;
-- filtro por código da transação;
-- filtro por status;
-- filtro de duplicados;
-- filtro de erros;
-- filtro por período;
+- listagem;
+- filtros;
+- paginação;
 - ordenação;
-- acesso com `USER` retornando `403`;
-- acesso sem token retornando `401`;
-- status inválido retornando `400`;
-- tamanho de página inválido retornando `400`.
-
-Para obter registros operacionais, execute primeiro um fluxo que envie webhooks, especialmente:
-
-```text
-07 - Webhook Recuperável E2E (PROCESSADO e ERRO)
-```
+- duplicidade;
+- erros;
+- acesso administrativo;
+- `401`;
+- `403`;
+- validações.
 
 ---
 
-## Testes
+# Testes
 
 Executar toda a suíte:
 
@@ -946,66 +1277,60 @@ Empacotar:
 mvn -B -ntp clean package
 ```
 
-Coberturas relevantes:
+A suíte possui cobertura para:
 
 - autenticação;
-- refresh e logout;
+- refresh token;
+- logout;
 - usuários;
 - produtos;
 - cupons;
-- pedidos e estados;
+- pedidos;
+- estados;
 - pagamentos;
 - idempotência;
-- gateway fake persistente;
-- webhook novo;
-- webhook duplicado;
-- reprocessamento após erro;
-- falha no checkout;
-- documento MongoDB;
-- transições do registro operacional;
-- best effort quando o MongoDB falha;
-- consulta dinâmica com `MongoTemplate`;
-- filtros, paginação e ordenação;
-- endpoint administrativo;
-- autorização `ADMIN`;
-- `401`, `403` e erros de validação;
-- observabilidade e Request ID.
-
-Nesta etapa, os testes de MongoDB são unitários e mockados. A validação com MongoDB real ficará para uma evolução com Testcontainers.
+- gateway fake;
+- webhooks;
+- duplicidade;
+- reprocessamento;
+- falhas de processamento;
+- persistência operacional;
+- MongoDB;
+- autorização;
+- validação;
+- Actuator;
+- Prometheus;
+- Request ID;
+- métricas de pedidos;
+- métricas de pagamentos;
+- métricas de webhooks;
+- timers;
+- SLI/SLO.
 
 ---
 
-## CI/CD
+# CI/CD
 
-O workflow de CI executa:
+O pipeline de CI executa:
 
-1. validação das Secrets e Variables;
+1. validação das variáveis necessárias;
 2. bloqueio de arquivos `.env` reais;
-3. Gitleaks no histórico Git;
+3. Gitleaks;
 4. testes Maven;
 5. empacotamento;
 6. validação dos Docker Compose;
-7. build da imagem;
-8. verificação de usuário não root;
-9. análise de vulnerabilidades críticas com Trivy.
+7. validação das regras Prometheus;
+8. build da imagem;
+9. verificação de usuário não root;
+10. análise de vulnerabilidades com Trivy.
 
-Variáveis MongoDB também são validadas no pipeline:
-
-```text
-CI_MONGO_DATABASE
-CI_MONGO_USERNAME
-CI_MONGO_PORT
-CI_MONGO_AUTHENTICATION_DATABASE
-CI_MONGO_PASSWORD
-```
-
-Após um CI aprovado na `main`, o workflow de publicação envia a imagem para:
+A imagem é publicada no GitHub Container Registry:
 
 ```text
 ghcr.io/filipex97/api-de-pedidos
 ```
 
-Tags suportadas:
+Tags utilizadas:
 
 ```text
 latest
@@ -1018,86 +1343,115 @@ MAJOR.MINOR
 
 ---
 
-## Comandos úteis
+# Comandos úteis
 
-Validar Compose:
-
-```bash
-docker compose --env-file .env.local --profile full config --quiet
-```
-
-Subir:
+## Validar Compose
 
 ```bash
-docker compose --env-file .env.local --profile full up --build
+docker compose \
+  --env-file .env.local \
+  --profile full \
+  config \
+  --quiet
 ```
 
-Ver containers:
+## Validar Compose de release
 
 ```bash
-docker compose --env-file .env.local --profile full ps
+docker compose \
+  --file docker-compose.release.yml \
+  --env-file .env.homolog \
+  --profile observability \
+  config \
+  --quiet
 ```
 
-Logs do MongoDB:
+## Validar configuração do Prometheus
 
 ```bash
-docker compose --env-file .env.local logs -f mongo
+docker compose \
+  --env-file .env.local \
+  --profile full \
+  run \
+  --rm \
+  --no-deps \
+  --entrypoint promtool \
+  prometheus \
+  check config /etc/prometheus/prometheus.yml
 ```
 
-Logs da API:
+## Validar SLOs
 
 ```bash
-docker compose --env-file .env.local logs -f api-de-pedidos
+docker compose \
+  --env-file .env.local \
+  --profile full \
+  run \
+  --rm \
+  --no-deps \
+  --entrypoint promtool \
+  prometheus \
+  check rules /etc/prometheus/rules/slo.yml
 ```
 
-Testes:
+## Validar alertas
+
+```bash
+docker compose \
+  --env-file .env.local \
+  --profile full \
+  run \
+  --rm \
+  --no-deps \
+  --entrypoint promtool \
+  prometheus \
+  check rules /etc/prometheus/rules/alerts.yml
+```
+
+## Testes
 
 ```bash
 mvn -B -ntp test
 ```
 
-Build:
+## Build
 
 ```bash
 mvn -B -ntp clean package
 ```
 
----
+## Subir stack
 
-## Decisões técnicas que o projeto demonstra
+```bash
+docker compose \
+  --env-file .env.local \
+  --profile full \
+  up \
+  --build
+```
 
-- PostgreSQL como fonte da verdade transacional.
-- MongoDB como armazenamento operacional flexível.
-- Persistência poliglota com responsabilidades explícitas.
-- Consistência forte onde a regra de negócio exige.
-- Consistência eventual em dados de diagnóstico.
-- Best effort para observabilidade não crítica.
-- Idempotência em APIs de pagamento.
-- Separação entre estado oficial e trilha operacional.
-- Segurança em profundidade.
-- Evolução de schema com Flyway.
-- Contratos HTTP documentados.
-- Testabilidade por camadas.
-- CI/CD e segurança da cadeia de entrega.
+## Logs
 
-Uma explicação resumida para entrevistas:
-
-> “Mantive pedidos, pagamentos e idempotência no PostgreSQL porque são dados transacionais e exigem consistência forte. Usei MongoDB para registrar tentativas operacionais de webhooks, pois o payload e os metadados podem variar. A escrita documental é best effort e não interrompe o pagamento caso o MongoDB esteja indisponível.”
+```bash
+docker compose \
+  --env-file .env.local \
+  --profile full \
+  logs \
+  -f
+```
 
 ---
 
-## Próximas evoluções
+# Próximas evoluções
 
 - Testcontainers para PostgreSQL e MongoDB reais.
-- Métricas próprias para webhooks processados, duplicados e com erro.
-- Retry assíncrono ou padrão Outbox para registros operacionais.
-- Índices compostos definidos a partir de consultas reais.
-- Endpoint de detalhe sem carregar payload na listagem.
-- Sanitização específica para payloads de gateways reais.
+- Alertmanager para roteamento de notificações.
+- Outbox ou mecanismo equivalente para processamento assíncrono.
+- Índices adicionais orientados por consultas reais.
 - Redis para rate limiting distribuído.
-- Mensageria com Kafka ou RabbitMQ.
-- Observabilidade distribuída com OpenTelemetry.
-- Deploy em Kubernetes ou serviço gerenciado.
+- Kafka ou RabbitMQ para mensageria.
+- OpenTelemetry para tracing distribuído.
+- Deploy em Kubernetes ou infraestrutura gerenciada.
 
 ---
 
@@ -1105,4 +1459,4 @@ Uma explicação resumida para entrevistas:
 
 **Filipe Xavier**
 
-Projeto desenvolvido para estudo, prática e portfólio com foco em desenvolvimento Back-end Java.
+Projeto desenvolvido com foco em estudo, prática e desenvolvimento de uma API Back-end Java completa.
