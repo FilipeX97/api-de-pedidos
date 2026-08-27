@@ -1,5 +1,6 @@
 package br.com.api.pedidos.payment.webhook.service;
 
+import br.com.api.pedidos.observability.metrics.MetricasWebhookService;
 import br.com.api.pedidos.payment.adapter.fake
         .GatewayPagamentoFakeConsulta;
 import br.com.api.pedidos.payment.dto.PagamentoResponseDTO;
@@ -18,6 +19,8 @@ import br.com.api.pedidos.payment.webhook.service.result
         .ResultadoRegistroWebhook;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -64,6 +67,8 @@ class FakePagamentoWebhookServiceTest {
             registroOperacionalWebhookPagamentoService;
 
     private FakePagamentoWebhookService service;
+    private SimpleMeterRegistry meterRegistry;
+    private MetricasWebhookService metricasWebhookService;
 
     @BeforeEach
     void setUp() {
@@ -73,14 +78,28 @@ class FakePagamentoWebhookServiceTest {
                 new JavaTimeModule()
         );
 
+        meterRegistry =
+                new SimpleMeterRegistry();
+
+        metricasWebhookService =
+                new MetricasWebhookService(
+                        meterRegistry
+                );
+
         service = new FakePagamentoWebhookService(
                 objectMapper,
                 assinaturaWebhookFakeService,
                 gatewayPagamentoFakeConsulta,
                 checkoutFacade,
                 webhookPagamentoRecebidoService,
-                registroOperacionalWebhookPagamentoService
+                registroOperacionalWebhookPagamentoService,
+                metricasWebhookService
         );
+    }
+
+    @AfterEach
+    void tearDown() {
+        meterRegistry.close();
     }
 
     @Test
@@ -128,6 +147,49 @@ class FakePagamentoWebhookServiceTest {
                         payload,
                         "assinatura"
                 );
+
+        assertEquals(
+                1.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.recebidos")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                1.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.processados")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                0.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.duplicados")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                0.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.erros")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                1L,
+                meterRegistry
+                        .get(
+                                "api.pedidos.webhook."
+                                        + "processamento.duracao"
+                        )
+                        .timer()
+                        .count()
+        );
 
         assertEquals(
                 StatusPagamento.APROVADO,
@@ -212,6 +274,49 @@ class FakePagamentoWebhookServiceTest {
                 );
 
         assertEquals(
+                1.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.recebidos")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                1.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.duplicados")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                0.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.processados")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                0.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.erros")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                1L,
+                meterRegistry
+                        .get(
+                                "api.pedidos.webhook."
+                                        + "processamento.duracao"
+                        )
+                        .timer()
+                        .count()
+        );
+
+        assertEquals(
                 StatusPagamento.APROVADO,
                 resultado.statusPagamento()
         );
@@ -289,6 +394,33 @@ class FakePagamentoWebhookServiceTest {
         );
 
         verifyNoInteractions(checkoutFacade);
+
+        assertEquals(
+                0.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.recebidos")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                0.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.erros")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                0L,
+                meterRegistry
+                        .get(
+                                "api.pedidos.webhook."
+                                        + "processamento.duracao"
+                        )
+                        .timer()
+                        .count()
+        );
     }
 
     @Test
@@ -340,6 +472,49 @@ class FakePagamentoWebhookServiceTest {
                         payload,
                         "assinatura"
                 );
+
+        assertEquals(
+                1.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.recebidos")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                1.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.duplicados")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                1.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.processados")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                0.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.erros")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                1L,
+                meterRegistry
+                        .get(
+                                "api.pedidos.webhook."
+                                        + "processamento.duracao"
+                        )
+                        .timer()
+                        .count()
+        );
 
         assertEquals(
                 StatusPagamento.APROVADO,
@@ -427,6 +602,49 @@ class FakePagamentoWebhookServiceTest {
         assertSame(
                 exception,
                 exceptionLancada
+        );
+
+        assertEquals(
+                1.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.recebidos")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                0.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.processados")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                0.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.duplicados")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                1.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.erros")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                1L,
+                meterRegistry
+                        .get(
+                                "api.pedidos.webhook."
+                                        + "processamento.duracao"
+                        )
+                        .timer()
+                        .count()
         );
 
         verify(gatewayPagamentoFakeConsulta)
@@ -569,6 +787,49 @@ class FakePagamentoWebhookServiceTest {
         assertSame(
                 exception,
                 exceptionLancada
+        );
+
+        assertEquals(
+                1.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.recebidos")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                0.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.processados")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                0.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.duplicados")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                1.0,
+                meterRegistry
+                        .get("api.pedidos.webhooks.erros")
+                        .counter()
+                        .count()
+        );
+
+        assertEquals(
+                1L,
+                meterRegistry
+                        .get(
+                                "api.pedidos.webhook."
+                                        + "processamento.duracao"
+                        )
+                        .timer()
+                        .count()
         );
 
         verify(registroOperacionalWebhookPagamentoService)

@@ -3,6 +3,7 @@ package br.com.api.pedidos.security.config;
 import br.com.api.pedidos.security.filter.JwtFiltroAutenticacao;
 import br.com.api.pedidos.security.filter.FiltroIntervaloRequisicao;
 import br.com.api.pedidos.security.handler.ManipuladorAcessoNegado;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -35,6 +36,9 @@ public class SegurancaConfig {
             "/actuator/info"
     };
 
+    private static final String ROTA_PROMETHEUS = "/actuator/prometheus";
+    private final boolean prometheusPublico;
+
     private final JwtFiltroAutenticacao jwtFiltroAutenticacao;
     private final FiltroIntervaloRequisicao filtroIntervaloRequisicao;
     private final ManipuladorAcessoNegado manipuladorAcessoNegado;
@@ -42,10 +46,14 @@ public class SegurancaConfig {
     public SegurancaConfig(
             JwtFiltroAutenticacao jwtFiltroAutenticacao,
             FiltroIntervaloRequisicao filtroIntervaloRequisicao,
-            ManipuladorAcessoNegado manipuladorAcessoNegado) {
+            ManipuladorAcessoNegado manipuladorAcessoNegado,
+            @Value("${api.observabilidade.prometheus-publico:false}")
+            boolean prometheusPublico
+    ) {
         this.jwtFiltroAutenticacao = jwtFiltroAutenticacao;
         this.filtroIntervaloRequisicao = filtroIntervaloRequisicao;
         this.manipuladorAcessoNegado = manipuladorAcessoNegado;
+        this.prometheusPublico = prometheusPublico;
     }
 
     @Bean
@@ -63,21 +71,30 @@ public class SegurancaConfig {
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(
-                        auth -> auth
-                                .requestMatchers(ROTAS_SWAGGER).permitAll()
-                                .requestMatchers(ROTAS_ACTUATOR_PUBLICAS).permitAll()
-                                .requestMatchers(
-                                        "/actuator/metrics",
-                                        "/actuator/metrics/**"
-                                ).hasRole("ADMIN")
-                                .requestMatchers(
-                                        HttpMethod.POST,
-                                        "/auth/login",
-                                        "/auth/refresh",
-                                        "/auth/registrar").permitAll()
-                                .requestMatchers("/webhooks/**").permitAll()
-                                .requestMatchers("/admin/**").hasRole("ADMIN")
-                                .anyRequest().authenticated()
+                        auth -> {
+                            auth
+                                    .requestMatchers(ROTAS_SWAGGER).permitAll()
+                                    .requestMatchers(ROTAS_ACTUATOR_PUBLICAS).permitAll();
+
+                            if (prometheusPublico)
+                                auth.requestMatchers(ROTA_PROMETHEUS).permitAll();
+                            else
+                                auth.requestMatchers(ROTA_PROMETHEUS).hasRole("ADMIN");
+
+                            auth
+                                    .requestMatchers(
+                                            "/actuator/metrics",
+                                            "/actuator/metrics/**"
+                                    ).hasRole("ADMIN")
+                                    .requestMatchers(
+                                            HttpMethod.POST,
+                                            "/auth/login",
+                                            "/auth/refresh",
+                                            "/auth/registrar").permitAll()
+                                    .requestMatchers("/webhooks/**").permitAll()
+                                    .requestMatchers("/admin/**").hasRole("ADMIN")
+                                    .anyRequest().authenticated();
+                        }
                 )
                 .exceptionHandling(
                         exception ->

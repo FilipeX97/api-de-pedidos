@@ -1,5 +1,6 @@
 package br.com.api.pedidos.payment.service;
 
+import br.com.api.pedidos.observability.metrics.MetricasPagamentoService;
 import br.com.api.pedidos.order.entity.Pedido;
 import br.com.api.pedidos.payment.adapter.ResultadoPagamento;
 import br.com.api.pedidos.payment.adapter.fake.GatewayPagamentoFakeConsulta;
@@ -27,14 +28,17 @@ public class PagamentoService {
     private final PagamentoRepository pagamentoRepository;
     private final EstrategiaPagamentoFactory estrategiaPagamentoFactory;
     private final GatewayPagamentoFakeConsulta gatewayPagamentoFakeConsulta;
+    private final MetricasPagamentoService metricasPagamentoService;
 
     public PagamentoService(
             PagamentoRepository pagamentoRepository,
             EstrategiaPagamentoFactory estrategiaPagamentoFactory,
-            GatewayPagamentoFakeConsulta gatewayPagamentoFakeConsulta) {
+            GatewayPagamentoFakeConsulta gatewayPagamentoFakeConsulta,
+            MetricasPagamentoService metricasPagamentoService) {
         this.pagamentoRepository = pagamentoRepository;
         this.estrategiaPagamentoFactory = estrategiaPagamentoFactory;
         this.gatewayPagamentoFakeConsulta = gatewayPagamentoFakeConsulta;
+        this.metricasPagamentoService = metricasPagamentoService;
     }
 
     @Transactional
@@ -51,6 +55,7 @@ public class PagamentoService {
         );
 
         pagamentoRepository.saveAndFlush(pagamento);
+        metricasPagamentoService.registrarPagamentoIniciado(formaPagamento);
         var estrategia = estrategiaPagamentoFactory.obter(formaPagamento);
 
         log.info(
@@ -147,7 +152,13 @@ public class PagamentoService {
                     "Pagamento confirmado pelo gateway fake via webhook"
             );
 
-            return pagamentoRepository.saveAndFlush(pagamento);
+            Pagamento pagamentoSalvo = pagamentoRepository.saveAndFlush(pagamento);
+
+            metricasPagamentoService.registrarPagamentoAprovado(
+                    pagamentoSalvo.getFormaPagamento()
+            );
+
+            return pagamentoSalvo;
         }
 
         if (statusConfirmado == StatusPagamento.RECUSADO) {
@@ -166,7 +177,18 @@ public class PagamentoService {
                     "Pagamento recusado pelo gateway fake via webhook"
             );
 
-            return pagamentoRepository.saveAndFlush(pagamento);
+            pagamento.recusar(
+                    codigoTransacao,
+                    "Pagamento recusado pelo gateway fake via webhook"
+            );
+
+            Pagamento pagamentoSalvo = pagamentoRepository.saveAndFlush(pagamento);
+
+            metricasPagamentoService.registrarPagamentoRecusado(
+                    pagamentoSalvo.getFormaPagamento()
+            );
+
+            return pagamentoSalvo;
         }
 
         throw new IllegalStateException(
@@ -190,12 +212,18 @@ public class PagamentoService {
 
     private void aplicarResultado(
             Pagamento pagamento,
-            ResultadoPagamento resultado) {
+            ResultadoPagamento resultado
+    ) {
         if (resultado.statusPagamento() == StatusPagamento.APROVADO) {
             pagamento.aprovar(
                     resultado.codigoTransacao(),
                     resultado.mensagem()
             );
+
+            metricasPagamentoService.registrarPagamentoAprovado(
+                    pagamento.getFormaPagamento()
+            );
+
             return;
         }
 
@@ -204,6 +232,11 @@ public class PagamentoService {
                     resultado.codigoTransacao(),
                     resultado.mensagem()
             );
+
+            metricasPagamentoService.registrarPagamentoRecusado(
+                    pagamento.getFormaPagamento()
+            );
+
             return;
         }
 
@@ -211,6 +244,10 @@ public class PagamentoService {
             pagamento.deixarPendente(
                     resultado.codigoTransacao(),
                     resultado.mensagem()
+            );
+
+            metricasPagamentoService.registrarPagamentoPendente(
+                    pagamento.getFormaPagamento()
             );
 
             gatewayPagamentoFakeConsulta.registrarPagamentoPendente(

@@ -18,6 +18,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -47,17 +48,24 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
             "/auth/registrar"
     );
 
+    private static final String ROTA_PROMETHEUS = "/actuator/prometheus";
+    private final boolean prometheusPublico;
+
     public JwtFiltroAutenticacao(
             JwtService jwtService,
             TokenBlacklistService tokenBlacklistService,
             UsuarioAutenticacaoService usuarioAutenticacaoService,
             TokenRenovacaoService tokenRenovacaoService,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            @Value("${api.observabilidade.prometheus-publico:false}")
+            boolean prometheusPublico
+    ) {
         this.jwtService = jwtService;
         this.tokenBlacklistService = tokenBlacklistService;
         this.usuarioAutenticacaoService = usuarioAutenticacaoService;
         this.tokenRenovacaoService = tokenRenovacaoService;
         this.objectMapper = objectMapper;
+        this.prometheusPublico = prometheusPublico;
     }
 
     @Override
@@ -73,7 +81,8 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
                 || uri.startsWith("/v3/api-docs/")
                 || uri.equals("/actuator/health")
                 || uri.startsWith("/actuator/health/")
-                || uri.equals("/actuator/info");
+                || uri.equals("/actuator/info")
+                || (prometheusPublico && uri.equals(ROTA_PROMETHEUS));
     }
 
     @Override

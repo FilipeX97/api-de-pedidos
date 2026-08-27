@@ -1,0 +1,90 @@
+groups:
+  - name: api-de-pedidos-slo
+    interval: 30s
+
+    rules:
+
+      # Total de requisicoes HTTP por segundo.
+      - record: api_pedidos:http_requests_rate5m
+        expr: |
+          sum(
+            rate(
+              http_server_requests_seconds_count{
+                job="api-de-pedidos",
+                uri!~"/actuator/.*"
+              }[5m]
+            )
+          )
+
+      # Requisicoes HTTP 5xx por segundo.
+      - record: api_pedidos:http_requests_5xx_rate5m
+        expr: |
+          sum(
+            rate(
+              http_server_requests_seconds_count{
+                job="api-de-pedidos",
+                status=~"5..",
+                uri!~"/actuator/.*"
+              }[5m]
+            )
+          )
+
+      # SLI de disponibilidade HTTP.
+      - record: api_pedidos:http_availability_ratio5m
+        expr: |
+          1 -
+          (
+            api_pedidos:http_requests_5xx_rate5m
+            /
+            clamp_min(
+              api_pedidos:http_requests_rate5m,
+              0.001
+            )
+          )
+
+      # SLI de latencia p95.
+      - record: api_pedidos:http_latency_p95_5m
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(
+              rate(
+                http_server_requests_seconds_bucket{
+                  job="api-de-pedidos",
+                  uri!~"/actuator/.*"
+                }[5m]
+              )
+            ) by (le)
+          )
+
+      # Webhooks recebidos por segundo.
+      - record: api_pedidos:webhooks_received_rate5m
+        expr: |
+          sum(
+            rate(
+              api_pedidos_webhooks_recebidos_total{
+                job="api-de-pedidos"
+              }[5m]
+            )
+          )
+
+      # Webhooks com erro por segundo.
+      - record: api_pedidos:webhooks_error_rate5m
+        expr: |
+          sum(
+            rate(
+              api_pedidos_webhooks_erros_total{
+                job="api-de-pedidos"
+              }[5m]
+            )
+          )
+
+      # SLI operacional de erro de webhook.
+      - record: api_pedidos:webhooks_error_ratio5m
+        expr: |
+          api_pedidos:webhooks_error_rate5m
+          /
+          clamp_min(
+            api_pedidos:webhooks_received_rate5m,
+            0.001
+          )

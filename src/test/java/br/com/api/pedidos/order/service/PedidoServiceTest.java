@@ -2,6 +2,7 @@ package br.com.api.pedidos.order.service;
 
 import br.com.api.pedidos.coupon.entity.Cupom;
 import br.com.api.pedidos.coupon.service.CupomService;
+import br.com.api.pedidos.observability.metrics.MetricasPedidoService;
 import br.com.api.pedidos.order.dto.AdicionarPedidoRequestDTO;
 import br.com.api.pedidos.order.dto.AlterarQuantidadeItemRequestDTO;
 import br.com.api.pedidos.order.dto.PedidoResponseDTO;
@@ -57,6 +58,9 @@ class PedidoServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private MetricasPedidoService metricasPedidoService;
+
     private PedidoService pedidoService;
 
     @BeforeEach
@@ -88,7 +92,8 @@ class PedidoServiceTest {
                 cupomService,
                 motorPromocao,
                 estadoPedidoFactory,
-                eventPublisher
+                eventPublisher,
+                metricasPedidoService
         );
     }
 
@@ -100,8 +105,8 @@ class PedidoServiceTest {
             Usuario usuario = novoUsuario();
             configurarSaveAndFlush();
 
-            PedidoResponseDTO resposta =
-                    pedidoService.criarPedido(usuario);
+            PedidoResponseDTO resposta = pedidoService.criarPedido(usuario);
+            verify(metricasPedidoService).registrarPedidoCriado();
 
             assertAll(
                     () -> assertEquals(
@@ -157,7 +162,8 @@ class PedidoServiceTest {
 
             verifyNoInteractions(
                     pedidoRepository,
-                    eventPublisher
+                    eventPublisher,
+                    metricasPedidoService
             );
         }
 

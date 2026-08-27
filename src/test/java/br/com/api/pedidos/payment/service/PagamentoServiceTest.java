@@ -1,5 +1,6 @@
 package br.com.api.pedidos.payment.service;
 
+import br.com.api.pedidos.observability.metrics.MetricasPagamentoService;
 import br.com.api.pedidos.order.entity.Pedido;
 import br.com.api.pedidos.payment.adapter.ResultadoPagamento;
 import br.com.api.pedidos.payment.adapter.fake.GatewayPagamentoFakeConsulta;
@@ -46,6 +47,9 @@ class PagamentoServiceTest {
 
     @Mock
     private EstrategiaPagamento estrategiaPagamento;
+
+    @Mock
+    private MetricasPagamentoService metricasPagamentoService;
 
     @InjectMocks
     private PagamentoService pagamentoService;
@@ -123,6 +127,16 @@ class PagamentoServiceTest {
             verify(estrategiaPagamento)
                     .processar(pagamento);
 
+            verify(metricasPagamentoService)
+                    .registrarPagamentoIniciado(
+                            FormaPagamento.CARTAO_CREDITO
+                    );
+
+            verify(metricasPagamentoService)
+                    .registrarPagamentoAprovado(
+                            FormaPagamento.CARTAO_CREDITO
+                    );
+
             verify(
                     gatewayPagamentoFakeConsulta,
                     never()
@@ -182,6 +196,16 @@ class PagamentoServiceTest {
             verify(pagamentoRepository, times(2))
                     .saveAndFlush(pagamento);
 
+            verify(metricasPagamentoService)
+                    .registrarPagamentoIniciado(
+                            FormaPagamento.CARTAO_CREDITO
+                    );
+
+            verify(metricasPagamentoService)
+                    .registrarPagamentoRecusado(
+                            FormaPagamento.CARTAO_CREDITO
+                    );
+
             verify(
                     gatewayPagamentoFakeConsulta,
                     never()
@@ -237,6 +261,16 @@ class PagamentoServiceTest {
                             pagamento.getMensagemRetorno()
                     )
             );
+
+            verify(metricasPagamentoService)
+                    .registrarPagamentoIniciado(
+                            FormaPagamento.PIX
+                    );
+
+            verify(metricasPagamentoService)
+                    .registrarPagamentoPendente(
+                            FormaPagamento.PIX
+                    );
 
             verify(
                     gatewayPagamentoFakeConsulta
@@ -708,6 +742,21 @@ class PagamentoServiceTest {
                                     "PIX-123"
                             );
 
+            verify(
+                    metricasPagamentoService,
+                    never()
+            ).registrarPagamentoAprovado(any());
+
+            verify(
+                    metricasPagamentoService,
+                    never()
+            ).registrarPagamentoRecusado(any());
+
+            verify(
+                    metricasPagamentoService,
+                    never()
+            ).registrarPagamentoPendente(any());
+
             assertAll(
                     () -> assertSame(
                             pagamento,
@@ -752,6 +801,11 @@ class PagamentoServiceTest {
                             .processarConfirmacaoDoGateway(
                                     "PIX-123"
                             );
+
+            verify(metricasPagamentoService)
+                    .registrarPagamentoAprovado(
+                            FormaPagamento.PIX
+                    );
 
             assertAll(
                     () -> assertSame(
@@ -851,6 +905,11 @@ class PagamentoServiceTest {
                             .processarConfirmacaoDoGateway(
                                     "BOL-123"
                             );
+
+            verify(metricasPagamentoService)
+                    .registrarPagamentoRecusado(
+                            FormaPagamento.BOLETO
+                    );
 
             assertAll(
                     () -> assertSame(

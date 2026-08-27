@@ -1,0 +1,84 @@
+groups:
+
+  - name: api-de-pedidos-alertas
+    interval: 30s
+
+    rules:
+
+      - alert: ApiPedidosIndisponivel
+        expr: up{job="api-de-pedidos"} == 0
+        for: 2m
+
+        labels:
+          severity: critical
+          service: api-de-pedidos
+          category: availability
+
+        annotations:
+          summary: "API de Pedidos indisponível"
+          description: "O target da API de Pedidos está DOWN há mais de 2 minutos."
+          runbook: "Verificar container da API, logs da aplicação, readiness e dependências."
+
+      - alert: ApiPedidosAltaTaxa5xx
+        expr: |
+          (
+            api_pedidos:http_requests_5xx_rate5m
+            /
+            clamp_min(
+              api_pedidos:http_requests_rate5m,
+              0.001
+            )
+          ) > 0.05
+        for: 5m
+
+        labels:
+          severity: critical
+          service: api-de-pedidos
+          category: http
+
+        annotations:
+          summary: "Alta taxa de erros HTTP 5xx"
+          description: "Mais de 5% das requisições da API estão retornando HTTP 5xx."
+          runbook: "Verificar dashboard JVM/HTTP, logs, banco e dependências externas."
+
+      - alert: ApiPedidosSloDisponibilidade
+        expr: api_pedidos:http_availability_ratio5m < 0.995
+        for: 10m
+
+        labels:
+          severity: warning
+          service: api-de-pedidos
+          category: slo
+
+        annotations:
+          summary: "SLO de disponibilidade abaixo do objetivo"
+          description: "A disponibilidade HTTP está abaixo do SLO definido de 99,5%."
+          runbook: "Consultar dashboard SLI/SLO e investigar aumento de 5xx."
+
+      - alert: ApiPedidosAltaLatenciaP95
+        expr: api_pedidos:http_latency_p95_5m > 0.5
+        for: 10m
+
+        labels:
+          severity: warning
+          service: api-de-pedidos
+          category: latency
+
+        annotations:
+          summary: "Latência p95 acima do SLO"
+          description: "A latência p95 HTTP está acima de 500 ms há mais de 10 minutos."
+          runbook: "Consultar dashboard JVM/HTTP e verificar banco, pool Hikari, CPU e GC."
+
+      - alert: ApiPedidosAltaTaxaErroWebhook
+        expr: api_pedidos:webhooks_error_ratio5m > 0.01
+        for: 10m
+
+        labels:
+          severity: warning
+          service: api-de-pedidos
+          category: webhook
+
+        annotations:
+          summary: "Taxa de erro de webhook acima do objetivo"
+          description: "Mais de 1% dos webhooks recebidos estão terminando com erro."
+          runbook: "Consultar dashboard Pagamentos/Webhooks e os registros operacionais."
