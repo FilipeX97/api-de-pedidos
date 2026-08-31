@@ -143,7 +143,7 @@ services:
     profiles:
       - observability
 
-    image: grafana/grafana:13.1.1
+    image: grafana/grafana:13.2.0
     container_name: api-pedidos-release-grafana
     restart: unless-stopped
 
