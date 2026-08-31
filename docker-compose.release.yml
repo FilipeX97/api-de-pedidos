@@ -110,7 +110,7 @@ services:
     profiles:
       - observability
 
-    image: prom/prometheus:v3.13.1
+    image: prom/prometheus:v3.14.0
     container_name: api-pedidos-release-prometheus
     restart: unless-stopped
 
