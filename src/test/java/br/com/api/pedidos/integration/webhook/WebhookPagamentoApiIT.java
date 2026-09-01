@@ -1,7 +1,11 @@
 package br.com.api.pedidos.integration.webhook;
 
 import br.com.api.pedidos.integration.container.ContainersIntegracao;
+import br.com.api.pedidos.payment.adapter.fake.entity.TransacaoGatewayFake;
+import br.com.api.pedidos.payment.adapter.fake.repository.TransacaoGatewayFakeRepository;
+import br.com.api.pedidos.payment.entity.Pagamento;
 import br.com.api.pedidos.payment.entity.StatusPagamento;
+import br.com.api.pedidos.payment.repository.PagamentoRepository;
 import br.com.api.pedidos.payment.webhook.document.entity.RegistroOperacionalWebhookPagamento;
 import br.com.api.pedidos.payment.webhook.document.entity.StatusRegistroOperacionalWebhook;
 import br.com.api.pedidos.payment.webhook.document.repository.RegistroOperacionalWebhookPagamentoRepository;
@@ -54,6 +58,12 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
     private RegistroOperacionalWebhookPagamentoRepository registroOperacionalWebhookPagamentoRepository;
 
     @Autowired
+    private PagamentoRepository pagamentoRepository;
+
+    @Autowired
+    private TransacaoGatewayFakeRepository transacaoGatewayFakeRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -77,10 +87,10 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
     @Test
     void deveProcessarWebhookDeAprovacaoEAtualizarPostgreSQLEMongoDB() {
         String token = realizarLogin();
-        Long produtoId = criarProduto(BigDecimal.valueOf(100));
+        Long produtoId = criarProduto(BigDecimal.valueOf(100), 20);
         Long pedidoId = criarPedido(token);
 
-        adicionarItem(token, pedidoId, produtoId);
+        adicionarItem(token, pedidoId, produtoId, 2);
 
         Response respostaPagamento = criarPagamentoPix(token, pedidoId);
 
@@ -96,7 +106,8 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
 
         String payload = criarPayloadWebhook(
                 eventId,
-                codigoTransacao
+                codigoTransacao,
+                "APROVADO"
         );
 
         String assinatura = assinaturaWebhookFakeService.gerarAssinatura(payload);
@@ -119,7 +130,7 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
                 .body("dados.mensagem", equalTo("Pagamento confirmado pelo gateway fake via webhook"))
                 .body("mensagem", equalTo("Webhook de pagamento processado com sucesso"));
 
-        consultarPedidoEsperandoStatus(token, pedidoId);
+        consultarPedidoEsperandoStatus(token, pedidoId, "PAGO");
 
         WebhookPagamentoRecebido webhook = webhookPagamentoRecebidoRepository
                 .findByEventId(eventId)
@@ -156,10 +167,10 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
     @Test
     void deveIgnorarWebhookDuplicadoJaProcessado() {
         String token = realizarLogin();
-        Long produtoId = criarProduto(BigDecimal.valueOf(100));
+        Long produtoId = criarProduto(BigDecimal.valueOf(100), 20);
         Long pedidoId = criarPedido(token);
 
-        adicionarItem(token, pedidoId, produtoId);
+        adicionarItem(token, pedidoId, produtoId, 2);
 
         Response respostaPagamento = criarPagamentoPix(token, pedidoId);
 
@@ -173,7 +184,8 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
 
         String payload = criarPayloadWebhook(
                 eventId,
-                codigoTransacao
+                codigoTransacao,
+                "APROVADO"
         );
 
         String assinatura = assinaturaWebhookFakeService.gerarAssinatura(payload);
@@ -259,11 +271,11 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
 
         String payload = criarPayloadWebhook(
                 eventId,
-                "PIX-INEXISTENTE"
+                "PIX-INEXISTENTE",
+                "APROVADO"
         );
 
-        String assinaturaInvalida =
-                "0000000000000000000000000000000000000000000000000000000000000000";
+        String assinaturaInvalida = "0000000000000000000000000000000000000000000000000000000000000000";
 
         requisicao(porta)
                 .header("User-Agent", USER_AGENT)
@@ -284,6 +296,133 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
                 .toList();
 
         assertTrue(registros.isEmpty());
+    }
+
+    @Test
+    void deveReprocessarWebhookAposErro() {
+        String token = realizarLogin();
+        Long produtoId = criarProduto(BigDecimal.valueOf(6000), 10);
+        Long pedidoId = criarPedido(token);
+
+        adicionarItem(token, pedidoId, produtoId, 1);
+
+        Response respostaPagamento = criarPagamentoCartao(token, pedidoId);
+
+        respostaPagamento.then()
+                .statusCode(201)
+                .body("sucesso", equalTo(true))
+                .body("dados.statusPagamento", equalTo("RECUSADO"));
+
+        String codigoTransacao = respostaPagamento.jsonPath().getString("dados.codigoTransacao");
+
+        String eventId = "evt-reprocessamento-" + System.nanoTime();
+        String requestId = "request-reprocessamento-" + System.nanoTime();
+
+        String payload = criarPayloadWebhook(eventId, codigoTransacao, "APROVADO");
+        String assinatura = assinaturaWebhookFakeService.gerarAssinatura(payload);
+
+        requisicao(porta)
+                .header("User-Agent", USER_AGENT)
+                .header("X-Request-Id", requestId)
+                .header("X-Fake-Gateway-Signature", assinatura)
+                .contentType("application/json")
+                .body(payload)
+                .when()
+                .post("/webhooks/payments/fake")
+                .then()
+                .statusCode(500)
+                .body("sucesso", equalTo(false))
+                .body("mensagem", equalTo("Erro interno inesperado"));
+
+        WebhookPagamentoRecebido webhookComErro = webhookPagamentoRecebidoRepository
+                .findByEventId(eventId)
+                .orElseThrow(() -> new AssertionError("Webhook não foi encontrado no PostgreSQL após o erro"));
+
+        assertEquals(StatusProcessamentoWebhook.ERRO, webhookComErro.getStatusProcessamento());
+        assertNotNull(webhookComErro.getMensagemErro());
+
+        List<RegistroOperacionalWebhookPagamento> registrosAposErro = registroOperacionalWebhookPagamentoRepository
+                .findAll()
+                .stream()
+                .filter(registro -> eventId.equals(registro.getEventId()))
+                .toList();
+
+        assertEquals(1, registrosAposErro.size());
+
+        RegistroOperacionalWebhookPagamento registroAposErro = registrosAposErro.getFirst();
+
+        assertEquals(StatusRegistroOperacionalWebhook.ERRO, registroAposErro.getStatusProcessamento());
+        assertFalse(registroAposErro.isDuplicado());
+        assertNotNull(registroAposErro.getMensagemErro());
+        assertEquals(requestId, registroAposErro.getRequestId());
+
+        colocarPagamentoETransacaoGatewayComoPendentes(codigoTransacao);
+
+        requisicao(porta)
+                .header("User-Agent", USER_AGENT)
+                .header("X-Request-Id", requestId + "-retry")
+                .header("X-Fake-Gateway-Signature", assinatura)
+                .contentType("application/json")
+                .body(payload)
+                .when()
+                .post("/webhooks/payments/fake")
+                .then()
+                .statusCode(200)
+                .body("sucesso", equalTo(true))
+                .body("dados.idPedido", equalTo(pedidoId))
+                .body("dados.formaPagamento", equalTo("CARTAO_CREDITO"))
+                .body("dados.statusPagamento", equalTo("APROVADO"))
+                .body("dados.codigoTransacao", equalTo(codigoTransacao))
+                .body("dados.mensagem", equalTo("Pagamento confirmado pelo gateway fake via webhook"))
+                .body("mensagem", equalTo("Webhook de pagamento processado com sucesso"));
+
+        WebhookPagamentoRecebido webhookProcessado = webhookPagamentoRecebidoRepository
+                .findByEventId(eventId)
+                .orElseThrow(() -> new AssertionError("Webhook não foi encontrado no PostgreSQL após o reprocessamento"));
+
+        assertEquals(StatusProcessamentoWebhook.PROCESSADO, webhookProcessado.getStatusProcessamento());
+        assertNull(webhookProcessado.getMensagemErro());
+
+        List<RegistroOperacionalWebhookPagamento> registrosFinais = registroOperacionalWebhookPagamentoRepository
+                .findAll()
+                .stream()
+                .filter(registro -> eventId.equals(registro.getEventId()))
+                .toList();
+
+        assertEquals(2, registrosFinais.size());
+
+        long registrosComErro = registrosFinais.stream()
+                .filter(registro -> registro.getStatusProcessamento() == StatusRegistroOperacionalWebhook.ERRO)
+                .count();
+
+        long registrosProcessados = registrosFinais.stream()
+                .filter(registro -> registro.getStatusProcessamento() == StatusRegistroOperacionalWebhook.PROCESSADO)
+                .count();
+
+        assertEquals(1, registrosComErro);
+        assertEquals(1, registrosProcessados);
+
+        RegistroOperacionalWebhookPagamento registroProcessado = registrosFinais.stream()
+                .filter(registro -> registro.getStatusProcessamento() == StatusRegistroOperacionalWebhook.PROCESSADO)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Registro PROCESSADO não encontrado"));
+
+        assertEquals(requestId + "-retry", registroProcessado.getRequestId());
+        assertFalse(registroProcessado.isDuplicado());
+        assertNull(registroProcessado.getMensagemErro());
+
+        requisicao(porta)
+                .header("User-Agent", USER_AGENT)
+                .header("Authorization", "Bearer " + token)
+                .when()
+                .get("/orders/" + pedidoId + "/payments")
+                .then()
+                .statusCode(200)
+                .body("sucesso", equalTo(true))
+                .body("dados.size()", equalTo(1))
+                .body("dados[0].statusPagamento", equalTo("APROVADO"));
+
+        consultarPedidoEsperandoStatus(token, pedidoId, "PAGO");
     }
 
     private String realizarLogin() {
@@ -311,12 +450,12 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
         return token;
     }
 
-    private Long criarProduto(BigDecimal preco) {
+    private Long criarProduto(BigDecimal preco, int estoque) {
         Produto produto = new Produto(
                 "Produto Webhook " + System.nanoTime(),
                 "Produto criado para teste de webhook",
                 preco,
-                20
+                estoque
         );
 
         return produtoRepository.saveAndFlush(produto).getId();
@@ -335,7 +474,7 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
         return resposta.jsonPath().getLong("dados.idPedido");
     }
 
-    private void adicionarItem(String token, Long pedidoId, Long produtoId) {
+    private void adicionarItem(String token, Long pedidoId, Long produtoId, int quantidade) {
         requisicao(porta)
                 .header("User-Agent", USER_AGENT)
                 .header("Authorization", "Bearer " + token)
@@ -346,7 +485,7 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
                           "produtoId": %d,
                           "quantidade": %d
                         }
-                        """.formatted(produtoId, 2))
+                        """.formatted(produtoId, quantidade))
                 .when()
                 .post("/orders/" + pedidoId + "/items")
                 .then()
@@ -368,7 +507,7 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
                 .post("/orders/" + pedidoId + "/payments");
     }
 
-    private String criarPayloadWebhook(String eventId, String codigoTransacao) {
+    private String criarPayloadWebhook(String eventId, String codigoTransacao, String statusPagamento) {
         return """
                 {
                   "eventId": "%s",
@@ -377,10 +516,10 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
                   "statusPagamento": "%s",
                   "dataEvento": "2026-09-01T18:30:00Z"
                 }
-                """.formatted(eventId, codigoTransacao, "APROVADO");
+                """.formatted(eventId, codigoTransacao, statusPagamento);
     }
 
-    private void consultarPedidoEsperandoStatus(String token, Long pedidoId) {
+    private void consultarPedidoEsperandoStatus(String token, Long pedidoId, String statusEsperado) {
         requisicao(porta)
                 .header("User-Agent", USER_AGENT)
                 .header("Authorization", "Bearer " + token)
@@ -389,6 +528,41 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
                 .then()
                 .statusCode(200)
                 .body("sucesso", equalTo(true))
-                .body("dados.status", equalTo("PAGO"));
+                .body("dados.status", equalTo(statusEsperado));
+    }
+
+    private Response criarPagamentoCartao(String token, Long pedidoId) {
+        return requisicao(porta)
+                .header("User-Agent", USER_AGENT)
+                .header("Authorization", "Bearer " + token)
+                .header("Idempotency-Key", "pagamento-webhook-cartao-" + System.nanoTime())
+                .contentType("application/json")
+                .body("""
+                    {
+                      "formaPagamento": "CARTAO_CREDITO"
+                    }
+                    """)
+                .when()
+                .post("/orders/" + pedidoId + "/payments");
+    }
+
+    private void colocarPagamentoETransacaoGatewayComoPendentes(String codigoTransacao) {
+        Pagamento pagamento = pagamentoRepository
+                .findByCodigoTransacao(codigoTransacao)
+                .orElseThrow(() -> new AssertionError("Pagamento não encontrado para preparar o reprocessamento"));
+
+        pagamento.deixarPendente(
+                codigoTransacao,
+                "Pagamento aguardando confirmação para reprocessamento"
+        );
+
+        pagamentoRepository.saveAndFlush(pagamento);
+
+        TransacaoGatewayFake transacao = transacaoGatewayFakeRepository
+                .findByCodigoTransacao(codigoTransacao)
+                .orElseThrow(() -> new AssertionError("Transação não encontrada no gateway fake"));
+
+        transacao.atualizarStatus(StatusPagamento.PENDENTE);
+        transacaoGatewayFakeRepository.saveAndFlush(transacao);
     }
 }
