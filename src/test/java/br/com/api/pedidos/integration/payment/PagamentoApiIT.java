@@ -42,9 +42,6 @@ public class PagamentoApiIT extends ContainersIntegracao {
 
     @BeforeEach
     void prepararUsuario() {
-        usuarioRepository.findByEmail(EMAIL).ifPresent(usuarioRepository::delete);
-        usuarioRepository.flush();
-
         Usuario usuario = new Usuario(
                 "Usuario Pagamento Integracao",
                 EMAIL,

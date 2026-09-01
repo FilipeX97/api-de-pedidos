@@ -1,5 +1,7 @@
 package br.com.api.pedidos.integration.container;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MongoDBContainer;
@@ -38,6 +40,14 @@ public abstract class ContainersIntegracao {
             "segredo-webhook-integracao-" +
                     "api-pedidos-" +
                     "nao-utilizar-em-producao";
+
+    @Autowired
+    private LimpezaDadosIntegracao limpezaDadosIntegracao;
+
+    @BeforeEach
+    void limparDadosAntesDoTeste() {
+        limpezaDadosIntegracao.limpar();
+    }
 
     @Container
     protected static final PostgreSQLContainer<?> POSTGRESQL =

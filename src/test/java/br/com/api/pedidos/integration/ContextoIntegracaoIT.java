@@ -1,6 +1,7 @@
 package br.com.api.pedidos.integration;
 
 import br.com.api.pedidos.integration.container.ContainersIntegracao;
+import br.com.api.pedidos.user.repository.UsuarioRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -19,6 +20,9 @@ class ContextoIntegracaoIT extends ContainersIntegracao {
     @Autowired
     private MongoTemplate mongoTemplate;
 
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
     @Test
     void contextoSpringDeveSubirComPostgreSQLEMongoDBReais() {
         assertTrue(
@@ -34,6 +38,18 @@ class ContextoIntegracaoIT extends ContainersIntegracao {
                         .collectionExists(
                                 "registro_operacional_webhook_pagamento"
                         )
+        );
+    }
+
+    @Test
+    void bancosDevemIniciarSemDadosDeAplicacao() {
+        assertTrue(usuarioRepository.count() == 0);
+
+        assertTrue(
+                !mongoTemplate.exists(
+                        new org.springframework.data.mongodb.core.query.Query(),
+                        "registro_operacional_webhook_pagamento"
+                )
         );
     }
 

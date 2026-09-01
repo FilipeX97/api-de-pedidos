@@ -71,9 +71,6 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
 
     @BeforeEach
     void prepararUsuario() {
-        usuarioRepository.findByEmail(EMAIL).ifPresent(usuarioRepository::delete);
-        usuarioRepository.flush();
-
         Usuario usuario = new Usuario(
                 "Usuario Webhook Integracao",
                 EMAIL,
