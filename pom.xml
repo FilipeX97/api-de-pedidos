@@ -215,8 +215,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
-
-                        <version>3.5.6</version>
+                        <version>3.6.0-M1</version>
 
                         <executions>
                             <execution>
@@ -232,7 +231,6 @@
                         <configuration>
                             <includes>
                                 <include>**/*IT.java</include>
-                                <include>**/*ITTest.java</include>
                             </includes>
                         </configuration>
                     </plugin>

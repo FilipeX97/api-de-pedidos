@@ -204,6 +204,40 @@ jobs:
       - name: Executar testes automatizados
         run: mvn -B -ntp test
 
+  testes-integracao:
+    name: CI / Testes de Integração
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    needs:
+      - testes-maven
+
+    steps:
+      - name: Baixar o código do repositório
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Configurar Java 21 e cache Maven
+        uses: actions/setup-java@v5
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: "maven"
+          cache-dependency-path: "pom.xml"
+
+      - name: Exibir versões das ferramentas
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          java -version
+          mvn -version
+          docker version
+
+      - name: Executar testes de integração
+        run: mvn -B -ntp verify -Pintegration
+
   empacotamento-maven:
     name: CI / Empacotamento Maven
     runs-on: ubuntu-latest
@@ -211,6 +245,7 @@ jobs:
 
     needs:
       - testes-maven
+      - testes-integracao
 
     env:
       SPRING_PROFILES_ACTIVE: "test"
