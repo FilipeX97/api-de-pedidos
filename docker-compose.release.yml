@@ -55,6 +55,36 @@ services:
       retries: 5
       start_period: 15s
 
+  rabbitmq:
+    image: rabbitmq:4.3.5-management
+    container_name: api-pedidos-release-rabbitmq
+    restart: unless-stopped
+
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "127.0.0.1:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+
+    volumes:
+      - api_pedidos_release_rabbitmq_data:/var/lib/rabbitmq
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "rabbitmq-diagnostics",
+          "-q",
+          "ping"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   api-de-pedidos:
     image: ghcr.io/filipex97/api-de-pedidos:${IMAGE_TAG:-latest}
     container_name: api-pedidos-release-api
@@ -64,6 +94,8 @@ services:
       postgres:
         condition: service_healthy
       mongo:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
     environment:
@@ -86,6 +118,13 @@ services:
       MONGO_USERNAME: ${MONGO_USERNAME}
       MONGO_PASSWORD: ${MONGO_PASSWORD}
       MONGO_AUTHENTICATION_DATABASE: ${MONGO_AUTHENTICATION_DATABASE:-admin}
+
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_MANAGEMENT_PORT: ${RABBITMQ_MANAGEMENT_PORT:-15672}
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
 
     ports:
       - "${API_PORT:-8080}:8080"
