@@ -150,7 +150,7 @@ services:
     profiles:
       - full
 
-    image: grafana/grafana:13.1.1
+    image: grafana/grafana:13.2.1
     container_name: api-pedidos-grafana
     restart: unless-stopped
 
