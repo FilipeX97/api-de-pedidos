@@ -1,0 +1,99 @@
+package br.com.api.pedidos.messaging.consumer;
+
+import br.com.api.pedidos.messaging.config.RabbitMqNomes;
+import br.com.api.pedidos.messaging.dto.PedidoEventoMensagem;
+import br.com.api.pedidos.notification.entity.TipoNotificacao;
+import br.com.api.pedidos.notification.service.NotificacaoService;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.stereotype.Component;
+
+@Component
+public class NotificacaoPedidoConsumer {
+
+    private final NotificacaoService notificacaoService;
+
+    public NotificacaoPedidoConsumer(NotificacaoService notificacaoService) {
+        this.notificacaoService = notificacaoService;
+    }
+
+    @RabbitListener(
+            queues = RabbitMqNomes.FILA_NOTIFICACOES_PEDIDO
+    )
+    public void receber(PedidoEventoMensagem mensagem) {
+        switch (mensagem.tipoEvento()) {
+            case "PEDIDO_PAGO" -> processarPedidoPago(mensagem);
+            case "PEDIDO_ENVIADO" -> processarPedidoEnviado(mensagem);
+            case "PEDIDO_ENTREGUE" -> processarPedidoEntregue(mensagem);
+            case "PEDIDO_CANCELADO" -> processarPedidoCancelado(mensagem);
+            case "PEDIDO_ESTORNADO" -> processarPedidoEstornado(mensagem);
+            default -> throw new IllegalArgumentException(
+                    "Tipo de evento de pedido não suportado: "
+                            + mensagem.tipoEvento()
+            );
+        }
+    }
+
+    private void processarPedidoPago(PedidoEventoMensagem mensagem) {
+        notificacaoService.criar(
+                mensagem.idPedido(),
+                "Pagamento confirmado",
+                "O pagamento do pedido #"
+                        + mensagem.idPedido()
+                        + " foi confirmado",
+                TipoNotificacao.PEDIDO_PAGO
+        );
+    }
+
+    private void processarPedidoEnviado(
+            PedidoEventoMensagem mensagem
+    ) {
+        notificacaoService.criar(
+                mensagem.idPedido(),
+                "Pedido enviado",
+                "Seu pedido #"
+                        + mensagem.idPedido()
+                        + " foi enviado.",
+                TipoNotificacao.PEDIDO_ENVIADO
+        );
+    }
+
+    private void processarPedidoEntregue(
+            PedidoEventoMensagem mensagem
+    ) {
+        notificacaoService.criar(
+                mensagem.idPedido(),
+                "Pedido entregue",
+                "Seu pedido #"
+                        + mensagem.idPedido()
+                        + " foi entregue.",
+                TipoNotificacao.PEDIDO_ENTREGUE
+        );
+    }
+
+    private void processarPedidoCancelado(
+            PedidoEventoMensagem mensagem
+    ) {
+        notificacaoService.criar(
+                mensagem.idPedido(),
+                "Pedido cancelado",
+                "Seu pedido #"
+                        + mensagem.idPedido()
+                        + " foi cancelado.",
+                TipoNotificacao.PEDIDO_CANCELADO
+        );
+    }
+
+    private void processarPedidoEstornado(
+            PedidoEventoMensagem mensagem
+    ) {
+        notificacaoService.criar(
+                mensagem.idPedido(),
+                "Pedido estornado",
+                "O pedido #"
+                        + mensagem.idPedido()
+                        + " foi estornado.",
+                TipoNotificacao.PEDIDO_ESTORNADO
+        );
+    }
+
+}
