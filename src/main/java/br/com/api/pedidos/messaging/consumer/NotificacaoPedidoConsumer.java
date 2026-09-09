@@ -2,6 +2,7 @@ package br.com.api.pedidos.messaging.consumer;
 
 import br.com.api.pedidos.messaging.config.RabbitMqNomes;
 import br.com.api.pedidos.messaging.dto.PedidoEventoMensagem;
+import br.com.api.pedidos.messaging.service.MensagemProcessadaService;
 import br.com.api.pedidos.notification.entity.TipoNotificacao;
 import br.com.api.pedidos.notification.service.NotificacaoService;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -11,15 +12,28 @@ import org.springframework.stereotype.Component;
 public class NotificacaoPedidoConsumer {
 
     private final NotificacaoService notificacaoService;
+    private final MensagemProcessadaService mensagemProcessadaService;
 
-    public NotificacaoPedidoConsumer(NotificacaoService notificacaoService) {
+    public NotificacaoPedidoConsumer(
+            NotificacaoService notificacaoService,
+            MensagemProcessadaService mensagemProcessadaService
+    ) {
         this.notificacaoService = notificacaoService;
+        this.mensagemProcessadaService = mensagemProcessadaService;
     }
 
     @RabbitListener(
             queues = RabbitMqNomes.FILA_NOTIFICACOES_PEDIDO
     )
     public void receber(PedidoEventoMensagem mensagem) {
+        mensagemProcessadaService.processar(
+                mensagem.idEvento(),
+                mensagem.tipoEvento(),
+                () -> processarMensagem(mensagem)
+        );
+    }
+
+    private void processarMensagem(PedidoEventoMensagem mensagem) {
         switch (mensagem.tipoEvento()) {
             case "PEDIDO_PAGO" -> processarPedidoPago(mensagem);
             case "PEDIDO_ENVIADO" -> processarPedidoEnviado(mensagem);
