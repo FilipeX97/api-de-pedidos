@@ -87,12 +87,27 @@ public class NotificacaoPedidoConsumer {
     private void processarPedidoCancelado(
             PedidoEventoMensagem mensagem
     ) {
+        boolean cancelamentoSolicitado =
+                "CANCELAMENTO_SOLICITADO".equals(
+                        mensagem.statusNovo()
+                );
+
+        String titulo = cancelamentoSolicitado
+                ? "Cancelamento solicitado"
+                : "Pedido cancelado";
+
+        String texto = cancelamentoSolicitado
+                ? "Sua solicitação de cancelamento do pedido #"
+                + mensagem.idPedido()
+                + " foi registrada."
+                : "Seu pedido #"
+                + mensagem.idPedido()
+                + " foi cancelado.";
+
         notificacaoService.criar(
                 mensagem.idPedido(),
-                "Pedido cancelado",
-                "Seu pedido #"
-                        + mensagem.idPedido()
-                        + " foi cancelado.",
+                titulo,
+                texto,
                 TipoNotificacao.PEDIDO_CANCELADO
         );
     }

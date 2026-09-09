@@ -1,5 +1,6 @@
 package br.com.api.pedidos.messaging.producer;
 
+import br.com.api.pedidos.messaging.config.RabbitMqNomes;
 import br.com.api.pedidos.messaging.dto.PedidoEventoMensagem;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -32,7 +33,7 @@ public class PedidoEventoProducerTest {
                 )
         );
 
-        producer.publicar(mensagem, "pedido.pago");
+        producer.publicar(mensagem, RabbitMqNomes.ROUTING_KEY_PEDIDO_PAGO);
 
         ArgumentCaptor<String> exchangeCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> routingKeyCaptor = ArgumentCaptor.forClass(String.class);
@@ -44,8 +45,8 @@ public class PedidoEventoProducerTest {
                 mensagemCaptor.capture()
         );
 
-        assertEquals("api.pedidos.events", exchangeCaptor.getValue());
-        assertEquals("pedido.pago", routingKeyCaptor.getValue());
+        assertEquals(RabbitMqNomes.EXCHANGE_EVENTOS, exchangeCaptor.getValue());
+        assertEquals(RabbitMqNomes.ROUTING_KEY_PEDIDO_PAGO, routingKeyCaptor.getValue());
         assertSame(mensagem, mensagemCaptor.getValue());
     }
 

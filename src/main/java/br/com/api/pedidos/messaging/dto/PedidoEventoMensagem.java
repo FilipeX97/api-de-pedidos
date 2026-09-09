@@ -10,6 +10,25 @@ public record PedidoEventoMensagem(
         Long idPedido,
         Long idUsuario,
         BigDecimal valor,
-        LocalDateTime dataHora
+        LocalDateTime dataHora,
+        String statusNovo
 ) {
+    public PedidoEventoMensagem(
+            UUID idEvento,
+            String tipoEvento,
+            Long idPedido,
+            Long idUsuario,
+            BigDecimal valor,
+            LocalDateTime dataHora
+    ) {
+        this(
+                idEvento,
+                tipoEvento,
+                idPedido,
+                idUsuario,
+                valor,
+                dataHora,
+                null
+        );
+    }
 }
