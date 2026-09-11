@@ -1,6 +1,9 @@
 package br.com.api.pedidos.integration.webhook;
 
 import br.com.api.pedidos.integration.container.ContainersIntegracao;
+import br.com.api.pedidos.order.entity.Pedido;
+import br.com.api.pedidos.order.repository.PedidoRepository;
+import br.com.api.pedidos.order.service.PedidoService;
 import br.com.api.pedidos.payment.adapter.fake.entity.TransacaoGatewayFake;
 import br.com.api.pedidos.payment.adapter.fake.repository.TransacaoGatewayFakeRepository;
 import br.com.api.pedidos.payment.entity.Pagamento;
@@ -26,6 +29,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -34,8 +38,13 @@ import static br.com.api.pedidos.integration.http.RestAssuredIntegracao.requisic
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
+)
 @ActiveProfiles("integration")
+@TestPropertySource(
+        properties = "api.security.rate-limit.enabled=false"
+)
 public class WebhookPagamentoApiIT extends ContainersIntegracao {
 
     private static final String USER_AGENT = "api-de-pedidos-integration-test";
@@ -68,6 +77,12 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
 
     @Autowired
     private AssinaturaWebhookFakeService assinaturaWebhookFakeService;
+
+    @Autowired
+    private PedidoService pedidoService;
+
+    @Autowired
+    private PedidoRepository pedidoRepository;
 
     @BeforeEach
     void prepararUsuario() {
@@ -120,7 +135,10 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
                 .then()
                 .statusCode(200)
                 .body("sucesso", equalTo(true))
-                .body("dados.idPedido", equalTo(pedidoId))
+                .body(
+                        "dados.idPedido",
+                        equalTo(pedidoId.intValue())
+                )
                 .body("dados.formaPagamento", equalTo("PIX"))
                 .body("dados.statusPagamento", equalTo("APROVADO"))
                 .body("dados.codigoTransacao", equalTo(codigoTransacao))
@@ -327,9 +345,14 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
                 .when()
                 .post("/webhooks/payments/fake")
                 .then()
-                .statusCode(500)
+                .statusCode(409)
                 .body("sucesso", equalTo(false))
-                .body("mensagem", equalTo("Erro interno inesperado"));
+                .body(
+                        "mensagem",
+                        equalTo(
+                                "Somente pagamento pendente pode ser aprovado pelo gateway"
+                        )
+                );
 
         WebhookPagamentoRecebido webhookComErro = webhookPagamentoRecebidoRepository
                 .findByEventId(eventId)
@@ -353,7 +376,9 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
         assertNotNull(registroAposErro.getMensagemErro());
         assertEquals(requestId, registroAposErro.getRequestId());
 
-        colocarPagamentoETransacaoGatewayComoPendentes(codigoTransacao);
+        colocarPagamentoETransacaoGatewayComoPendentes(
+                codigoTransacao
+        );
 
         requisicao(porta)
                 .header("User-Agent", USER_AGENT)
@@ -366,7 +391,10 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
                 .then()
                 .statusCode(200)
                 .body("sucesso", equalTo(true))
-                .body("dados.idPedido", equalTo(pedidoId))
+                .body(
+                        "dados.idPedido",
+                        equalTo(pedidoId.intValue())
+                )
                 .body("dados.formaPagamento", equalTo("CARTAO_CREDITO"))
                 .body("dados.statusPagamento", equalTo("APROVADO"))
                 .body("dados.codigoTransacao", equalTo(codigoTransacao))
@@ -405,7 +433,7 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
                 .orElseThrow(() -> new AssertionError("Registro PROCESSADO não encontrado"));
 
         assertEquals(requestId + "-retry", registroProcessado.getRequestId());
-        assertFalse(registroProcessado.isDuplicado());
+        assertTrue(registroProcessado.isDuplicado());
         assertNull(registroProcessado.getMensagemErro());
 
         requisicao(porta)
@@ -471,7 +499,7 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
         return resposta.jsonPath().getLong("dados.idPedido");
     }
 
-    private void adicionarItem(String token, Long pedidoId, Long produtoId, int quantidade) {
+    private void adicionarItem(String token, Long pedidoId, Long idProduto, int quantidade) {
         requisicao(porta)
                 .header("User-Agent", USER_AGENT)
                 .header("Authorization", "Bearer " + token)
@@ -479,10 +507,10 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
                 .contentType("application/json")
                 .body("""
                         {
-                          "produtoId": %d,
+                          "idProduto": %d,
                           "quantidade": %d
                         }
-                        """.formatted(produtoId, quantidade))
+                        """.formatted(idProduto, quantidade))
                 .when()
                 .post("/orders/" + pedidoId + "/items")
                 .then()
@@ -543,10 +571,18 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
                 .post("/orders/" + pedidoId + "/payments");
     }
 
-    private void colocarPagamentoETransacaoGatewayComoPendentes(String codigoTransacao) {
+    private void colocarPagamentoETransacaoGatewayComoPendentes(
+            String codigoTransacao
+    ) {
         Pagamento pagamento = pagamentoRepository
                 .findByCodigoTransacao(codigoTransacao)
-                .orElseThrow(() -> new AssertionError("Pagamento não encontrado para preparar o reprocessamento"));
+                .orElseThrow(() ->
+                        new AssertionError(
+                                "Pagamento não encontrado para preparar o reprocessamento"
+                        )
+                );
+
+        Long idPedido = pagamento.getPedido().getId();
 
         pagamento.deixarPendente(
                 codigoTransacao,
@@ -557,9 +593,24 @@ public class WebhookPagamentoApiIT extends ContainersIntegracao {
 
         TransacaoGatewayFake transacao = transacaoGatewayFakeRepository
                 .findByCodigoTransacao(codigoTransacao)
-                .orElseThrow(() -> new AssertionError("Transação não encontrada no gateway fake"));
+                .orElseThrow(() ->
+                        new AssertionError(
+                                "Transação não encontrada no gateway fake"
+                        )
+                );
 
         transacao.atualizarStatus(StatusPagamento.PENDENTE);
         transacaoGatewayFakeRepository.saveAndFlush(transacao);
+
+        Pedido pedido = pedidoRepository
+                .findByIdComItens(idPedido)
+                .orElseThrow(() ->
+                        new AssertionError(
+                                "Pedido não encontrado para preparar o reprocessamento"
+                        )
+                );
+
+        pedidoService.marcarPedidoComoAguardandoPagamento(pedido);
+        pedidoRepository.saveAndFlush(pedido);
     }
 }

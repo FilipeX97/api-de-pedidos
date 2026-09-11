@@ -4,6 +4,7 @@ import br.com.api.pedidos.security.filter.JwtFiltroAutenticacao;
 import br.com.api.pedidos.security.filter.FiltroIntervaloRequisicao;
 import br.com.api.pedidos.security.handler.ManipuladorAcessoNegado;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -62,38 +63,57 @@ public class SegurancaConfig {
     }
 
     @Bean
-    @Order(2)
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    @Order(3)
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http
+    ) throws Exception {
+
         http
-                .csrf(AbstractHttpConfigurer::disable
-                )
+                .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(
-                        session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        session ->
+                                session.sessionCreationPolicy(
+                                        SessionCreationPolicy.STATELESS
+                                )
                 )
                 .authorizeHttpRequests(
                         auth -> {
-                            auth
-                                    .requestMatchers(ROTAS_SWAGGER).permitAll()
-                                    .requestMatchers(ROTAS_ACTUATOR_PUBLICAS).permitAll();
 
-                            if (prometheusPublico)
-                                auth.requestMatchers(ROTA_PROMETHEUS).permitAll();
-                            else
-                                auth.requestMatchers(ROTA_PROMETHEUS).hasRole("ADMIN");
+                            auth
+                                    .requestMatchers(ROTAS_SWAGGER)
+                                    .permitAll()
+                                    .requestMatchers(ROTAS_ACTUATOR_PUBLICAS)
+                                    .permitAll();
+
+                            if (prometheusPublico) {
+                                auth
+                                        .requestMatchers(ROTA_PROMETHEUS)
+                                        .permitAll();
+                            } else {
+                                auth
+                                        .requestMatchers(ROTA_PROMETHEUS)
+                                        .hasRole("ADMIN");
+                            }
 
                             auth
                                     .requestMatchers(
                                             "/actuator/metrics",
                                             "/actuator/metrics/**"
-                                    ).hasRole("ADMIN")
+                                    )
+                                    .hasRole("ADMIN")
                                     .requestMatchers(
                                             HttpMethod.POST,
                                             "/auth/login",
                                             "/auth/refresh",
-                                            "/auth/registrar").permitAll()
-                                    .requestMatchers("/webhooks/**").permitAll()
-                                    .requestMatchers("/admin/**").hasRole("ADMIN")
-                                    .anyRequest().authenticated();
+                                            "/auth/registrar"
+                                    )
+                                    .permitAll()
+                                    .requestMatchers("/webhooks/**")
+                                    .permitAll()
+                                    .requestMatchers("/admin/**")
+                                    .hasRole("ADMIN")
+                                    .anyRequest()
+                                    .authenticated();
                         }
                 )
                 .exceptionHandling(
@@ -104,10 +124,12 @@ public class SegurancaConfig {
                 )
                 .addFilterBefore(
                         filtroIntervaloRequisicao,
-                        UsernamePasswordAuthenticationFilter.class)
+                        UsernamePasswordAuthenticationFilter.class
+                )
                 .addFilterBefore(
                         jwtFiltroAutenticacao,
-                        UsernamePasswordAuthenticationFilter.class);
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         return http.build();
     }

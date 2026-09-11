@@ -224,6 +224,11 @@ public class PagamentoService {
                     pagamento.getFormaPagamento()
             );
 
+            gatewayPagamentoFakeConsulta.registrarTransacao(
+                    resultado.codigoTransacao(),
+                    StatusPagamento.APROVADO
+            );
+
             return;
         }
 
@@ -235,6 +240,11 @@ public class PagamentoService {
 
             metricasPagamentoService.registrarPagamentoRecusado(
                     pagamento.getFormaPagamento()
+            );
+
+            gatewayPagamentoFakeConsulta.registrarTransacao(
+                    resultado.codigoTransacao(),
+                    StatusPagamento.RECUSADO
             );
 
             return;

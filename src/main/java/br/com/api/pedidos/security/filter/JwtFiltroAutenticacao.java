@@ -39,6 +39,9 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
     private final TokenRenovacaoService tokenRenovacaoService;
     private final ObjectMapper objectMapper;
 
+    @Value("${api.observabilidade.prometheus-publico:false}")
+    private boolean prometheusPublico;
+
     private static final Logger log =
             LoggerFactory.getLogger(JwtFiltroAutenticacao.class);
 
@@ -49,23 +52,19 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
     );
 
     private static final String ROTA_PROMETHEUS = "/actuator/prometheus";
-    private final boolean prometheusPublico;
 
     public JwtFiltroAutenticacao(
             JwtService jwtService,
             TokenBlacklistService tokenBlacklistService,
             UsuarioAutenticacaoService usuarioAutenticacaoService,
             TokenRenovacaoService tokenRenovacaoService,
-            ObjectMapper objectMapper,
-            @Value("${api.observabilidade.prometheus-publico:false}")
-            boolean prometheusPublico
+            ObjectMapper objectMapper
     ) {
         this.jwtService = jwtService;
         this.tokenBlacklistService = tokenBlacklistService;
         this.usuarioAutenticacaoService = usuarioAutenticacaoService;
         this.tokenRenovacaoService = tokenRenovacaoService;
         this.objectMapper = objectMapper;
-        this.prometheusPublico = prometheusPublico;
     }
 
     @Override
@@ -82,7 +81,7 @@ public class JwtFiltroAutenticacao extends OncePerRequestFilter {
                 || uri.equals("/actuator/health")
                 || uri.startsWith("/actuator/health/")
                 || uri.equals("/actuator/info")
-                || (prometheusPublico && uri.equals(ROTA_PROMETHEUS));
+                || (prometheusPublico && uri.equals("/actuator/prometheus"));
     }
 
     @Override

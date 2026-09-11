@@ -19,13 +19,30 @@ public class GatewayPagamentoFakeConsulta {
 
     @Transactional
     public void registrarPagamentoPendente(String codigoTransacao) {
+        registrarTransacao(
+                codigoTransacao,
+                StatusPagamento.PENDENTE
+        );
+    }
+
+    @Transactional
+    public void registrarTransacao(
+            String codigoTransacao,
+            StatusPagamento statusInicial
+    ) {
         validarCodigoTransacao(codigoTransacao);
+        validarStatus(statusInicial);
 
         if (transacaoRepository.existsByCodigoTransacao(codigoTransacao)) {
-            throw new IllegalStateException("Transação já registrada no gateway fake");
+            throw new IllegalStateException(
+                    "Transação já registrada no gateway fake"
+            );
         }
 
-        TransacaoGatewayFake transacao = new TransacaoGatewayFake(codigoTransacao);
+        TransacaoGatewayFake transacao =
+                new TransacaoGatewayFake(codigoTransacao);
+
+        transacao.atualizarStatus(statusInicial);
 
         transacaoRepository.saveAndFlush(transacao);
     }

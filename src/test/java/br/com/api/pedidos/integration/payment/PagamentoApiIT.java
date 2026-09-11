@@ -14,14 +14,20 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 
 import java.math.BigDecimal;
 
 import static br.com.api.pedidos.integration.http.RestAssuredIntegracao.requisicao;
 import static org.hamcrest.Matchers.*;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
+)
 @ActiveProfiles("integration")
+@TestPropertySource(
+        properties = "api.security.rate-limit.enabled=false"
+)
 public class PagamentoApiIT extends ContainersIntegracao {
 
     private static final String USER_AGENT = "api-de-pedidos-integration-test";
@@ -71,7 +77,10 @@ public class PagamentoApiIT extends ContainersIntegracao {
                 .statusCode(201)
                 .body("sucesso", equalTo(true))
                 .body("dados.idPagamento", notNullValue())
-                .body("dados.idPedido", equalTo(pedidoId))
+                .body(
+                        "dados.idPedido",
+                        equalTo(pedidoId.intValue())
+                )
                 .body("dados.valor", equalTo(200.0f))
                 .body("dados.formaPagamento", equalTo("CARTAO_CREDITO"))
                 .body("dados.statusPagamento", equalTo("APROVADO"))
@@ -112,7 +121,10 @@ public class PagamentoApiIT extends ContainersIntegracao {
                 .statusCode(201)
                 .body("sucesso", equalTo(true))
                 .body("dados.idPagamento", notNullValue())
-                .body("dados.idPedido", equalTo(pedidoId))
+                .body(
+                        "dados.idPedido",
+                        equalTo(pedidoId.intValue())
+                )
                 .body("dados.valor", equalTo(6000.0f))
                 .body("dados.formaPagamento", equalTo("CARTAO_CREDITO"))
                 .body("dados.statusPagamento", equalTo("RECUSADO"))
@@ -142,7 +154,10 @@ public class PagamentoApiIT extends ContainersIntegracao {
                 .statusCode(201)
                 .body("sucesso", equalTo(true))
                 .body("dados.idPagamento", notNullValue())
-                .body("dados.idPedido", equalTo(pedidoId))
+                .body(
+                        "dados.idPedido",
+                        equalTo(pedidoId.intValue())
+                )
                 .body("dados.valor", equalTo(200.0f))
                 .body("dados.formaPagamento", equalTo("PIX"))
                 .body("dados.statusPagamento", equalTo("PENDENTE"))
@@ -175,7 +190,7 @@ public class PagamentoApiIT extends ContainersIntegracao {
                 .body("sucesso", equalTo(true))
                 .body("dados.statusPagamento", equalTo("APROVADO"));
 
-        String idPagamento = primeiraResposta.jsonPath().getString("dados.idPagamento");
+        Long idPagamento = primeiraResposta.jsonPath().getLong("dados.idPagamento");
         String codigoTransacao = primeiraResposta.jsonPath().getString("dados.codigoTransacao");
 
         Response segundaResposta = processarPagamento(
@@ -188,7 +203,10 @@ public class PagamentoApiIT extends ContainersIntegracao {
         segundaResposta.then()
                 .statusCode(201)
                 .body("sucesso", equalTo(true))
-                .body("dados.idPagamento", equalTo(idPagamento))
+                .body(
+                        "dados.idPagamento",
+                        equalTo(idPagamento.intValue())
+                )
                 .body("dados.codigoTransacao", equalTo(codigoTransacao))
                 .body("dados.statusPagamento", equalTo("APROVADO"))
                 .body("mensagem", equalTo("Requisição já processada anteriormente (idempotência)"));
@@ -248,7 +266,7 @@ public class PagamentoApiIT extends ContainersIntegracao {
         return resposta.jsonPath().getLong("dados.idPedido");
     }
 
-    private void adicionarItem(String token, Long pedidoId, Long produtoId, int quantidade) {
+    private void adicionarItem(String token, Long pedidoId, Long idProduto, int quantidade) {
         requisicao(porta)
                 .header("User-Agent", USER_AGENT)
                 .header("Authorization", "Bearer " + token)
@@ -256,10 +274,10 @@ public class PagamentoApiIT extends ContainersIntegracao {
                 .contentType("application/json")
                 .body("""
                         {
-                          "produtoId": %d,
+                          "idProduto": %d,
                           "quantidade": %d
                         }
-                        """.formatted(produtoId, quantidade))
+                        """.formatted(idProduto, quantidade))
                 .when()
                 .post("/orders/" + pedidoId + "/items")
                 .then()
