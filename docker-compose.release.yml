@@ -228,4 +228,5 @@ volumes:
   api_pedidos_release_mongo_data:
   api_pedidos_release_prometheus_data:
   api_pedidos_release_grafana_data:
+  api_pedidos_release_rabbitmq_data:
   
