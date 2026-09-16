@@ -82,3 +82,56 @@ groups:
           summary: "Taxa de erro de webhook acima do objetivo"
           description: "Mais de 1% dos webhooks recebidos estão terminando com erro."
           runbook: "Consultar dashboard Pagamentos/Webhooks e os registros operacionais."
+
+      - alert: ApiPedidosRabbitMqDlqComMensagens
+        expr: |
+          api_pedidos:rabbitmq_dlq_depth > 0
+        for: 5m
+
+        labels:
+          severity: critical
+          service: api-de-pedidos
+          category: rabbitmq
+
+        annotations:
+          summary: "RabbitMQ possui mensagens na DLQ"
+          description: "Existem mensagens na Dead Letter Queue da aplicação há mais de 5 minutos."
+          runbook: "Verificar erros do consumer, retries, causa da rejeição e mensagens da DLQ."
+
+      - alert: ApiPedidosRabbitMqAltaTaxaErro
+        expr: |
+          (
+            api_pedidos:rabbitmq_error_rate5m
+            /
+            clamp_min(
+              api_pedidos:rabbitmq_processed_rate5m
+              + api_pedidos:rabbitmq_error_rate5m,
+              0.001
+            )
+          ) > 0.05
+        for: 5m
+
+        labels:
+          severity: warning
+          service: api-de-pedidos
+          category: rabbitmq
+
+        annotations:
+          summary: "Alta taxa de erro no consumer RabbitMQ"
+          description: "Mais de 5% das tentativas recentes de processamento RabbitMQ terminaram com erro."
+          runbook: "Consultar o dashboard RabbitMQ e os logs do consumer."
+
+      - alert: ApiPedidosRabbitMqFilaAcumulando
+        expr: |
+          api_pedidos:rabbitmq_queue_depth > 100
+        for: 5m
+
+        labels:
+          severity: warning
+          service: api-de-pedidos
+          category: rabbitmq
+
+        annotations:
+          summary: "Fila RabbitMQ acumulando mensagens"
+          description: "A fila de notificações possui mais de 100 mensagens há mais de 5 minutos."
+          runbook: "Verificar consumer, capacidade de processamento e erros."

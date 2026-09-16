@@ -6,6 +6,7 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
@@ -132,6 +133,13 @@ public class RabbitMqConfig {
         Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter();
         converter.setAlwaysConvertToInferredType(true);
         return converter;
+    }
+
+    @Bean
+    public RabbitAdmin rabbitAdmin(
+            ConnectionFactory connectionFactory
+    ) {
+        return new RabbitAdmin(connectionFactory);
     }
 
     @Bean

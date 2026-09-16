@@ -88,3 +88,50 @@ groups:
             api_pedidos:webhooks_received_rate5m,
             0.001
           )
+
+      # Taxa de mensagens RabbitMQ processadas.
+      - record: api_pedidos:rabbitmq_processed_rate5m
+        expr: |
+          sum(
+            rate(
+              api_pedidos_rabbitmq_mensagens_processadas_total{
+                job="api-de-pedidos"
+              }[5m]
+            )
+          )
+
+      # Taxa de erros no processamento RabbitMQ.
+      - record: api_pedidos:rabbitmq_error_rate5m
+        expr: |
+          sum(
+            rate(
+              api_pedidos_rabbitmq_mensagens_erros_total{
+                job="api-de-pedidos"
+              }[5m]
+            )
+          )
+
+      # Taxa de mensagens duplicadas.
+      - record: api_pedidos:rabbitmq_duplicate_rate5m
+        expr: |
+          sum(
+            rate(
+              api_pedidos_rabbitmq_mensagens_duplicadas_total{
+                job="api-de-pedidos"
+              }[5m]
+            )
+          )
+
+      # Quantidade de mensagens atualmente aguardando.
+      - record: api_pedidos:rabbitmq_queue_depth
+        expr: |
+          api_pedidos_rabbitmq_fila_mensagens{
+            job="api-de-pedidos"
+          }
+
+      # Quantidade de mensagens atualmente na DLQ.
+      - record: api_pedidos:rabbitmq_dlq_depth
+        expr: |
+          api_pedidos_rabbitmq_dlq_mensagens{
+            job="api-de-pedidos"
+          }

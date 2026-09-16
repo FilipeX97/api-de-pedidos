@@ -4,6 +4,8 @@ import br.com.api.pedidos.messaging.dto.PedidoEventoMensagem;
 import br.com.api.pedidos.messaging.service.MensagemProcessadaService;
 import br.com.api.pedidos.notification.entity.TipoNotificacao;
 import br.com.api.pedidos.notification.service.NotificacaoService;
+import br.com.api.pedidos.observability.metrics.MetricasRabbitMqService;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -29,10 +31,17 @@ class NotificacaoPedidoConsumerTest {
         MensagemProcessadaService mensagemProcessadaService =
                 mock(MensagemProcessadaService.class);
 
+        MetricasRabbitMqService metricasRabbitMqService =
+                mock(MetricasRabbitMqService.class);
+
+        MeterRegistry meterRegistry = mock(MeterRegistry.class);
+
         NotificacaoPedidoConsumer consumer =
                 new NotificacaoPedidoConsumer(
                         notificacaoService,
-                        mensagemProcessadaService
+                        mensagemProcessadaService,
+                        metricasRabbitMqService,
+                        meterRegistry
                 );
 
         PedidoEventoMensagem mensagem =
@@ -81,10 +90,17 @@ class NotificacaoPedidoConsumerTest {
         MensagemProcessadaService mensagemProcessadaService =
                 mock(MensagemProcessadaService.class);
 
+        MetricasRabbitMqService metricasRabbitMqService =
+                mock(MetricasRabbitMqService.class);
+
+        MeterRegistry meterRegistry = mock(MeterRegistry.class);
+
         NotificacaoPedidoConsumer consumer =
                 new NotificacaoPedidoConsumer(
                         notificacaoService,
-                        mensagemProcessadaService
+                        mensagemProcessadaService,
+                        metricasRabbitMqService,
+                        meterRegistry
                 );
 
         PedidoEventoMensagem mensagem =
@@ -134,10 +150,17 @@ class NotificacaoPedidoConsumerTest {
         MensagemProcessadaService mensagemProcessadaService =
                 mock(MensagemProcessadaService.class);
 
+        MetricasRabbitMqService metricasRabbitMqService =
+                mock(MetricasRabbitMqService.class);
+
+        MeterRegistry meterRegistry = mock(MeterRegistry.class);
+
         NotificacaoPedidoConsumer consumer =
                 new NotificacaoPedidoConsumer(
                         notificacaoService,
-                        mensagemProcessadaService
+                        mensagemProcessadaService,
+                        metricasRabbitMqService,
+                        meterRegistry
                 );
 
         PedidoEventoMensagem mensagem =
@@ -187,10 +210,17 @@ class NotificacaoPedidoConsumerTest {
         MensagemProcessadaService mensagemProcessadaService =
                 mock(MensagemProcessadaService.class);
 
+        MetricasRabbitMqService metricasRabbitMqService =
+                mock(MetricasRabbitMqService.class);
+
+        MeterRegistry meterRegistry = mock(MeterRegistry.class);
+
         NotificacaoPedidoConsumer consumer =
                 new NotificacaoPedidoConsumer(
                         notificacaoService,
-                        mensagemProcessadaService
+                        mensagemProcessadaService,
+                        metricasRabbitMqService,
+                        meterRegistry
                 );
 
         PedidoEventoMensagem mensagem =
@@ -232,10 +262,17 @@ class NotificacaoPedidoConsumerTest {
         MensagemProcessadaService mensagemProcessadaService =
                 mock(MensagemProcessadaService.class);
 
+        MetricasRabbitMqService metricasRabbitMqService =
+                mock(MetricasRabbitMqService.class);
+
+        MeterRegistry meterRegistry = mock(MeterRegistry.class);
+
         NotificacaoPedidoConsumer consumer =
                 new NotificacaoPedidoConsumer(
                         notificacaoService,
-                        mensagemProcessadaService
+                        mensagemProcessadaService,
+                        metricasRabbitMqService,
+                        meterRegistry
                 );
 
         PedidoEventoMensagem mensagem =

@@ -5,6 +5,9 @@ import br.com.api.pedidos.messaging.dto.PedidoEventoMensagem;
 import br.com.api.pedidos.messaging.service.MensagemProcessadaService;
 import br.com.api.pedidos.notification.entity.TipoNotificacao;
 import br.com.api.pedidos.notification.service.NotificacaoService;
+import br.com.api.pedidos.observability.metrics.MetricasRabbitMqService;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
@@ -13,24 +16,49 @@ public class NotificacaoPedidoConsumer {
 
     private final NotificacaoService notificacaoService;
     private final MensagemProcessadaService mensagemProcessadaService;
+    private final MetricasRabbitMqService metricasRabbitMqService;
+    private final MeterRegistry meterRegistry;
 
     public NotificacaoPedidoConsumer(
             NotificacaoService notificacaoService,
-            MensagemProcessadaService mensagemProcessadaService
+            MensagemProcessadaService mensagemProcessadaService,
+            MetricasRabbitMqService metricasRabbitMqService,
+            MeterRegistry meterRegistry
     ) {
         this.notificacaoService = notificacaoService;
         this.mensagemProcessadaService = mensagemProcessadaService;
+        this.metricasRabbitMqService = metricasRabbitMqService;
+        this.meterRegistry = meterRegistry;
     }
 
     @RabbitListener(
             queues = RabbitMqNomes.FILA_NOTIFICACOES_PEDIDO
     )
     public void receber(PedidoEventoMensagem mensagem) {
-        mensagemProcessadaService.processar(
-                mensagem.idEvento(),
-                mensagem.tipoEvento(),
-                () -> processarMensagem(mensagem)
-        );
+        Timer.Sample amostra =
+                metricasRabbitMqService
+                        .iniciarProcessamento(meterRegistry);
+
+        try {
+
+            boolean processada =
+                    mensagemProcessadaService.processar(
+                            mensagem.idEvento(),
+                            mensagem.tipoEvento(),
+                            () -> processarMensagem(mensagem)
+                    );
+
+            if (processada) {
+                metricasRabbitMqService.registrarMensagemProcessada();
+            } else {
+                metricasRabbitMqService.registrarMensagemDuplicada();
+            }
+        } catch (RuntimeException e) {
+            metricasRabbitMqService.registrarErroProcessamento();
+            throw e;
+        } finally {
+            metricasRabbitMqService.finalizarProcessamento(amostra);
+        }
     }
 
     private void processarMensagem(PedidoEventoMensagem mensagem) {

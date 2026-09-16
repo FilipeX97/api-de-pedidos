@@ -2,6 +2,7 @@ package br.com.api.pedidos.messaging.producer;
 
 import br.com.api.pedidos.messaging.config.RabbitMqNomes;
 import br.com.api.pedidos.messaging.dto.PedidoEventoMensagem;
+import br.com.api.pedidos.observability.metrics.MetricasRabbitMqService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -19,7 +20,11 @@ public class PedidoEventoProducerTest {
     @Test
     void devePublicarMensagemNoExchangeComRoutingKeyInformada() {
         RabbitTemplate rabbitTemplate = mock(RabbitTemplate.class);
-        PedidoEventoProducer producer = new PedidoEventoProducer(rabbitTemplate);
+        MetricasRabbitMqService metricasRabbitMqService =
+                mock(MetricasRabbitMqService.class);
+
+        PedidoEventoProducer producer =
+                new PedidoEventoProducer(rabbitTemplate, metricasRabbitMqService);
 
         UUID idEvento = UUID.randomUUID();
         PedidoEventoMensagem mensagem = new PedidoEventoMensagem(
