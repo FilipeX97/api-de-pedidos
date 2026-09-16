@@ -40,6 +40,13 @@ O projeto foi construído com foco em regras de negócio, segurança, idempotên
 * Controle idempotente de `eventId` dos webhooks.
 * Reprocessamento de webhooks que terminaram com erro.
 * Registro operacional dos webhooks no MongoDB.
+* Mensageria assíncrona com RabbitMQ para eventos de pedidos.
+* Publicação de eventos após o commit da transação do pedido.
+* Consumer de notificações desacoplado do fluxo principal da API.
+* Retry automático de mensagens com limite de tentativas.
+* Dead Letter Exchange (DLX) e Dead Letter Queue (DLQ).
+* Idempotência de processamento de mensagens recebidas.
+* Métricas específicas de publicação, processamento, duplicidade, erros, fila e DLQ do RabbitMQ.
 * Paginação, filtros e ordenação nas consultas administrativas.
 * Histórico de pedidos.
 * Notificações.
@@ -66,6 +73,10 @@ O projeto foi construído com foco em regras de negócio, segurança, idempotên
 * Gitleaks.
 * Trivy.
 * Dependabot.
+* Mensageria assíncrona com RabbitMQ.
+* Retry, rejeição e Dead Letter Queue (DLQ) para mensagens.
+* Idempotência de consumo de mensagens.
+* Métricas e dashboards da integração com RabbitMQ.
 * Publicação da imagem no GitHub Container Registry.
 
 ---
@@ -74,27 +85,40 @@ O projeto foi construído com foco em regras de negócio, segurança, idempotên
 
 A aplicação é organizada como um monólito modular, mantendo os módulos separados por responsabilidade sem introduzir microserviços artificialmente.
 
+A arquitetura atual considera os principais componentes de execução da aplicação: persistência transacional, persistência operacional, mensageria e observabilidade.
+
 ```text
-                      ┌─────────────────────┐
-                      │      API REST       │
-                      └──────────┬──────────┘
-                                 │
-            ┌────────────────────┼─────────────────────┐
-            │                    │                     │
-            ▼                    ▼                     ▼
-       PostgreSQL            MongoDB              Observabilidade
-       Transacional        Operacional            Micrometer
-            │                    │                     │
-            │                    │                     ▼
-            │                    │                Prometheus
-            │                    │                     │
-            │                    │                     ▼
-            │                    │                  Grafana
-            │                    │
-            └──────────────┬─────┘
-                           │
-                    Regras de negócio
+                            API REST
+                               |
+                               v
+                       Regras de negócio
+                               |
+          +--------------------+--------------------+
+          |                    |                    |
+          v                    v                    v
+    PostgreSQL             MongoDB              RabbitMQ
+    transacional           operacional            eventos
+          |                    |                    |
+          |                    |                    v
+          |                    |             Consumer / Notificações
+          |                    |
+          +--------------------+--------------------+
+                               |
+                               v
+                         Micrometer / Actuator
+                               |
+                               v
+                          Prometheus
+                               |
+                              PromQL
+                               |
+                               v
+                            Grafana
 ```
+
+O RabbitMQ é utilizado para desacoplar o processamento assíncrono de notificações dos eventos de pedido. Os eventos são publicados após o commit da transação e consumidos pela fila de notificações.
+
+O PostgreSQL permanece como banco transacional principal. O MongoDB armazena os registros operacionais dos webhooks. Prometheus coleta as métricas expostas pela aplicação e o Grafana apresenta os dashboards.
 
 A aplicação utiliza **Spring Web MVC** na camada HTTP, mas é uma API REST e não possui camada de View HTML.
 
@@ -294,6 +318,162 @@ Utilizada para selecionar estratégias de pagamento e estados do pedido.
 
 ---
 
+# RabbitMQ
+
+O projeto utiliza RabbitMQ para introduzir processamento assíncrono sem transformar a aplicação em microserviços artificialmente. O monólito continua sendo a unidade de deploy, enquanto a mensageria desacopla o processamento de notificações do fluxo transacional principal.
+
+A publicação dos eventos de pedido acontece somente após o commit da transação, por meio de listeners transacionais. Dessa forma, uma transação que sofrer rollback não publica um evento que represente um estado que não foi efetivamente persistido.
+
+## Fluxo de eventos
+
+```text
+Pedido é alterado
+      ↓
+Evento de domínio publicado
+      ↓
+@TransactionalEventListener(AFTER_COMMIT)
+      ↓
+PedidoEventoProducer
+      ↓
+RabbitMQ
+      ↓
+Exchange de eventos
+      ↓
+Fila de notificações
+      ↓
+NotificacaoPedidoConsumer
+      ↓
+NotificacaoService
+      ↓
+Notificação persistida
+```
+
+## Topologia
+
+```text
+Exchange: api.pedidos.events
+        │
+        ├── pedido.pago
+        ├── pedido.enviado
+        ├── pedido.entregue
+        ├── pedido.cancelado
+        └── pedido.estornado
+                  │
+                  ▼
+        Queue: notificacoes.pedido
+                  │
+                  ├── sucesso
+                  │
+                  └── falhas após retries
+                            │
+                            ▼
+                 Exchange: api.pedidos.dlx
+                            │
+                            ▼
+                 Queue: notificacoes.pedido.dlq
+```
+
+### Exchanges
+
+| Exchange | Função |
+| -------- | ------ |
+| `api.pedidos.events` | Exchange principal dos eventos de pedido |
+| `api.pedidos.dlx` | Dead Letter Exchange para mensagens rejeitadas |
+
+### Filas
+
+| Fila | Função |
+| ---- | ------ |
+| `notificacoes.pedido` | Processamento das notificações originadas pelos eventos de pedido |
+| `notificacoes.pedido.dlq` | Mensagens que não puderam ser processadas após os retries |
+
+### Routing keys
+
+```text
+pedido.pago
+pedido.enviado
+pedido.entregue
+pedido.cancelado
+pedido.estornado
+```
+
+O evento `pedido.criado` já possui uma routing key definida na configuração de mensageria para permitir evolução posterior da topologia.
+
+## Contrato da mensagem
+
+Os eventos utilizam o DTO `PedidoEventoMensagem` e são serializados como JSON por `Jackson2JsonMessageConverter`.
+
+A mensagem carrega informações como: Id do evento, tipo do evento, pedido, usuário, valor e data do evento.
+
+O produtor utiliza `RabbitTemplate` e o projeto está configurado com publisher confirms e publisher returns. Assim, problemas de confirmação da publicação e mensagens não roteadas podem ser detectados.
+
+## Consumer
+
+O `NotificacaoPedidoConsumer` recebe mensagens da fila `notificacoes.pedido` e transforma os eventos de pedido em notificações. Atualmente são tratados eventos de: pagamento confirmado, pedido enviado, pedido entregue, pedido cancelado e pedido estornado.
+
+A regra de negócio das notificações permanece no `NotificacaoService`; o consumer é responsável pela integração com a mensageria e pela delegação do processamento.
+
+## Retry e DLQ
+
+O listener utiliza retry automático com a seguinte configuração nos ambientes da aplicação:
+
+```text
+max-attempts = 3
+initial-interval = 1000ms
+max-interval = 5000ms
+multiplier = 2
+default-requeue-rejected = false
+```
+
+Após as tentativas configuradas, a mensagem não é reencaminhada indefinidamente para a mesma fila. A rejeição permite que a infraestrutura de Dead Letter encaminhe a mensagem para a DLQ.
+
+A DLQ permite preservar a mensagem que falhou e investigar posteriormente a causa do problema sem bloquear indefinidamente o processamento das demais mensagens.
+
+## Idempotência do consumer
+
+O consumer utiliza `MensagemProcessadaService` para impedir que o mesmo `idEvento` seja processado mais de uma vez.
+
+O registro de mensagem processada e a execução da regra de negócio participam da mesma transação. Quando ocorre uma exceção, a transação é revertida, permitindo que a mensagem seja tentada novamente pelo mecanismo de retry.
+
+Em uma entrega duplicada que já tenha sido processada com sucesso, o serviço identifica o registro existente e evita a execução novamente da notificação.
+
+## Observabilidade do RabbitMQ
+
+O projeto possui métricas específicas para acompanhar a integração de mensageria:
+
+```text
+api_pedidos_rabbitmq_mensagens_publicadas_total
+api_pedidos_rabbitmq_mensagens_processadas_total
+api_pedidos_rabbitmq_mensagens_duplicadas_total
+api_pedidos_rabbitmq_mensagens_erros_total
+api_pedidos_rabbitmq_fila_mensagens
+api_pedidos_rabbitmq_dlq_mensagens
+```
+
+Também existem recording rules para taxa de processamento, taxa de erros, taxa de duplicidades, tamanho da fila e profundidade da DLQ.
+
+O dashboard `API de Pedidos - RabbitMQ` apresenta, entre outros dados, mensagens publicadas, processadas, duplicadas, erros, tamanho da fila e quantidade de mensagens na DLQ.
+
+Existem alertas para situações como mensagens na DLQ, aumento da taxa de erros e crescimento da fila.
+
+## Testes
+
+A integração possui testes unitários da configuração, produtor, retry e consumer, além de testes de integração utilizando RabbitMQ real através do Testcontainers.
+
+Entre os cenários cobertos estão:
+
+* inicialização da aplicação com RabbitMQ;
+* publicação e roteamento de mensagens;
+* integração com exchange e fila;
+* conversão da mensagem para JSON;
+* carregamento da configuração de retry;
+* processamento pelo consumer;
+* prevenção de processamento duplicado.
+
+O container de integração utiliza a imagem `rabbitmq:4.3.5-management`.
+
+---
+
 # Tecnologias utilizadas
 
 | Tecnologia               | Uso                                                 |
@@ -306,6 +486,7 @@ Utilizada para selecionar estratégias de pagamento e estados do pedido.
 | Spring Data MongoDB      | Persistência documental                             |
 | PostgreSQL 16            | Banco transacional                                  |
 | MongoDB 8.0              | Registros operacionais de webhooks                  |
+| RabbitMQ 4.3.5           | Mensageria assíncrona e notificações               |
 | H2                       | Testes rápidos                                      |
 | Flyway                   | Versionamento do schema relacional                  |
 | JJWT 0.11.5              | Tokens JWT                                          |
@@ -323,7 +504,7 @@ Utilizada para selecionar estratégias de pagamento e estados do pedido.
 | Mockito                  | Testes unitários                                    |
 | MockMvc                  | Testes Spring/MVC                                   |
 | RestAssured              | Testes HTTP da API                                  |
-| Testcontainers           | PostgreSQL e MongoDB reais nos testes de integração |
+| Testcontainers             | PostgreSQL, MongoDB e RabbitMQ reais nos testes de integração |
 | GitHub Actions           | Integração contínua                                 |
 | GHCR                     | Registro de imagens Docker                          |
 | Gitleaks                 | Detecção de segredos                                |
@@ -382,17 +563,26 @@ A aplicação possui uma stack de observabilidade baseada em:
 
 ```text
 Spring Boot Actuator
-        ↓
+        |
+        v
 Micrometer
-        ↓
+        |
+        v
 /actuator/prometheus
-        ↓
+        |
+        v
 Prometheus
-        ↓
+        |
+        v
 PromQL
-        ↓
+        |
+        v
 Grafana
 ```
+
+O Actuator expõe os endpoints de saúde e métricas. O Micrometer instrumenta a aplicação, o Prometheus coleta as métricas e o Grafana utiliza o Prometheus como datasource para os dashboards.
+
+As métricas também cobrem a integração com RabbitMQ, incluindo mensagens publicadas, processadas, duplicadas, erros, tamanho da fila e profundidade da DLQ.
 
 ## Actuator
 
@@ -851,6 +1041,17 @@ No Docker Compose, PostgreSQL e MongoDB são utilizados como dependências de in
 | `JWT_RENEW_BEFORE_EXPIRATION` | Janela de renovação        |
 | `FAKE_WEBHOOK_SECRET`         | Segredo HMAC               |
 
+## RabbitMQ
+
+| Variável                    | Descrição |
+| --------------------------- | --------- |
+| `RABBITMQ_HOST`             | Host do RabbitMQ |
+| `RABBITMQ_PORT`             | Porta AMQP |
+| `RABBITMQ_MANAGEMENT_PORT`  | Porta da interface de gerenciamento |
+| `RABBITMQ_USERNAME`          | Usuário |
+| `RABBITMQ_PASSWORD`          | Senha |
+| `RABBITMQ_VHOST`             | Virtual host |
+
 ## Observabilidade
 
 | Variável                 | Descrição             |
@@ -879,7 +1080,7 @@ Execução sem container da API:
 
 * Java 21;
 * Maven 3.9 ou superior;
-* MongoDB disponível para os profiles que utilizam o banco operacional.
+* MongoDB e RabbitMQ disponíveis para os profiles que utilizam os serviços de infraestrutura.
 
 Execução da stack completa:
 
@@ -1005,6 +1206,7 @@ Containers:
 ```text
 api-pedidos-postgres
 api-pedidos-mongo
+api-pedidos-rabbitmq
 api-pedidos-api
 api-pedidos-prometheus
 api-pedidos-grafana
@@ -1082,6 +1284,14 @@ http://localhost:9090/alerts
 ```text
 http://localhost:3000
 ```
+
+## RabbitMQ Management
+
+```text
+http://localhost:15672
+```
+
+A interface de gerenciamento permite consultar exchanges, filas, bindings, mensagens e o estado do broker durante o desenvolvimento.
 
 ---
 
@@ -1347,13 +1557,17 @@ O projeto utiliza diferentes níveis de teste conforme o objetivo.
 ```text
 Testes unitários
 JUnit + Mockito
-        ↓
+        |
+        v
 Testes Spring/MVC
 MockMvc
-        ↓
+        |
+        v
 Testes de integração
 Testcontainers
-        ↓
+PostgreSQL + MongoDB + RabbitMQ
+        |
+        v
 Testes HTTP
 RestAssured
 ```
@@ -1362,7 +1576,7 @@ Os testes unitários permanecem focados em regras isoladas e comportamentos inte
 
 Os testes com MockMvc validam aspectos específicos do Spring MVC, segurança, validação e contratos HTTP.
 
-Os testes de integração utilizam PostgreSQL e MongoDB reais através do Testcontainers.
+Os testes de integração utilizam PostgreSQL, MongoDB e RabbitMQ reais através do Testcontainers.
 
 Os testes com RestAssured executam chamadas HTTP contra uma instância real do Spring Boot iniciada em uma porta aleatória.
 
@@ -1375,7 +1589,7 @@ O projeto possui dois níveis principais de execução:
 | Tipo                 | Execução                           | Infraestrutura                          |
 | -------------------- | ---------------------------------- | --------------------------------------- |
 | Testes rápidos       | `mvn -B -ntp test`                 | H2                                      |
-| Testes de integração | `mvn -B -ntp verify -Pintegration` | PostgreSQL e MongoDB via Testcontainers |
+| Testes de integração | `mvn -B -ntp verify -Pintegration` | PostgreSQL, MongoDB e RabbitMQ via Testcontainers |
 
 ## Testes rápidos
 
@@ -1399,6 +1613,7 @@ Os testes de integração utilizam:
 
 * PostgreSQL real;
 * MongoDB real;
+* RabbitMQ real;
 * Testcontainers;
 * Spring Boot;
 * Flyway;
@@ -1418,6 +1633,10 @@ src/test/java/br/com/api/pedidos/integration
 ├── http
 │   ├── ObservabilidadeApiIT.java
 │   └── RestAssuredIntegracao.java
+├── messaging
+│   ├── RabbitMqContextIT.java
+│   ├── RabbitMqProducerIT.java
+│   └── RabbitMqTopologyIT.java
 ├── order
 │   └── PedidoApiIT.java
 ├── payment
@@ -1460,6 +1679,14 @@ spring.data.mongodb.authentication-database
 ```
 
 Os testes validam a gravação e consulta dos registros operacionais diretamente no MongoDB real.
+
+## RabbitMQ real
+
+O RabbitMQ dos testes é criado pelo Testcontainers a partir da imagem `rabbitmq:4.3.5-management`.
+
+Os testes validam a subida do contexto Spring, a publicação e o roteamento das mensagens e a topologia básica de exchange, filas e bindings.
+
+---
 
 ## RestAssured
 
@@ -1513,10 +1740,9 @@ O pipeline de CI executa:
 5. testes de integração com Testcontainers;
 6. empacotamento;
 7. validação dos Docker Compose;
-8. validação das regras Prometheus;
-9. build da imagem;
-10. verificação de usuário não root;
-11. análise de vulnerabilidades com Trivy.
+8. build da imagem;
+9. verificação de usuário não root;
+10. análise de vulnerabilidades com Trivy.
 
 Os testes rápidos utilizam:
 
@@ -1534,7 +1760,7 @@ Os testes de integração criam PostgreSQL e MongoDB temporários através do Te
 
 O empacotamento somente é executado após a aprovação dos testes rápidos e dos testes de integração.
 
-A imagem é publicada no GitHub Container Registry:
+O workflow de publicação gera a imagem no GitHub Container Registry nos fluxos configurados de publicação:
 
 ```text
 ghcr.io/filipex97/api-de-pedidos
@@ -1691,7 +1917,7 @@ docker compose \
 * Outbox ou mecanismo equivalente para processamento assíncrono.
 * Índices adicionais orientados por consultas reais.
 * Redis para rate limiting distribuído.
-* Kafka ou RabbitMQ para mensageria.
+* Kafka para cenários de mensageria que exijam outra estratégia de distribuição e particionamento.
 * OpenTelemetry para tracing distribuído.
 * Deploy em Kubernetes ou infraestrutura gerenciada.
 

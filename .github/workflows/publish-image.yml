@@ -14,7 +14,7 @@ on:
       - "v*.*.*"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: publish-image-${{ github.event.workflow_run.head_sha || github.ref }}
@@ -46,7 +46,7 @@ jobs:
 
     permissions:
       actions: read
-      contents: read
+      contents: write
       packages: write
 
     steps:
@@ -199,6 +199,28 @@ jobs:
           labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha,scope=api-de-pedidos-ghcr
           cache-to: type=gha,mode=max,scope=api-de-pedidos-ghcr
+
+      - name: Criar GitHub Release
+        if: steps.origem.outputs.is_tag == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ steps.origem.outputs.tag_name }}
+          COMMIT_SHA: ${{ steps.origem.outputs.commit_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+          echo "O GitHub Release $TAG_NAME já existe."
+          exit 0
+          fi
+          
+          gh release create "$TAG_NAME" \
+          --target "$COMMIT_SHA" \
+          --title "API de Pedidos $TAG_NAME" \
+          --generate-notes
+          
+          echo "GitHub Release $TAG_NAME criado com sucesso."
 
       - name: Registrar resumo da publicação
         shell: bash
