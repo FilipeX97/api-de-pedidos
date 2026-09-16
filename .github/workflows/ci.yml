@@ -426,6 +426,11 @@ jobs:
       FAKE_WEBHOOK_SECRET: >-
         ${{ secrets.CI_FAKE_WEBHOOK_SECRET }}
 
+      RABBITMQ_PORT: ${{ secrets.RABBITMQ_PORT }}
+      RABBITMQ_MANAGEMENT_PORT: ${{ vars.RABBITMQ_MANAGEMENT_PORT }}
+      RABBITMQ_USERNAME: ${{ vars.RABBITMQ_USERNAME }}
+      RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+
     steps:
       - name: Baixar o código do repositório
         uses: actions/checkout@v6
