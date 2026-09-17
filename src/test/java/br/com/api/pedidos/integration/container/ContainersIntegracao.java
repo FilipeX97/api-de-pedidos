@@ -1,13 +1,13 @@
 package br.com.api.pedidos.integration.container;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.mongodb.MongoDBContainer;
+import org.testcontainers.rabbitmq.RabbitMQContainer;
 
-@Testcontainers
 public abstract class ContainersIntegracao {
 
     private static final String POSTGRES_DATABASE =
@@ -28,6 +28,12 @@ public abstract class ContainersIntegracao {
     private static final String MONGO_DATABASE =
             "api_pedidos_operacional";
 
+    protected static final String RABBITMQ_USERNAME =
+            "api_pedidos_test";
+
+    protected static final String RABBITMQ_PASSWORD =
+            "api_pedidos_test";
+
     private static final String INTEGRATION_JWT_SECRET =
             "chave-jwt-integracao-api-pedidos-" +
                     "2026-chave-segura-teste-" +
@@ -39,7 +45,6 @@ public abstract class ContainersIntegracao {
                     "api-pedidos-" +
                     "nao-utilizar-em-producao";
 
-    @Container
     protected static final PostgreSQLContainer<?> POSTGRESQL =
             new PostgreSQLContainer<>(
                     "postgres:16-alpine"
@@ -54,7 +59,6 @@ public abstract class ContainersIntegracao {
                             POSTGRES_PASSWORD
                     );
 
-    @Container
     protected static final MongoDBContainer MONGODB =
             new MongoDBContainer(
                     "mongo:8.0.28-noble"
@@ -72,12 +76,38 @@ public abstract class ContainersIntegracao {
                             MONGO_DATABASE
                     );
 
+    protected static final RabbitMQContainer RABBITMQ =
+            new RabbitMQContainer(
+                    "rabbitmq:4.3.5-management"
+            )
+                    .withAdminUser(
+                            RABBITMQ_USERNAME
+                    )
+                    .withAdminPassword(
+                            RABBITMQ_PASSWORD
+                    );
+
+    static {
+        POSTGRESQL.start();
+        MONGODB.start();
+        RABBITMQ.start();
+    }
+
+    @Autowired
+    private LimpezaDadosIntegracao limpezaDadosIntegracao;
+
+    @BeforeEach
+    void limparDadosAntesDoTeste() {
+        limpezaDadosIntegracao.limpar();
+    }
+
     @DynamicPropertySource
     static void configurarPropriedades(
             DynamicPropertyRegistry registry
     ) {
         configurarPostgreSQL(registry);
         configurarMongoDB(registry);
+        configurarRabbitMQ(registry);
         configurarSeguranca(registry);
     }
 
@@ -136,6 +166,35 @@ public abstract class ContainersIntegracao {
         registry.add(
                 "spring.data.mongodb.authentication-database",
                 () -> "admin"
+        );
+    }
+
+    private static void configurarRabbitMQ(
+            DynamicPropertyRegistry registry
+    ) {
+        registry.add(
+                "spring.rabbitmq.host",
+                RABBITMQ::getHost
+        );
+
+        registry.add(
+                "spring.rabbitmq.port",
+                RABBITMQ::getAmqpPort
+        );
+
+        registry.add(
+                "spring.rabbitmq.username",
+                RABBITMQ::getAdminUsername
+        );
+
+        registry.add(
+                "spring.rabbitmq.password",
+                RABBITMQ::getAdminPassword
+        );
+
+        registry.add(
+                "spring.rabbitmq.virtual-host",
+                () -> "/"
         );
     }
 

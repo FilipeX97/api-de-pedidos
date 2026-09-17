@@ -1,98 +1,104 @@
 package br.com.api.pedidos.order.listener;
 
-import br.com.api.pedidos.notification.entity.TipoNotificacao;
-import br.com.api.pedidos.notification.service.NotificacaoService;
-import br.com.api.pedidos.order.event.*;
-import br.com.api.pedidos.order.state.StatusPedido;
+import br.com.api.pedidos.messaging.config.RabbitMqNomes;
+import br.com.api.pedidos.messaging.dto.PedidoEventoMensagem;
+import br.com.api.pedidos.messaging.producer.PedidoEventoProducer;
+import br.com.api.pedidos.order.event.PedidoCanceladoEvent;
+import br.com.api.pedidos.order.event.PedidoEntregueEvent;
+import br.com.api.pedidos.order.event.PedidoEstornadoEvent;
+import br.com.api.pedidos.order.event.PedidoEnviadoEvent;
+import br.com.api.pedidos.order.event.PedidoPagoEvent;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.util.UUID;
+
 @Component
 public class NotificacaoPedidoListener {
 
-    private final NotificacaoService notificacaoService;
+    private final PedidoEventoProducer pedidoEventoProducer;
 
-    public NotificacaoPedidoListener(NotificacaoService notificacaoService) {
-        this.notificacaoService = notificacaoService;
-    }
-
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void aoCriarPedido(PedidoCriadoEvent event) {
-        notificacaoService.criar(
-                event.idPedido(),
-                "Pedido criado",
-                "Seu pedido #" + event.idPedido() + " foi criado com sucesso.",
-                TipoNotificacao.PEDIDO_CRIADO
-        );
+    public NotificacaoPedidoListener(
+            PedidoEventoProducer pedidoEventoProducer
+    ) {
+        this.pedidoEventoProducer = pedidoEventoProducer;
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void aoPagarPedido(PedidoPagoEvent event) {
-        notificacaoService.criar(
-                event.idPedido(),
-                "Pagamento confirmado",
-                    "O pagamento do pedido #" + event.idPedido() + " foi confirmado",
-                TipoNotificacao.PEDIDO_PAGO
+        pedidoEventoProducer.publicar(
+                new PedidoEventoMensagem(
+                        UUID.randomUUID(),
+                        "PEDIDO_PAGO",
+                        event.idPedido(),
+                        event.idUsuario(),
+                        event.valorFinal(),
+                        event.dataHoraPagamento()
+                ),
+                RabbitMqNomes.ROUTING_KEY_PEDIDO_PAGO
         );
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void aoEnviarPedido(PedidoEnviadoEvent event) {
-        notificacaoService.criar(
-                event.idPedido(),
-                "Pedido enviado",
-                "Seu pedido #" + event.idPedido() + " foi enviado.",
-                TipoNotificacao.PEDIDO_ENVIADO
+        pedidoEventoProducer.publicar(
+                new PedidoEventoMensagem(
+                        UUID.randomUUID(),
+                        "PEDIDO_ENVIADO",
+                        event.idPedido(),
+                        event.idUsuario(),
+                        null,
+                        event.dataHoraEnvio(),
+                        event.statusNovo().name()
+                ),
+                RabbitMqNomes.ROUTING_KEY_PEDIDO_ENVIADO
         );
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void aoEntregarPedido(PedidoEntregueEvent event) {
-        notificacaoService.criar(
-                event.idPedido(),
-                "Pedido entregue",
-                "Seu pedido #" + event.idPedido() + " foi entregue.",
-                TipoNotificacao.PEDIDO_ENTREGUE
+        pedidoEventoProducer.publicar(
+                new PedidoEventoMensagem(
+                        UUID.randomUUID(),
+                        "PEDIDO_ENTREGUE",
+                        event.idPedido(),
+                        event.idUsuario(),
+                        event.valorFinal(),
+                        event.dataHoraEntrega()
+                ),
+                RabbitMqNomes.ROUTING_KEY_PEDIDO_ENTREGUE
         );
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void aoCancelarPedido(PedidoCanceladoEvent event) {
-        String titulo = event.statusNovo() == StatusPedido.CANCELAMENTO_SOLICITADO
-                ? "Cancelamento solicitado"
-                : "Pedido cancelado";
-
-        String mensagem = event.statusNovo() == StatusPedido.CANCELAMENTO_SOLICITADO
-                ? "Sua solicitação de cancelamento do pedido #" + event.idPedido() + " foi registrada."
-                : "Seu pedido #" + event.idPedido() + " foi cancelado.";
-
-        notificacaoService.criar(
-                event.idPedido(),
-                titulo,
-                mensagem,
-                TipoNotificacao.PEDIDO_CANCELADO
+        pedidoEventoProducer.publicar(
+                new PedidoEventoMensagem(
+                        UUID.randomUUID(),
+                        "PEDIDO_CANCELADO",
+                        event.idPedido(),
+                        event.idUsuario(),
+                        null,
+                        event.dataHoraCancelamento(),
+                        event.statusNovo().name()
+                ),
+                RabbitMqNomes.ROUTING_KEY_PEDIDO_CANCELADO
         );
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void aoEstornarPedido(PedidoEstornadoEvent event) {
-        notificacaoService.criar(
-                event.idPedido(),
-                "Pedido estornado",
-                "O pedido #" + event.idPedido() + " foi estornado.",
-                TipoNotificacao.PEDIDO_ESTORNADO
+        pedidoEventoProducer.publicar(
+                new PedidoEventoMensagem(
+                        UUID.randomUUID(),
+                        "PEDIDO_ESTORNADO",
+                        event.idPedido(),
+                        event.idUsuario(),
+                        event.valorFinal(),
+                        event.dataHoraEstorno()
+                ),
+                RabbitMqNomes.ROUTING_KEY_PEDIDO_ESTORNADO
         );
     }
-
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void aoAplicarCupom(CupomAplicadoEvent event) {
-        notificacaoService.criar(
-                event.idPedido(),
-                "Cupom aplicado",
-                "O cupom " + event.codigoCupom() + " foi aplicado ao pedido #" + event.idPedido() + ".",
-                TipoNotificacao.CUPOM_APLICADO
-        );
-    }
-
 }

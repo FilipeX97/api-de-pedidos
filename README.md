@@ -1,67 +1,83 @@
 # API de Pedidos
 
-![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.16-6DB33F?logo=springboot&logoColor=white)
-![Spring Security](https://img.shields.io/badge/Spring%20Security-6.5.11-6DB33F?logo=springsecurity&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
-![MongoDB](https://img.shields.io/badge/MongoDB-8.0-47A248?logo=mongodb&logoColor=white)
-![Prometheus](https://img.shields.io/badge/Prometheus-3.13.1-E6522C?logo=prometheus&logoColor=white)
-![Grafana](https://img.shields.io/badge/Grafana-13.1.1-F46800?logo=grafana&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
-![Tests](https://img.shields.io/badge/Testes-JUnit%205-25A162?logo=junit5&logoColor=white)
+![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk\&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.16-6DB33F?logo=springboot\&logoColor=white)
+![Spring Security](https://img.shields.io/badge/Spring%20Security-6.5.11-6DB33F?logo=springsecurity\&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql\&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-8.0-47A248?logo=mongodb\&logoColor=white)
+![Prometheus](https://img.shields.io/badge/Prometheus-3.13.1-E6522C?logo=prometheus\&logoColor=white)
+![Grafana](https://img.shields.io/badge/Grafana-13.1.1-F46800?logo=grafana\&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker\&logoColor=white)
+![Tests](https://img.shields.io/badge/Testes-JUnit%205-25A162?logo=junit5\&logoColor=white)
 [![CI](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/ci.yml)
 [![Publish Docker Image](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/publish-image.yml/badge.svg)](https://github.com/FilipeX97/api-de-pedidos/actions/workflows/publish-image.yml)
 
 API REST para gerenciamento de usuários, produtos, cupons, pedidos e pagamentos, desenvolvida com **Java 21** e **Spring Boot 3.5.16**.
 
-O projeto foi construído com foco em regras de negócio, segurança, idempotência, padrões de projeto, integração com gateway de pagamento fake, webhooks assinados, persistência poliglota, observabilidade, testes automatizados e execução com Docker.
+O projeto foi construído com foco em regras de negócio, segurança, idempotência, padrões de projeto, integração com gateway de pagamento fake, webhooks assinados, persistência poliglota, observabilidade, testes automatizados, testes de integração com bancos reais e execução com Docker.
 
 > O PostgreSQL é a fonte da verdade dos dados transacionais. O MongoDB é utilizado para armazenar os registros operacionais dos webhooks de pagamento.
 
 ---
 
-## Funcionalidades
+# Funcionalidades
 
-- Autenticação stateless com access token e refresh token.
-- Rotação e revogação de refresh tokens.
-- Detecção de reutilização de refresh token.
-- Blacklist de access tokens após logout.
-- Autorização por perfis `USER` e `ADMIN`.
-- Senhas protegidas com BCrypt.
-- CRUD de usuários, produtos e cupons.
-- Criação e gerenciamento de pedidos.
-- Controle de estados do pedido.
-- Aplicação de descontos e cupons.
-- Pagamentos por PIX, cartão de crédito e boleto.
-- Gateway de pagamento fake.
-- Persistência das transações do gateway fake.
-- Idempotência para operações sensíveis.
-- Webhook fake com assinatura HMAC-SHA256.
-- Controle idempotente de `eventId` dos webhooks.
-- Reprocessamento de webhooks que terminaram com erro.
-- Registro operacional dos webhooks no MongoDB.
-- Paginação, filtros e ordenação nas consultas administrativas.
-- Histórico de pedidos.
-- Notificações.
-- Auditoria.
-- Relatórios administrativos.
-- Rate limiting.
-- Request ID para correlação de requisições e logs.
-- Swagger/OpenAPI.
-- Spring Boot Actuator.
-- Métricas técnicas e de negócio.
-- Prometheus.
-- Grafana.
-- Dashboards provisionados por arquivo.
-- SLIs e SLOs.
-- Alertas do Prometheus.
-- Testes automatizados.
-- Docker e Docker Compose.
-- GitHub Actions.
-- Gitleaks.
-- Trivy.
-- Dependabot.
-- Publicação da imagem no GitHub Container Registry.
+* Autenticação stateless com access token e refresh token.
+* Rotação e revogação de refresh tokens.
+* Detecção de reutilização de refresh token.
+* Blacklist de access tokens após logout.
+* Autorização por perfis `USER` e `ADMIN`.
+* Senhas protegidas com BCrypt.
+* CRUD de usuários, produtos e cupons.
+* Criação e gerenciamento de pedidos.
+* Controle de estados do pedido.
+* Aplicação de descontos e cupons.
+* Pagamentos por PIX, cartão de crédito e boleto.
+* Gateway de pagamento fake.
+* Persistência das transações do gateway fake.
+* Idempotência para operações sensíveis.
+* Webhook fake com assinatura HMAC-SHA256.
+* Controle idempotente de `eventId` dos webhooks.
+* Reprocessamento de webhooks que terminaram com erro.
+* Registro operacional dos webhooks no MongoDB.
+* Mensageria assíncrona com RabbitMQ para eventos de pedidos.
+* Publicação de eventos após o commit da transação do pedido.
+* Consumer de notificações desacoplado do fluxo principal da API.
+* Retry automático de mensagens com limite de tentativas.
+* Dead Letter Exchange (DLX) e Dead Letter Queue (DLQ).
+* Idempotência de processamento de mensagens recebidas.
+* Métricas específicas de publicação, processamento, duplicidade, erros, fila e DLQ do RabbitMQ.
+* Paginação, filtros e ordenação nas consultas administrativas.
+* Histórico de pedidos.
+* Notificações.
+* Auditoria.
+* Relatórios administrativos.
+* Rate limiting.
+* Request ID para correlação de requisições e logs.
+* Swagger/OpenAPI.
+* Spring Boot Actuator.
+* Métricas técnicas e de negócio.
+* Prometheus.
+* Grafana.
+* Dashboards provisionados por arquivo.
+* SLIs e SLOs.
+* Alertas do Prometheus.
+* Testes unitários.
+* Testes com Spring/MVC e MockMvc.
+* Testes de integração com PostgreSQL e MongoDB reais.
+* RestAssured para testes HTTP.
+* Testcontainers para infraestrutura de testes.
+* Isolamento e limpeza dos dados dos testes de integração.
+* Docker e Docker Compose.
+* GitHub Actions.
+* Gitleaks.
+* Trivy.
+* Dependabot.
+* Mensageria assíncrona com RabbitMQ.
+* Retry, rejeição e Dead Letter Queue (DLQ) para mensagens.
+* Idempotência de consumo de mensagens.
+* Métricas e dashboards da integração com RabbitMQ.
+* Publicação da imagem no GitHub Container Registry.
 
 ---
 
@@ -69,27 +85,42 @@ O projeto foi construído com foco em regras de negócio, segurança, idempotên
 
 A aplicação é organizada como um monólito modular, mantendo os módulos separados por responsabilidade sem introduzir microserviços artificialmente.
 
+A arquitetura atual considera os principais componentes de execução da aplicação: persistência transacional, persistência operacional, mensageria e observabilidade.
+
 ```text
-                      ┌─────────────────────┐
-                      │      API REST       │
-                      └──────────┬──────────┘
-                                 │
-            ┌────────────────────┼─────────────────────┐
-            │                    │                     │
-            ▼                    ▼                     ▼
-       PostgreSQL            MongoDB              Observabilidade
-       Transacional        Operacional            Micrometer
-            │                    │                     │
-            │                    │                     ▼
-            │                    │                Prometheus
-            │                    │                     │
-            │                    │                     ▼
-            │                    │                  Grafana
-            │                    │
-            └──────────────┬─────┘
-                           │
-                    Regras de negócio
+                            API REST
+                               |
+                               v
+                       Regras de negócio
+                               |
+          +--------------------+--------------------+
+          |                    |                    |
+          v                    v                    v
+    PostgreSQL             MongoDB              RabbitMQ
+    transacional           operacional            eventos
+          |                    |                    |
+          |                    |                    v
+          |                    |             Consumer / Notificações
+          |                    |
+          +--------------------+--------------------+
+                               |
+                               v
+                         Micrometer / Actuator
+                               |
+                               v
+                          Prometheus
+                               |
+                              PromQL
+                               |
+                               v
+                            Grafana
 ```
+
+O RabbitMQ é utilizado para desacoplar o processamento assíncrono de notificações dos eventos de pedido. Os eventos são publicados após o commit da transação e consumidos pela fila de notificações.
+
+O PostgreSQL permanece como banco transacional principal. O MongoDB armazena os registros operacionais dos webhooks. Prometheus coleta as métricas expostas pela aplicação e o Grafana apresenta os dashboards.
+
+A aplicação utiliza **Spring Web MVC** na camada HTTP, mas é uma API REST e não possui camada de View HTML.
 
 ---
 
@@ -97,10 +128,10 @@ A aplicação é organizada como um monólito modular, mantendo os módulos sepa
 
 A aplicação utiliza PostgreSQL e MongoDB com responsabilidades distintas.
 
-| Banco | Responsabilidade |
-|---|---|
+| Banco      | Responsabilidade                                                                                                                                                           |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | PostgreSQL | Usuários, produtos, cupons, pedidos, pagamentos, idempotência, tokens, histórico, notificações, auditoria, transações do gateway fake e controle transacional dos webhooks |
-| MongoDB | Registros operacionais e documentais dos webhooks de pagamento |
+| MongoDB    | Registros operacionais e documentais dos webhooks de pagamento                                                                                                             |
 
 ## PostgreSQL
 
@@ -108,19 +139,19 @@ O PostgreSQL concentra os dados transacionais e as regras que exigem consistênc
 
 Entre os dados armazenados:
 
-- usuários;
-- produtos;
-- cupons;
-- pedidos;
-- itens;
-- pagamentos;
-- tokens;
-- idempotência;
-- histórico;
-- notificações;
-- auditoria;
-- transações do gateway fake;
-- controle transacional dos webhooks.
+* usuários;
+* produtos;
+* cupons;
+* pedidos;
+* itens;
+* pagamentos;
+* tokens;
+* idempotência;
+* histórico;
+* notificações;
+* auditoria;
+* transações do gateway fake;
+* controle transacional dos webhooks.
 
 O `eventId` dos webhooks é protegido por constraint única no PostgreSQL para impedir processamento duplicado.
 
@@ -130,29 +161,29 @@ O MongoDB armazena os registros operacionais dos webhooks.
 
 O documento pode conter:
 
-- `eventId`;
-- `codigoTransacao`;
-- status recebido;
-- status do processamento;
-- payload original;
-- `requestId`;
-- tipo do evento;
-- origem;
-- data de recebimento;
-- data de processamento;
-- duração;
-- indicação de duplicidade;
-- mensagem técnica resumida em caso de erro.
+* `eventId`;
+* `codigoTransacao`;
+* status recebido;
+* status do processamento;
+* payload original;
+* `requestId`;
+* tipo do evento;
+* origem;
+* data de recebimento;
+* data de processamento;
+* duração;
+* indicação de duplicidade;
+* mensagem técnica resumida em caso de erro.
 
 Dados sensíveis não são armazenados no documento operacional, como:
 
-- senha;
-- access token;
-- refresh token;
-- chave JWT;
-- segredo do webhook;
-- senha do banco;
-- assinatura HMAC completa.
+* senha;
+* access token;
+* refresh token;
+* chave JWT;
+* segredo do webhook;
+* senha do banco;
+* assinatura HMAC completa.
 
 A gravação operacional no MongoDB segue uma estratégia **best effort**. Uma falha no MongoDB não interrompe o processamento transacional do pagamento no PostgreSQL.
 
@@ -185,12 +216,12 @@ flowchart TD
 
 ## Estados do registro operacional
 
-| Status | Descrição |
-|---|---|
-| `RECEBIDO` | Tentativa registrada sem resultado final |
-| `PROCESSADO` | Processamento concluído com sucesso |
-| `DUPLICADO` | Evento repetido e ignorado |
-| `ERRO` | Processamento terminou com erro |
+| Status       | Descrição                                |
+| ------------ | ---------------------------------------- |
+| `RECEBIDO`   | Tentativa registrada sem resultado final |
+| `PROCESSADO` | Processamento concluído com sucesso      |
+| `DUPLICADO`  | Evento repetido e ignorado               |
+| `ERRO`       | Processamento terminou com erro          |
 
 O campo `duplicado` é independente do status final.
 
@@ -203,7 +234,7 @@ Um webhook pode ser:
 }
 ```
 
-Esse cenário representa um evento repetido que foi reprocessado porque a tentativa anterior havia terminado com erro.
+Esse cenário representa uma tentativa de um evento que já havia terminado com erro e foi posteriormente reprocessada.
 
 ---
 
@@ -217,11 +248,11 @@ registro_operacional_webhook_pagamento
 
 Índices utilizados:
 
-- `eventId`;
-- `codigoTransacao`;
-- `statusProcessamento`;
-- `requestId`;
-- `dataRecebimento`.
+* `eventId`;
+* `codigoTransacao`;
+* `statusProcessamento`;
+* `requestId`;
+* `dataRecebimento`.
 
 O índice de `eventId` não é único, pois o histórico operacional mantém as diferentes tentativas do mesmo evento.
 
@@ -235,16 +266,16 @@ Utilizado para comportamentos intercambiáveis.
 
 ### Pagamentos
 
-- cartão de crédito;
-- PIX;
-- boleto.
+* cartão de crédito;
+* PIX;
+* boleto.
 
 ### Descontos
 
-- desconto por quantidade;
-- cupom;
-- cliente VIP;
-- motor de promoções.
+* desconto por quantidade;
+* cupom;
+* cliente VIP;
+* motor de promoções.
 
 ## State
 
@@ -252,14 +283,14 @@ Utilizado para controlar as transições de estado dos pedidos.
 
 Exemplos:
 
-- criado;
-- aguardando pagamento;
-- pago;
-- enviado;
-- entregue;
-- cancelamento solicitado;
-- cancelado;
-- estornado.
+* criado;
+* aguardando pagamento;
+* pago;
+* enviado;
+* entregue;
+* cancelamento solicitado;
+* cancelado;
+* estornado.
 
 ## Adapter
 
@@ -273,9 +304,9 @@ A `CheckoutFacade` coordena operações relacionadas ao checkout e ao processame
 
 Eventos e listeners são utilizados para desacoplar efeitos secundários, como:
 
-- histórico;
-- notificações;
-- auditoria.
+* histórico;
+* notificações;
+* auditoria.
 
 ## Specification
 
@@ -287,23 +318,271 @@ Utilizada para selecionar estratégias de pagamento e estados do pedido.
 
 ---
 
+# RabbitMQ
+
+O projeto utiliza RabbitMQ para introduzir processamento assíncrono sem transformar a aplicação em microserviços artificialmente. O monólito continua sendo a unidade de deploy, enquanto a mensageria desacopla o processamento de notificações do fluxo transacional principal.
+
+A publicação dos eventos de pedido acontece somente após o commit da transação, por meio de listeners transacionais. Dessa forma, uma transação que sofrer rollback não publica um evento que represente um estado que não foi efetivamente persistido.
+
+## Fluxo de eventos
+
+```text
+Pedido é alterado
+      ↓
+Evento de domínio publicado
+      ↓
+@TransactionalEventListener(AFTER_COMMIT)
+      ↓
+PedidoEventoProducer
+      ↓
+RabbitMQ
+      ↓
+Exchange de eventos
+      ↓
+Fila de notificações
+      ↓
+NotificacaoPedidoConsumer
+      ↓
+NotificacaoService
+      ↓
+Notificação persistida
+```
+
+## Topologia
+
+```text
+Exchange: api.pedidos.events
+        │
+        ├── pedido.pago
+        ├── pedido.enviado
+        ├── pedido.entregue
+        ├── pedido.cancelado
+        └── pedido.estornado
+                  │
+                  ▼
+        Queue: notificacoes.pedido
+                  │
+                  ├── sucesso
+                  │
+                  └── falhas após retries
+                            │
+                            ▼
+                 Exchange: api.pedidos.dlx
+                            │
+                            ▼
+                 Queue: notificacoes.pedido.dlq
+```
+
+### Exchanges
+
+| Exchange | Função |
+| -------- | ------ |
+| `api.pedidos.events` | Exchange principal dos eventos de pedido |
+| `api.pedidos.dlx` | Dead Letter Exchange para mensagens rejeitadas |
+
+### Filas
+
+| Fila | Função |
+| ---- | ------ |
+| `notificacoes.pedido` | Processamento das notificações originadas pelos eventos de pedido |
+| `notificacoes.pedido.dlq` | Mensagens que não puderam ser processadas após os retries |
+
+### Routing keys
+
+```text
+pedido.pago
+pedido.enviado
+pedido.entregue
+pedido.cancelado
+pedido.estornado
+```
+
+O evento `pedido.criado` já possui uma routing key definida na configuração de mensageria para permitir evolução posterior da topologia.
+
+## Contrato da mensagem
+
+Os eventos utilizam o DTO `PedidoEventoMensagem` e são serializados como JSON por `Jackson2JsonMessageConverter`.
+
+A mensagem carrega informações como: Id do evento, tipo do evento, pedido, usuário, valor e data do evento.
+
+O produtor utiliza `RabbitTemplate` e o projeto está configurado com publisher confirms e publisher returns. Assim, problemas de confirmação da publicação e mensagens não roteadas podem ser detectados.
+
+## Consumer
+
+O `NotificacaoPedidoConsumer` recebe mensagens da fila `notificacoes.pedido` e transforma os eventos de pedido em notificações. Atualmente são tratados eventos de: pagamento confirmado, pedido enviado, pedido entregue, pedido cancelado e pedido estornado.
+
+A regra de negócio das notificações permanece no `NotificacaoService`; o consumer é responsável pela integração com a mensageria e pela delegação do processamento.
+
+## Retry e DLQ
+
+O listener utiliza retry automático com a seguinte configuração nos ambientes da aplicação:
+
+```text
+max-attempts = 3
+initial-interval = 1000ms
+max-interval = 5000ms
+multiplier = 2
+default-requeue-rejected = false
+```
+
+Após as tentativas configuradas, a mensagem não é reencaminhada indefinidamente para a mesma fila. A rejeição permite que a infraestrutura de Dead Letter encaminhe a mensagem para a DLQ.
+
+A DLQ permite preservar a mensagem que falhou e investigar posteriormente a causa do problema sem bloquear indefinidamente o processamento das demais mensagens.
+
+## Idempotência do consumer
+
+O consumer utiliza `MensagemProcessadaService` para impedir que o mesmo `idEvento` seja processado mais de uma vez.
+
+O registro de mensagem processada e a execução da regra de negócio participam da mesma transação. Quando ocorre uma exceção, a transação é revertida, permitindo que a mensagem seja tentada novamente pelo mecanismo de retry.
+
+Em uma entrega duplicada que já tenha sido processada com sucesso, o serviço identifica o registro existente e evita a execução novamente da notificação.
+
+## Observabilidade do RabbitMQ
+
+O projeto possui métricas específicas para acompanhar a integração de mensageria:
+
+```text
+api_pedidos_rabbitmq_mensagens_publicadas_total
+api_pedidos_rabbitmq_mensagens_processadas_total
+api_pedidos_rabbitmq_mensagens_duplicadas_total
+api_pedidos_rabbitmq_mensagens_erros_total
+api_pedidos_rabbitmq_fila_mensagens
+api_pedidos_rabbitmq_dlq_mensagens
+```
+
+Também existem recording rules para taxa de processamento, taxa de erros, taxa de duplicidades, tamanho da fila e profundidade da DLQ.
+
+O dashboard `API de Pedidos - RabbitMQ` apresenta, entre outros dados, mensagens publicadas, processadas, duplicadas, erros, tamanho da fila e quantidade de mensagens na DLQ.
+
+Existem alertas para situações como mensagens na DLQ, aumento da taxa de erros e crescimento da fila.
+
+## Testes
+
+A integração possui testes unitários da configuração, produtor, retry e consumer, além de testes de integração utilizando RabbitMQ real através do Testcontainers.
+
+Entre os cenários cobertos estão:
+
+* inicialização da aplicação com RabbitMQ;
+* publicação e roteamento de mensagens;
+* integração com exchange e fila;
+* conversão da mensagem para JSON;
+* carregamento da configuração de retry;
+* processamento pelo consumer;
+* prevenção de processamento duplicado.
+
+O container de integração utiliza a imagem `rabbitmq:4.3.5-management`.
+
+---
+
+# Tecnologias utilizadas
+
+| Tecnologia               | Uso                                                 |
+| ------------------------ | --------------------------------------------------- |
+| Java 21                  | Linguagem principal                                 |
+| Spring Boot 3.5.16       | Configuração e execução                             |
+| Spring Web / MVC         | API REST                                            |
+| Spring Security 6.5.11   | Autenticação e autorização                          |
+| Spring Data JPA          | Persistência relacional                             |
+| Spring Data MongoDB      | Persistência documental                             |
+| PostgreSQL 16            | Banco transacional                                  |
+| MongoDB 8.0              | Registros operacionais de webhooks                  |
+| RabbitMQ 4.3.5           | Mensageria assíncrona e notificações               |
+| H2                       | Testes rápidos                                      |
+| Flyway                   | Versionamento do schema relacional                  |
+| JJWT 0.11.5              | Tokens JWT                                          |
+| Caffeine                 | Cache local                                         |
+| Bean Validation          | Validação de entrada                                |
+| Springdoc OpenAPI 2.8.17 | Swagger/OpenAPI                                     |
+| Spring Boot Actuator     | Healthchecks, informações e métricas                |
+| Micrometer               | Instrumentação e métricas                           |
+| Prometheus 3.13.1        | Coleta e consulta de métricas                       |
+| Grafana 13.1.1           | Dashboards e visualização                           |
+| SLF4J e MDC              | Logs e correlação por Request ID                    |
+| Maven                    | Build e dependências                                |
+| Docker / Docker Compose  | Empacotamento e orquestração                        |
+| JUnit 5                  | Testes automatizados                                |
+| Mockito                  | Testes unitários                                    |
+| MockMvc                  | Testes Spring/MVC                                   |
+| RestAssured              | Testes HTTP da API                                  |
+| Testcontainers             | PostgreSQL, MongoDB e RabbitMQ reais nos testes de integração |
+| GitHub Actions           | Integração contínua                                 |
+| GHCR                     | Registro de imagens Docker                          |
+| Gitleaks                 | Detecção de segredos                                |
+| Trivy                    | Análise de vulnerabilidades                         |
+| Dependabot               | Atualização de dependências                         |
+
+---
+
+# Segurança
+
+* API stateless.
+* Autenticação com Bearer Token.
+* Access token associado ao IP e ao User-Agent.
+* Refresh token persistido e rotacionado.
+* Detecção de reutilização de refresh token revogado.
+* Blacklist de access tokens.
+* BCrypt para senhas.
+* Perfis `USER` e `ADMIN`.
+* Rate limiting local.
+* HMAC-SHA256 para webhook fake.
+* Comparação segura da assinatura.
+* Idempotência por chave, usuário, endpoint, método e hash do payload.
+* Respostas sem exposição de stacktrace.
+* Tokens, senhas e segredos não são armazenados nos logs operacionais.
+* Imagem Docker executada com usuário não root.
+* Gitleaks no pipeline.
+* Trivy na análise da imagem.
+
+> O rate limiting é mantido em memória. Em uma implantação distribuída, uma evolução natural seria utilizar um mecanismo compartilhado.
+
+---
+
+# Idempotência
+
+Operações sensíveis utilizam:
+
+```http
+Idempotency-Key: <chave-unica>
+```
+
+A mesma chave e o mesmo payload permitem reutilizar a resposta já processada.
+
+A mesma chave com payload diferente gera conflito.
+
+A chave é vinculada ao contexto da operação, reduzindo o risco de processamento duplicado.
+
+Nos webhooks, o `eventId` também é utilizado para impedir o processamento repetido.
+
+Eventos que terminaram com `ERRO` podem ser processados novamente.
+
+---
+
 # Observabilidade
 
 A aplicação possui uma stack de observabilidade baseada em:
 
 ```text
 Spring Boot Actuator
-        ↓
+        |
+        v
 Micrometer
-        ↓
+        |
+        v
 /actuator/prometheus
-        ↓
+        |
+        v
 Prometheus
-        ↓
+        |
+        v
 PromQL
-        ↓
+        |
+        v
 Grafana
 ```
+
+O Actuator expõe os endpoints de saúde e métricas. O Micrometer instrumenta a aplicação, o Prometheus coleta as métricas e o Grafana utiliza o Prometheus como datasource para os dashboards.
+
+As métricas também cobrem a integração com RabbitMQ, incluindo mensagens publicadas, processadas, duplicadas, erros, tamanho da fila e profundidade da DLQ.
 
 ## Actuator
 
@@ -325,7 +604,9 @@ GET /actuator/metrics
 
 é protegido por `ADMIN`.
 
-O endpoint Prometheus é utilizado nos ambientes de desenvolvimento, local e homologação. Em produção, permanece restrito enquanto não existir uma estratégia de exposição interna dedicada.
+O endpoint Prometheus é utilizado nos ambientes de desenvolvimento, local e homologação.
+
+Em produção, permanece restrito enquanto não existir uma estratégia de exposição interna dedicada.
 
 ## Request ID
 
@@ -361,15 +642,15 @@ hikaricp_connections_active
 
 Essas métricas permitem acompanhar:
 
-- requisições;
-- taxa de requisições;
-- erros HTTP;
-- latência;
-- memória JVM;
-- threads;
-- CPU;
-- garbage collection;
-- pool de conexões.
+* requisições;
+* taxa de requisições;
+* erros HTTP;
+* latência;
+* memória JVM;
+* threads;
+* CPU;
+* garbage collection;
+* pool de conexões.
 
 ## Métricas de negócio
 
@@ -419,7 +700,7 @@ api_pedidos_webhooks_duplicados_total
 api_pedidos_webhooks_erros_total
 ```
 
-Também é medido o processamento:
+Também é medido:
 
 ```text
 api_pedidos_webhook_processamento_duracao_seconds
@@ -592,50 +873,50 @@ observability/grafana/dashboards/
 
 ### API de Pedidos - Overview
 
-- requisições por segundo;
-- erros 4xx;
-- erros 5xx;
-- latência p95;
-- memória JVM;
-- pagamentos aprovados;
-- pagamentos recusados;
-- webhooks duplicados;
-- erros de webhook.
+* requisições por segundo;
+* erros 4xx;
+* erros 5xx;
+* latência p95;
+* memória JVM;
+* pagamentos aprovados;
+* pagamentos recusados;
+* webhooks duplicados;
+* erros de webhook.
 
 ### API de Pedidos - Pagamentos e Webhooks
 
-- pagamentos iniciados;
-- pagamentos aprovados;
-- pagamentos recusados;
-- pagamentos pendentes;
-- pagamentos por forma;
-- taxa de aprovação;
-- webhooks recebidos;
-- webhooks processados;
-- webhooks duplicados;
-- taxa de erro;
-- latência p95 de processamento.
+* pagamentos iniciados;
+* pagamentos aprovados;
+* pagamentos recusados;
+* pagamentos pendentes;
+* pagamentos por forma;
+* taxa de aprovação;
+* webhooks recebidos;
+* webhooks processados;
+* webhooks duplicados;
+* taxa de erro;
+* latência p95 de processamento.
 
 ### API de Pedidos - JVM e HTTP
 
-- requests por endpoint;
-- latência média;
-- HTTP 4xx;
-- HTTP 5xx;
-- heap;
-- threads;
-- CPU;
-- garbage collection;
-- conexões Hikari.
+* requests por endpoint;
+* latência média;
+* HTTP 4xx;
+* HTTP 5xx;
+* heap;
+* threads;
+* CPU;
+* garbage collection;
+* conexões Hikari.
 
 ### API de Pedidos - SLI e SLO
 
-- disponibilidade HTTP;
-- SLO de disponibilidade;
-- latência p95;
-- SLO de latência;
-- erro de webhook;
-- SLO operacional de webhook.
+* disponibilidade HTTP;
+* SLO de disponibilidade;
+* latência p95;
+* SLO de latência;
+* erro de webhook;
+* SLO operacional de webhook.
 
 ---
 
@@ -643,11 +924,11 @@ observability/grafana/dashboards/
 
 Os indicadores atuais são:
 
-| Indicador | SLO |
-|---|---:|
-| Disponibilidade HTTP | >= 99,5% |
-| Latência HTTP p95 | <= 500 ms |
-| Erro de webhook | < 1% |
+| Indicador            |       SLO |
+| -------------------- | --------: |
+| Disponibilidade HTTP |  >= 99,5% |
+| Latência HTTP p95    | <= 500 ms |
+| Erro de webhook      |      < 1% |
 
 ## Disponibilidade
 
@@ -681,13 +962,13 @@ observability/prometheus/rules/alerts.yml
 
 Alertas configurados:
 
-| Alerta | Condição | Tempo |
-|---|---|---:|
-| `ApiPedidosIndisponivel` | API DOWN | 2 min |
-| `ApiPedidosAltaTaxa5xx` | > 5% de 5xx | 5 min |
-| `ApiPedidosSloDisponibilidade` | disponibilidade < 99,5% | 10 min |
-| `ApiPedidosAltaLatenciaP95` | p95 > 500 ms | 10 min |
-| `ApiPedidosAltaTaxaErroWebhook` | erro de webhook > 1% | 10 min |
+| Alerta                          | Condição                |  Tempo |
+| ------------------------------- | ----------------------- | -----: |
+| `ApiPedidosIndisponivel`        | API DOWN                |  2 min |
+| `ApiPedidosAltaTaxa5xx`         | > 5% de 5xx             |  5 min |
+| `ApiPedidosSloDisponibilidade`  | disponibilidade < 99,5% | 10 min |
+| `ApiPedidosAltaLatenciaP95`     | p95 > 500 ms            | 10 min |
+| `ApiPedidosAltaTaxaErroWebhook` | erro de webhook > 1%    | 10 min |
 
 Os alertas são avaliados pelo Prometheus e ficam disponíveis em:
 
@@ -695,63 +976,24 @@ Os alertas são avaliados pelo Prometheus e ficam disponíveis em:
 http://localhost:9090/alerts
 ```
 
-Nesta etapa, o projeto não utiliza Alertmanager. O Prometheus é responsável pela avaliação das regras e apresentação dos alertas.
-
----
-
-# Segurança
-
-- API stateless.
-- Autenticação com Bearer Token.
-- Access token associado ao IP e ao User-Agent.
-- Refresh token persistido e rotacionado.
-- Detecção de reutilização de refresh token revogado.
-- Blacklist de access tokens.
-- BCrypt para senhas.
-- Perfis `USER` e `ADMIN`.
-- Rate limiting local.
-- HMAC-SHA256 para webhook fake.
-- Comparação segura da assinatura.
-- Idempotência por chave, usuário, endpoint, método e hash do payload.
-- Respostas sem exposição de stacktrace.
-- Tokens, senhas e segredos não são armazenados nos logs operacionais.
-- Imagem Docker executada com usuário não root.
-- Gitleaks no pipeline.
-- Trivy na análise da imagem.
-
-> O rate limiting é mantido em memória. Em uma implantação distribuída, uma evolução natural seria utilizar um mecanismo compartilhado.
-
----
-
-# Idempotência
-
-Operações sensíveis utilizam:
-
-```http
-Idempotency-Key: <chave-unica>
-```
-
-A mesma chave e o mesmo payload permitem reutilizar a resposta já processada.
-
-A mesma chave com payload diferente gera conflito.
-
-A chave é vinculada ao contexto da operação, reduzindo o risco de processamento duplicado.
+Nesta etapa, o projeto não utiliza Alertmanager.
 
 ---
 
 # Perfis
 
-| Perfil | Banco transacional | MongoDB | Swagger | Actuator |
-|---|---|---|---|---|
-| `dev` | H2 em memória | Externo em `localhost` | Habilitado | Health, info e métricas |
-| `local` | PostgreSQL via Docker | MongoDB via Docker | Habilitado | Health, info, metrics e Prometheus |
-| `homolog` | PostgreSQL | MongoDB | Habilitado | Health, info, metrics e Prometheus |
-| `prod` | PostgreSQL | MongoDB | Desabilitado | Health e info |
-| `test` | H2 em memória | Conexão real desabilitada nos testes atuais | Desabilitado | Conforme os testes |
+| Perfil        | Banco transacional            | MongoDB                    | Swagger      | Actuator                           |
+| ------------- | ----------------------------- | -------------------------- | ------------ | ---------------------------------- |
+| `dev`         | H2 em memória                 | Externo em `localhost`     | Habilitado   | Health, info e métricas            |
+| `local`       | PostgreSQL via Docker         | MongoDB via Docker         | Habilitado   | Health, info, metrics e Prometheus |
+| `homolog`     | PostgreSQL                    | MongoDB                    | Habilitado   | Health, info, metrics e Prometheus |
+| `prod`        | PostgreSQL                    | MongoDB                    | Desabilitado | Health e info                      |
+| `test`        | H2 em memória                 | Conexão real desabilitada  | Desabilitado | Conforme os testes                 |
+| `integration` | PostgreSQL via Testcontainers | MongoDB via Testcontainers | Desabilitado | Health, info, metrics e Prometheus |
 
 O profile padrão é `dev`.
 
-### Readiness
+## Readiness
 
 A readiness considera:
 
@@ -769,44 +1011,55 @@ No Docker Compose, PostgreSQL e MongoDB são utilizados como dependências de in
 
 ## PostgreSQL
 
-| Variável | Descrição |
-|---|---|
-| `DB_NAME` | Nome do banco |
-| `DB_PORT` | Porta publicada |
-| `DB_URL` | URL JDBC |
-| `DB_USERNAME` | Usuário |
-| `DB_PASSWORD` | Senha |
+| Variável      | Descrição       |
+| ------------- | --------------- |
+| `DB_NAME`     | Nome do banco   |
+| `DB_PORT`     | Porta publicada |
+| `DB_URL`      | URL JDBC        |
+| `DB_USERNAME` | Usuário         |
+| `DB_PASSWORD` | Senha           |
 
 ## MongoDB
 
-| Variável | Descrição |
-|---|---|
-| `MONGO_HOST` | Host |
-| `MONGO_PORT` | Porta |
-| `MONGO_DATABASE` | Banco |
-| `MONGO_USERNAME` | Usuário |
-| `MONGO_PASSWORD` | Senha |
+| Variável                        | Descrição             |
+| ------------------------------- | --------------------- |
+| `MONGO_HOST`                    | Host                  |
+| `MONGO_PORT`                    | Porta                 |
+| `MONGO_DATABASE`                | Banco                 |
+| `MONGO_USERNAME`                | Usuário               |
+| `MONGO_PASSWORD`                | Senha                 |
 | `MONGO_AUTHENTICATION_DATABASE` | Banco de autenticação |
 
 ## API e segurança
 
-| Variável | Descrição |
-|---|---|
-| `API_PORT` | Porta da API |
-| `JWT_SECRET` | Chave JWT |
-| `JWT_EXPIRATION` | Expiração do access token |
-| `JWT_REFRESH_EXPIRATION` | Expiração do refresh token |
-| `JWT_RENEW_BEFORE_EXPIRATION` | Janela de renovação |
-| `FAKE_WEBHOOK_SECRET` | Segredo HMAC |
+| Variável                      | Descrição                  |
+| ----------------------------- | -------------------------- |
+| `API_PORT`                    | Porta da API               |
+| `JWT_SECRET`                  | Chave JWT                  |
+| `JWT_EXPIRATION`              | Expiração do access token  |
+| `JWT_REFRESH_EXPIRATION`      | Expiração do refresh token |
+| `JWT_RENEW_BEFORE_EXPIRATION` | Janela de renovação        |
+| `FAKE_WEBHOOK_SECRET`         | Segredo HMAC               |
+
+## RabbitMQ
+
+| Variável                    | Descrição |
+| --------------------------- | --------- |
+| `RABBITMQ_HOST`             | Host do RabbitMQ |
+| `RABBITMQ_PORT`             | Porta AMQP |
+| `RABBITMQ_MANAGEMENT_PORT`  | Porta da interface de gerenciamento |
+| `RABBITMQ_USERNAME`          | Usuário |
+| `RABBITMQ_PASSWORD`          | Senha |
+| `RABBITMQ_VHOST`             | Virtual host |
 
 ## Observabilidade
 
-| Variável | Descrição |
-|---|---|
-| `PROMETHEUS_PORT` | Porta do Prometheus |
-| `GRAFANA_PORT` | Porta do Grafana |
-| `GRAFANA_ADMIN_USER` | Usuário administrador |
-| `GRAFANA_ADMIN_PASSWORD` | Senha administrador |
+| Variável                 | Descrição             |
+| ------------------------ | --------------------- |
+| `PROMETHEUS_PORT`        | Porta do Prometheus   |
+| `GRAFANA_PORT`           | Porta do Grafana      |
+| `GRAFANA_ADMIN_USER`     | Usuário administrador |
+| `GRAFANA_ADMIN_PASSWORD` | Senha administrador   |
 
 Arquivos `.env` reais não devem ser versionados.
 
@@ -821,15 +1074,38 @@ como referência.
 
 ---
 
+# Pré-requisitos
+
+Execução sem container da API:
+
+* Java 21;
+* Maven 3.9 ou superior;
+* MongoDB e RabbitMQ disponíveis para os profiles que utilizam os serviços de infraestrutura.
+
+Execução da stack completa:
+
+* Docker;
+* Docker Compose.
+
+Execução dos testes de integração:
+
+* Java 21;
+* Maven;
+* Docker em execução.
+
+---
+
 # Executando a aplicação
 
 ## Profile `dev`
 
+O profile `dev` utiliza H2 para os dados transacionais e MongoDB para os registros operacionais.
+
 Pré-requisitos:
 
-- Java 21;
-- Maven;
-- MongoDB disponível em `localhost:27017`.
+* Java 21;
+* Maven;
+* MongoDB disponível em `localhost:27017`.
 
 Execute:
 
@@ -930,6 +1206,7 @@ Containers:
 ```text
 api-pedidos-postgres
 api-pedidos-mongo
+api-pedidos-rabbitmq
 api-pedidos-api
 api-pedidos-prometheus
 api-pedidos-grafana
@@ -1008,6 +1285,14 @@ http://localhost:9090/alerts
 http://localhost:3000
 ```
 
+## RabbitMQ Management
+
+```text
+http://localhost:15672
+```
+
+A interface de gerenciamento permite consultar exchanges, filas, bindings, mensagens e o estado do broker durante o desenvolvimento.
+
 ---
 
 # PostgreSQL e MongoDB
@@ -1069,6 +1354,8 @@ spring.jpa.hibernate.ddl-auto=validate
 
 O Flyway evolui o schema e o Hibernate valida a estrutura.
 
+O MongoDB não utiliza Flyway.
+
 ---
 
 # Swagger/OpenAPI
@@ -1092,7 +1379,7 @@ Authorize
 Bearer <access-token>
 ```
 
-Swagger é desabilitado em `prod`.
+Swagger é desabilitado em `prod` e `integration`.
 
 ---
 
@@ -1239,73 +1526,206 @@ API_de_Pedidos_E2E_Completo_Etapa_16_MongoDB.postman_collection.json
 
 Variáveis:
 
-| Variável | Valor |
-|---|---|
-| `baseUrl` | `http://localhost:8080` |
-| `adminEmail` | Usuário ADMIN |
-| `adminSenha` | Senha ADMIN |
-| `userEmail` | Usuário USER |
-| `userSenha` | Senha USER |
+| Variável            | Valor                                |
+| ------------------- | ------------------------------------ |
+| `baseUrl`           | `http://localhost:8080`              |
+| `adminEmail`        | Usuário ADMIN                        |
+| `adminSenha`        | Senha ADMIN                          |
+| `userEmail`         | Usuário USER                         |
+| `userSenha`         | Senha USER                           |
 | `fakeWebhookSecret` | Mesmo valor de `FAKE_WEBHOOK_SECRET` |
 
 A coleção inclui cenários relacionados ao MongoDB operacional:
 
-- listagem;
-- filtros;
-- paginação;
-- ordenação;
-- duplicidade;
-- erros;
-- acesso administrativo;
-- `401`;
-- `403`;
-- validações.
+* listagem;
+* filtros;
+* paginação;
+* ordenação;
+* duplicidade;
+* erros;
+* acesso administrativo;
+* `401`;
+* `403`;
+* validações.
+
+---
+
+# Estratégia de testes
+
+O projeto utiliza diferentes níveis de teste conforme o objetivo.
+
+```text
+Testes unitários
+JUnit + Mockito
+        |
+        v
+Testes Spring/MVC
+MockMvc
+        |
+        v
+Testes de integração
+Testcontainers
+PostgreSQL + MongoDB + RabbitMQ
+        |
+        v
+Testes HTTP
+RestAssured
+```
+
+Os testes unitários permanecem focados em regras isoladas e comportamentos internos.
+
+Os testes com MockMvc validam aspectos específicos do Spring MVC, segurança, validação e contratos HTTP.
+
+Os testes de integração utilizam PostgreSQL, MongoDB e RabbitMQ reais através do Testcontainers.
+
+Os testes com RestAssured executam chamadas HTTP contra uma instância real do Spring Boot iniciada em uma porta aleatória.
 
 ---
 
 # Testes
 
-Executar toda a suíte:
+O projeto possui dois níveis principais de execução:
+
+| Tipo                 | Execução                           | Infraestrutura                          |
+| -------------------- | ---------------------------------- | --------------------------------------- |
+| Testes rápidos       | `mvn -B -ntp test`                 | H2                                      |
+| Testes de integração | `mvn -B -ntp verify -Pintegration` | PostgreSQL, MongoDB e RabbitMQ via Testcontainers |
+
+## Testes rápidos
+
+Executar:
 
 ```bash
 mvn -B -ntp test
 ```
 
-Empacotar:
+Esses testes utilizam o profile `test`, com H2 em memória, e são destinados a fornecer feedback rápido durante o desenvolvimento.
+
+## Testes de integração
+
+Executar:
 
 ```bash
-mvn -B -ntp clean package
+mvn -B -ntp verify -Pintegration
 ```
 
-A suíte possui cobertura para:
+Os testes de integração utilizam:
 
-- autenticação;
-- refresh token;
-- logout;
-- usuários;
-- produtos;
-- cupons;
-- pedidos;
-- estados;
-- pagamentos;
-- idempotência;
-- gateway fake;
-- webhooks;
-- duplicidade;
-- reprocessamento;
-- falhas de processamento;
-- persistência operacional;
-- MongoDB;
-- autorização;
-- validação;
-- Actuator;
-- Prometheus;
-- Request ID;
-- métricas de pedidos;
-- métricas de pagamentos;
-- métricas de webhooks;
-- timers;
-- SLI/SLO.
+* PostgreSQL real;
+* MongoDB real;
+* RabbitMQ real;
+* Testcontainers;
+* Spring Boot;
+* Flyway;
+* RestAssured.
+
+Os containers são criados automaticamente durante a execução e removidos ao final dos testes.
+
+## Estrutura dos testes de integração
+
+```text
+src/test/java/br/com/api/pedidos/integration
+├── auth
+│   └── AutenticacaoApiIT.java
+├── container
+│   ├── ContainersIntegracao.java
+│   └── LimpezaDadosIntegracao.java
+├── http
+│   ├── ObservabilidadeApiIT.java
+│   └── RestAssuredIntegracao.java
+├── messaging
+│   ├── RabbitMqContextIT.java
+│   ├── RabbitMqProducerIT.java
+│   └── RabbitMqTopologyIT.java
+├── order
+│   └── PedidoApiIT.java
+├── payment
+│   └── PagamentoApiIT.java
+└── webhook
+    └── WebhookPagamentoApiIT.java
+```
+
+## PostgreSQL real
+
+O PostgreSQL dos testes é criado pelo Testcontainers.
+
+As propriedades:
+
+```text
+spring.datasource.url
+spring.datasource.username
+spring.datasource.password
+```
+
+são configuradas dinamicamente durante a execução.
+
+O banco é criado a partir de uma instância vazia e as migrations Flyway são executadas normalmente.
+
+Isso permite validar o schema e as queries do projeto contra PostgreSQL real.
+
+## MongoDB real
+
+O MongoDB também é criado pelo Testcontainers.
+
+As propriedades são configuradas dinamicamente:
+
+```text
+spring.data.mongodb.host
+spring.data.mongodb.port
+spring.data.mongodb.database
+spring.data.mongodb.username
+spring.data.mongodb.password
+spring.data.mongodb.authentication-database
+```
+
+Os testes validam a gravação e consulta dos registros operacionais diretamente no MongoDB real.
+
+## RabbitMQ real
+
+O RabbitMQ dos testes é criado pelo Testcontainers a partir da imagem `rabbitmq:4.3.5-management`.
+
+Os testes validam a subida do contexto Spring, a publicação e o roteamento das mensagens e a topologia básica de exchange, filas e bindings.
+
+---
+
+## RestAssured
+
+Os testes de API utilizam:
+
+```java
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+```
+
+O RestAssured executa requisições HTTP contra a aplicação iniciada pelo Spring Boot.
+
+Os testes cobrem fluxos como:
+
+* autenticação;
+* endpoints protegidos;
+* pedidos;
+* pagamentos;
+* webhooks;
+* idempotência;
+* health;
+* readiness;
+* Prometheus;
+* Request ID.
+
+## Isolamento
+
+Os containers são compartilhados pela suíte de integração para reduzir o custo de inicialização.
+
+Antes de cada teste, os dados da aplicação são limpos:
+
+```text
+PostgreSQL
+MongoDB
+Cache
+```
+
+As migrations, tabelas, índices e demais estruturas permanecem intactos.
+
+Os testes preparam seus próprios dados e não dependem dos dados criados por outro teste.
 
 ---
 
@@ -1316,15 +1736,31 @@ O pipeline de CI executa:
 1. validação das variáveis necessárias;
 2. bloqueio de arquivos `.env` reais;
 3. Gitleaks;
-4. testes Maven;
-5. empacotamento;
-6. validação dos Docker Compose;
-7. validação das regras Prometheus;
+4. testes Maven rápidos;
+5. testes de integração com Testcontainers;
+6. empacotamento;
+7. validação dos Docker Compose;
 8. build da imagem;
 9. verificação de usuário não root;
 10. análise de vulnerabilidades com Trivy.
 
-A imagem é publicada no GitHub Container Registry:
+Os testes rápidos utilizam:
+
+```bash
+mvn -B -ntp test
+```
+
+Os testes de integração utilizam:
+
+```bash
+mvn -B -ntp verify -Pintegration
+```
+
+Os testes de integração criam PostgreSQL e MongoDB temporários através do Testcontainers.
+
+O empacotamento somente é executado após a aprovação dos testes rápidos e dos testes de integração.
+
+O workflow de publicação gera a imagem no GitHub Container Registry nos fluxos configurados de publicação:
 
 ```text
 ghcr.io/filipex97/api-de-pedidos
@@ -1408,10 +1844,34 @@ docker compose \
   check rules /etc/prometheus/rules/alerts.yml
 ```
 
-## Testes
+## Testes rápidos
 
 ```bash
 mvn -B -ntp test
+```
+
+## Testes de integração
+
+```bash
+mvn -B -ntp verify -Pintegration
+```
+
+## Executar uma classe específica de integração
+
+```bash
+mvn -B -ntp verify -Pintegration -Dit.test=AutenticacaoApiIT
+```
+
+```bash
+mvn -B -ntp verify -Pintegration -Dit.test=PedidoApiIT
+```
+
+```bash
+mvn -B -ntp verify -Pintegration -Dit.test=PagamentoApiIT
+```
+
+```bash
+mvn -B -ntp verify -Pintegration -Dit.test=WebhookPagamentoApiIT
 ```
 
 ## Build
@@ -1430,6 +1890,15 @@ docker compose \
   --build
 ```
 
+## Ver containers
+
+```bash
+docker compose \
+  --env-file .env.local \
+  --profile full \
+  ps
+```
+
 ## Logs
 
 ```bash
@@ -1444,18 +1913,17 @@ docker compose \
 
 # Próximas evoluções
 
-- Testcontainers para PostgreSQL e MongoDB reais.
-- Alertmanager para roteamento de notificações.
-- Outbox ou mecanismo equivalente para processamento assíncrono.
-- Índices adicionais orientados por consultas reais.
-- Redis para rate limiting distribuído.
-- Kafka ou RabbitMQ para mensageria.
-- OpenTelemetry para tracing distribuído.
-- Deploy em Kubernetes ou infraestrutura gerenciada.
+* Alertmanager para roteamento de notificações.
+* Outbox ou mecanismo equivalente para processamento assíncrono.
+* Índices adicionais orientados por consultas reais.
+* Redis para rate limiting distribuído.
+* Kafka para cenários de mensageria que exijam outra estratégia de distribuição e particionamento.
+* OpenTelemetry para tracing distribuído.
+* Deploy em Kubernetes ou infraestrutura gerenciada.
 
 ---
 
-## Autor
+# Autor
 
 **Filipe Xavier**
 

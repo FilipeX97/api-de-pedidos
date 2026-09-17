@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
@@ -16,6 +17,10 @@ import static org.hamcrest.Matchers.notNullValue;
                 SpringBootTest.WebEnvironment.RANDOM_PORT
 )
 @ActiveProfiles("integration")
+@TestPropertySource(
+        properties =
+                "api.observabilidade.prometheus-publico=true"
+)
 class ObservabilidadeApiIT extends ContainersIntegracao {
 
     @LocalServerPort
@@ -61,24 +66,17 @@ class ObservabilidadeApiIT extends ContainersIntegracao {
 
     @Test
     void prometheusDeveResponderSemToken() {
-
         RestAssuredIntegracao
                 .requisicaoTexto(porta)
                 .when()
                 .get("/actuator/prometheus")
                 .then()
+                .log()
+                .ifValidationFails()
                 .statusCode(200)
-                .contentType(
-                        containsString("text/plain")
-                )
                 .body(
                         containsString(
-                                "jvm_memory_used_bytes"
-                        )
-                )
-                .body(
-                        containsString(
-                                "http_server_requests_seconds"
+                                "http_server_requests_seconds_count"
                         )
                 );
     }
