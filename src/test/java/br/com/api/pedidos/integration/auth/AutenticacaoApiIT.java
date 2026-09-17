@@ -1,17 +1,20 @@
 package br.com.api.pedidos.integration.auth;
 
 import br.com.api.pedidos.integration.container.ContainersIntegracao;
+import br.com.api.pedidos.security.ratelimit.RateLimitService;
 import br.com.api.pedidos.user.entity.Perfil;
 import br.com.api.pedidos.user.entity.Usuario;
 import br.com.api.pedidos.user.repository.UsuarioRepository;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import static br.com.api.pedidos.integration.http.RestAssuredIntegracao.requisicao;
 import static org.hamcrest.Matchers.equalTo;
@@ -37,8 +40,14 @@ class AutenticacaoApiIT extends ContainersIntegracao {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @MockitoBean
+    private RateLimitService rateLimitService;
+
     @BeforeEach
     void prepararUsuario() {
+        Mockito.when(rateLimitService.permitirRequisicao(Mockito.anyString()))
+                .thenReturn(true);
+
         Usuario usuario =
                 new Usuario(
                         "Usuario Integração",
