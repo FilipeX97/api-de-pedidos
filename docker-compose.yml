@@ -85,6 +85,41 @@ services:
       retries: 5
       start_period: 20s
 
+  kafka:
+    image: apache/kafka:4.3.1
+    container_name: api-pedidos-kafka
+    restart: unless-stopped
+
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_LISTENERS: CONTROLLER://:29093,PLAINTEXT_HOST://:9092,PLAINTEXT://:19092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_HOST://localhost:9092,PLAINTEXT://kafka:19092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      CLUSTER_ID: 4L6g3nShT-eMCtK--X86sw
+
+    ports:
+      - "127.0.0.1:9092:9092"
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1 || exit 1"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
   api-de-pedidos:
     profiles:
       - full
@@ -103,6 +138,8 @@ services:
       mongo:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
 
     environment:
@@ -132,6 +169,14 @@ services:
       RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
+
+      KAFKA_HOST: kafka
+      KAFKA_PORT: 19092
+      KAFKA_TOPIC_PEDIDOS: ${KAFKA_TOPIC_PEDIDOS:-api.pedidos.eventos.v1}
+      KAFKA_CONSUMER_GROUP_INTEGRACAO: ${KAFKA_CONSUMER_GROUP_INTEGRACAO:-api-pedidos-integracao-v1}
+      KAFKA_CONSUMER_GROUP_ANALYTICS: ${KAFKA_CONSUMER_GROUP_ANALYTICS:-api-pedidos-analytics-v1}
+      KAFKA_OUTBOX_INTERVAL_MS: ${KAFKA_OUTBOX_INTERVAL_MS:-1000}
+      KAFKA_METRICS_INTERVAL_MS: ${KAFKA_METRICS_INTERVAL_MS:-15000}
 
     ports:
       - "${API_PORT:-8080}:8080"
